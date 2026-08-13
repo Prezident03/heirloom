@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useLayoutEffect, useCallback } from "react";
+import React, { useState, useRef, useMemo, useLayoutEffect, useCallback, useActionState } from "react";
 import {
   Home, BookImage, TreePine, Clock, Heart, Users, MapPin, Search, Plus, X,
   ChevronRight, ChevronLeft, Calendar, MapPinned, Type, Sticker, LayoutGrid, Settings, LogOut,
@@ -155,7 +155,7 @@ function Polaroid({ seed, caption, sub, rot = 0 }) {
   );
 }
 
-function DashboardView({ onNavigate, onOpenAlbum, userName, familyName }) {
+function DashboardView({ onNavigate, onOpenAlbum, userName, familyName, peopleCount }) {
   const [query, setQuery] = useState("");
   const [greeting] = useState(() => {
     const h = new Date().getHours();
@@ -225,7 +225,9 @@ function DashboardView({ onNavigate, onOpenAlbum, userName, familyName }) {
         <div onClick={() => onNavigate(VIEWS.TREE)} style={{ cursor: "pointer", background: `linear-gradient(135deg, ${TOKENS.teal}, ${TOKENS.ink})`, borderRadius: 14, padding: "30px 34px", display: "flex", alignItems: "center", justifyContent: "space-between", color: TOKENS.parchment }}>
           <div>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, marginBottom: 6 }}>{familyName}</div>
-            <div style={{ fontSize: 12.5, color: "rgba(242,237,226,0.7)" }}>Demo ma'lumotlar — Family Tree Phase 2'da dinamik bo'ladi</div>
+            <div style={{ fontSize: 12.5, color: "rgba(242,237,226,0.7)" }}>
+              {peopleCount > 0 ? `${peopleCount} a'zo qo'shilgan` : "Hali hech kim qo'shilmagan — boshlash uchun bosing"}
+            </div>
           </div>
           <TreePine size={34} color={TOKENS.goldSoft} strokeWidth={1.3} />
         </div>
@@ -236,21 +238,100 @@ function DashboardView({ onNavigate, onOpenAlbum, userName, familyName }) {
 
 /* ---------------- Family Tree view ---------------- */
 
-const FAMILY = [
-  { genLabel: "1-avlod", units: [{ id: "u1", parent: null, people: [{ id: "p1", name: "Zokir Zokirov", years: "1898–1960", seed: "zokir-gg" }, { id: "p2", name: "Robiya Zokirova", years: "1902–1975", seed: "robiya-gg" }] }] },
-  { genLabel: "2-avlod", units: [
-    { id: "u2", parent: "u1", people: [{ id: "p3", name: "Abdulla Zokirov", years: "1942–2018", seed: "abdulla-g" }, { id: "p4", name: "Sojida Zokirova", years: "1945–2020", seed: "sojida-g" }] },
-    { id: "u3", parent: "u1", people: [{ id: "p5", name: "Karim Zokirov", years: "1946–2015", seed: "karim-g" }] },
-  ]},
-  { genLabel: "3-avlod", units: [
-    { id: "u4", parent: "u2", people: [{ id: "p6", name: "Rustam Zokirov", years: "1968", seed: "rustam-f" }, { id: "p7", name: "Nilufar Zokirova", years: "1971", seed: "nilufar-f" }] },
-    { id: "u5", parent: "u2", people: [{ id: "p8", name: "Dilnoza Yusupova", years: "1970", seed: "dilnoza-f" }] },
-  ]},
-  { genLabel: "4-avlod", units: [
-    { id: "u6", parent: "u4", people: [{ id: "p9", name: "Abdurasul Zokirov", years: "1998", seed: "abdurasul-me", isMe: true }] },
-    { id: "u7", parent: "u4", people: [{ id: "p10", name: "Sevara Zokirova", years: "2001", seed: "sevara-f" }] },
-  ]},
-];
+function personLabel(p) {
+  return [p.first_name, p.last_name].filter(Boolean).join(" ") || "Ism kiritilmagan";
+}
+
+function personYears(p) {
+  if (p.birth_date && p.death_date) return `${p.birth_date}–${p.death_date}`;
+  if (p.birth_date) return p.birth_date;
+  if (p.death_date) return `–${p.death_date}`;
+  return "";
+}
+
+/**
+ * Haqiqiy `people` va `relationships` qatorlaridan avlodlar (generations)
+ * ro'yxatini quradi. Har bir "unit" — bitta odam yoki er-xotin juftligi.
+ * `type: "parent"` munosabati person_a → person_b (ota-ona → farzand) degani.
+ */
+function buildFamilyGenerations(people, relationships) {
+  if (!people || people.length === 0) return [];
+
+  const byId = {};
+  people.forEach((p) => (byId[p.id] = p));
+
+  const parentsOf = {};
+  const spouseOf = {};
+  relationships.forEach((r) => {
+    if (r.type === "parent") {
+      if (!byId[r.person_a_id] || !byId[r.person_b_id]) return;
+      (parentsOf[r.person_b_id] ||= []).push(r.person_a_id);
+    } else if (r.type === "spouse") {
+      if (!byId[r.person_a_id] || !byId[r.person_b_id]) return;
+      spouseOf[r.person_a_id] = r.person_b_id;
+      spouseOf[r.person_b_id] = r.person_a_id;
+    }
+  });
+
+  const personUnit = {};
+  const units = {};
+  let counter = 0;
+  people.forEach((p) => {
+    if (personUnit[p.id]) return;
+    const spouseId = spouseOf[p.id];
+    const unitId = `u${counter++}`;
+    const memberIds = spouseId && byId[spouseId] && !personUnit[spouseId] ? [p.id, spouseId] : [p.id];
+    memberIds.forEach((id) => (personUnit[id] = unitId));
+    units[unitId] = { id: unitId, personIds: memberIds, parent: null, level: null };
+  });
+
+  Object.values(units).forEach((unit) => {
+    for (const pid of unit.personIds) {
+      const parents = parentsOf[pid];
+      if (parents && parents.length) {
+        const parentUnitId = personUnit[parents[0]];
+        if (parentUnitId && parentUnitId !== unit.id) {
+          unit.parent = parentUnitId;
+          break;
+        }
+      }
+    }
+  });
+
+  function levelOf(unitId, seen) {
+    const unit = units[unitId];
+    if (unit.level != null) return unit.level;
+    if (!unit.parent || seen.has(unitId)) {
+      unit.level = 0;
+      return 0;
+    }
+    seen.add(unitId);
+    unit.level = levelOf(unit.parent, seen) + 1;
+    return unit.level;
+  }
+  Object.keys(units).forEach((id) => levelOf(id, new Set()));
+
+  const maxLevel = Math.max(0, ...Object.values(units).map((u) => u.level));
+  const gens = Array.from({ length: maxLevel + 1 }, (_, i) => ({ genLabel: `${i + 1}-avlod`, units: [] }));
+
+  Object.values(units)
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .forEach((unit) => {
+      gens[unit.level].units.push({
+        id: unit.id,
+        parent: unit.parent,
+        people: unit.personIds.map((pid) => ({
+          id: byId[pid].id,
+          name: personLabel(byId[pid]),
+          years: personYears(byId[pid]),
+          seed: byId[pid].id,
+          biography: byId[pid].biography,
+        })),
+      });
+    });
+
+  return gens;
+}
 
 function PersonNode({ person, onSelect, nodeRef }) {
   return (
@@ -264,18 +345,44 @@ function PersonNode({ person, onSelect, nodeRef }) {
   );
 }
 
-function FamilyTreeView() {
+function EmptyFamilyTree({ familyName, canEdit, onAddPerson }) {
+  return (
+    <div className="fm-fade" style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
+      <div style={{ textAlign: "center", maxWidth: 420 }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+          <TreePine size={26} color={TOKENS.gold} strokeWidth={1.4} />
+        </div>
+        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 24, fontWeight: 500, margin: "0 0 8px" }}>{familyName} — oila daraxti hali bo'sh</h1>
+        <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6, margin: "0 0 24px" }}>
+          Hech qanday tayyor namuna yo'q — hikoyangizni o'zingizdan boshlang. Birinchi odam sifatida odatda o'zingizni qo'shasiz, keyin ota-onangiz, farzandlaringiz yoki turmush o'rtog'ingizni bog'laysiz.
+        </p>
+        {canEdit ? (
+          <button onClick={onAddPerson} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "11px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <Plus size={14} /> Birinchi odamni qo'shish
+          </button>
+        ) : (
+          <div style={{ fontSize: 12.5, color: TOKENS.ink40 }}>Odam qo'shish uchun ruxsatingiz yo'q.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit, addPersonAction }) {
   const [selected, setSelected] = useState(null);
   const [paths, setPaths] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
   const containerRef = useRef(null);
   const unitRefs = useRef({});
+
+  const generations = useMemo(() => buildFamilyGenerations(people, relationships), [people, relationships]);
 
   const measure = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     const cRect = container.getBoundingClientRect();
     const newPaths = [];
-    FAMILY.forEach((gen) => {
+    generations.forEach((gen) => {
       gen.units.forEach((unit) => {
         if (!unit.parent) return;
         const parentEl = unitRefs.current[unit.parent];
@@ -292,7 +399,7 @@ function FamilyTreeView() {
       });
     });
     setPaths(newPaths);
-  }, []);
+  }, [generations]);
 
   useLayoutEffect(() => {
     measure();
@@ -301,25 +408,41 @@ function FamilyTreeView() {
     return () => { window.removeEventListener("resize", measure); clearTimeout(t); };
   }, [measure]);
 
+  if (people.length === 0) {
+    return (
+      <>
+        <EmptyFamilyTree familyName={familyName} canEdit={canEdit} onAddPerson={() => setShowAddModal(true)} />
+        {showAddModal && (
+          <AddPersonModal familySlug={familySlug} people={people} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
+        )}
+      </>
+    );
+  }
+
+  const memberCount = people.length;
+  const genCount = generations.length;
+
   return (
     <div className="fm-fade" style={{ display: "flex", height: "100%" }}>
       <div style={{ flex: 1, padding: "36px 20px 60px", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", maxWidth: 900, margin: "0 auto 30px" }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Avlodlar</div>
-            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>Zokirov oilasi</h1>
-            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>4 avlod · 10 a'zo · 1898 yildan buyon</div>
+            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>{familyName}</h1>
+            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>{genCount} avlod · {memberCount} a'zo</div>
           </div>
-          <button style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-            <Plus size={14} /> Odam qo'shish
-          </button>
+          {canEdit && (
+            <button onClick={() => setShowAddModal(true)} style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+              <Plus size={14} /> Odam qo'shish
+            </button>
+          )}
         </div>
 
         <div ref={containerRef} style={{ position: "relative", maxWidth: 900, margin: "0 auto" }}>
           <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
             {paths.map((d, i) => <path key={i} d={d} stroke={TOKENS.parchmentDeep} strokeWidth="2" fill="none" />)}
           </svg>
-          {FAMILY.map((gen) => (
+          {generations.map((gen) => (
             <div key={gen.genLabel} style={{ marginBottom: 56, position: "relative" }}>
               <div style={{ fontSize: 10.5, letterSpacing: "0.12em", color: TOKENS.ink40, textTransform: "uppercase", textAlign: "center", marginBottom: 18 }}>{gen.genLabel}</div>
               <div style={{ display: "flex", justifyContent: "center", gap: 48, flexWrap: "wrap" }}>
@@ -347,7 +470,7 @@ function FamilyTreeView() {
           <div style={{ width: 84, height: 84, borderRadius: "50%", margin: "6px auto 16px", backgroundImage: `url(https://picsum.photos/seed/${selected.seed}/200/200)`, backgroundSize: "cover", backgroundPosition: "center", border: `3px solid ${TOKENS.parchmentDeep}` }} />
           <div style={{ textAlign: "center", marginBottom: 22 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500 }}>{selected.name}</div>
-            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Calendar size={12} /> {selected.years}</div>
+            {selected.years && <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Calendar size={12} /> {selected.years}</div>}
           </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
             {["Vaqt chizig'i", "Rasmlar", "Hikoyalar"].map((tab, i) => (
@@ -355,15 +478,108 @@ function FamilyTreeView() {
             ))}
           </div>
           <div style={{ fontSize: 12.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 20 }}>
-            Bu odam haqida hali biografiya qo'shilmagan. Uning hayoti haqidagi voqealar, rasmlar va hikoyalarni shu yerga qo'shishingiz mumkin.
+            {selected.biography || "Bu odam haqida hali biografiya qo'shilmagan. Uning hayoti haqidagi voqealar, rasmlar va hikoyalarni shu yerga qo'shishingiz mumkin."}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: TOKENS.ink40 }}><MapPinned size={12} /> Joylashuv qo'shilmagan</div>
           <button style={{ marginTop: 20, width: "100%", background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>To'liq profilni ochish</button>
         </div>
       )}
+
+      {showAddModal && (
+        <AddPersonModal familySlug={familySlug} people={people} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
+      )}
     </div>
   );
 }
+
+/* ---------------- Add Person modal ---------------- */
+
+function AddPersonModal({ familySlug, people, addPersonAction, onClose }) {
+  const [state, formAction, pending] = useActionState(addPersonAction, undefined);
+  const [relationType, setRelationType] = useState("none");
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(30,38,33,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fm-panel-enter"
+        style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflow: "auto", background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Yangi odam qo'shish</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
+        </div>
+
+        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <input type="hidden" name="familySlug" value={familySlug} />
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <input name="firstName" placeholder="Ism" required className="fm-modal-input" style={inputStyle} />
+            <input name="lastName" placeholder="Familiya" className="fm-modal-input" style={inputStyle} />
+          </div>
+
+          <select name="gender" defaultValue="" style={inputStyle}>
+            <option value="">Jinsi (ixtiyoriy)</option>
+            <option value="female">Ayol</option>
+            <option value="male">Erkak</option>
+            <option value="other">Boshqa</option>
+          </select>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <input name="birthDate" placeholder="Tug'ilgan yil (masalan, 1980)" style={inputStyle} />
+            <input name="deathDate" placeholder="Vafot yili (agar bo'lsa)" style={inputStyle} />
+          </div>
+
+          <textarea name="biography" placeholder="Qisqacha hikoya yoki biografiya (ixtiyoriy)" rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+
+          {people.length > 0 && (
+            <>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, marginTop: 4 }}>Oila daraxtiga qanday bog'lanadi?</div>
+              <select name="relationType" value={relationType} onChange={(e) => setRelationType(e.target.value)} style={inputStyle}>
+                <option value="none">Hozircha bog'lamayman</option>
+                <option value="child_of">...ning farzandi</option>
+                <option value="spouse_of">...ning turmush o'rtog'i</option>
+              </select>
+              {relationType !== "none" && (
+                <select name="relatedPersonId" defaultValue="" required style={inputStyle}>
+                  <option value="" disabled>Odamni tanlang</option>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>{personLabel(p)}</option>
+                  ))}
+                </select>
+              )}
+            </>
+          )}
+
+          {state?.error && (
+            <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
+              {state.error}
+            </div>
+          )}
+
+          <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+            {pending ? "Saqlanmoqda..." : "Qo'shish"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  padding: "11px 12px",
+  borderRadius: 8,
+  border: `1px solid ${TOKENS.parchmentDeep}`,
+  background: "#fff",
+  fontSize: 13.5,
+  color: TOKENS.ink,
+  outline: "none",
+  fontFamily: "Inter, sans-serif",
+};
 
 /* ---------------- Albums view ---------------- */
 
@@ -529,8 +745,31 @@ function AlbumsView({ openAlbum, setOpenAlbum }) {
 
 /* ---------------- Root app ---------------- */
 
-export default function HeirloomApp({ userName = "Foydalanuvchi", familyName = "Mening oilam", onLogout }) {
-  const [view, setView] = useState(VIEWS.DASHBOARD);
+/**
+ * @param {{
+ *   userName?: string,
+ *   familyName?: string,
+ *   familySlug?: string,
+ *   people?: any[],
+ *   relationships?: any[],
+ *   canEdit?: boolean,
+ *   initialView?: string,
+ *   onLogout?: any,
+ *   addPersonAction?: any,
+ * }} props
+ */
+export default function HeirloomApp({
+  userName = "Foydalanuvchi",
+  familyName = "Mening oilam",
+  familySlug = "",
+  people = /** @type {any[]} */ ([]),
+  relationships = /** @type {any[]} */ ([]),
+  canEdit = true,
+  initialView = "dashboard",
+  onLogout,
+  addPersonAction,
+}) {
+  const [view, setView] = useState(initialView === "tree" ? VIEWS.TREE : initialView === "albums" ? VIEWS.ALBUMS : VIEWS.DASHBOARD);
   const [openAlbum, setOpenAlbum] = useState(null);
 
   const navigate = (target) => {
@@ -549,8 +788,19 @@ export default function HeirloomApp({ userName = "Foydalanuvchi", familyName = "
       <div style={{ display: "flex", height: "100%" }}>
         <Sidebar current={view} onNavigate={navigate} onLogout={onLogout} />
         <main style={{ flex: 1, overflow: "auto" }}>
-          {view === VIEWS.DASHBOARD && <DashboardView onNavigate={navigate} onOpenAlbum={openAlbumFromDashboard} userName={userName} familyName={familyName} />}
-          {view === VIEWS.TREE && <FamilyTreeView />}
+          {view === VIEWS.DASHBOARD && (
+            <DashboardView onNavigate={navigate} onOpenAlbum={openAlbumFromDashboard} userName={userName} familyName={familyName} peopleCount={people.length} />
+          )}
+          {view === VIEWS.TREE && (
+            <FamilyTreeView
+              familyName={familyName}
+              familySlug={familySlug}
+              people={people}
+              relationships={relationships}
+              canEdit={canEdit}
+              addPersonAction={addPersonAction}
+            />
+          )}
           {view === VIEWS.ALBUMS && <AlbumsView openAlbum={openAlbum} setOpenAlbum={setOpenAlbum} />}
         </main>
       </div>

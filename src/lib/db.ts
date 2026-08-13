@@ -64,6 +64,31 @@ export async function ensureSchema(): Promise<void> {
         UNIQUE(family_id, user_id)
       )
     `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS people (
+        id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL REFERENCES families(id),
+        first_name TEXT NOT NULL,
+        last_name TEXT,
+        gender TEXT,
+        birth_date TEXT,
+        death_date TEXT,
+        biography TEXT,
+        linked_user_id TEXT REFERENCES users(id),
+        created_by TEXT NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS relationships (
+        id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL REFERENCES families(id),
+        person_a_id TEXT NOT NULL REFERENCES people(id),
+        person_b_id TEXT NOT NULL REFERENCES people(id),
+        type TEXT NOT NULL CHECK (type IN ('parent','spouse')),
+        created_at TEXT NOT NULL
+      )
+    `;
   })();
 
   return _schemaReady;

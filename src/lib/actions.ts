@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { findUserByEmail, createUser } from "@/lib/user";
 import { verifyPassword } from "@/lib/password";
 import { createSession, destroySession, getSession } from "@/lib/session";
-import { createFamily, getFamiliesForUser } from "@/lib/family";
+import { createFamily, getFamiliesForUser, getFamilyBySlug, getMembership } from "@/lib/family";
+import { createPerson, createRelationship, type RelationshipType } from "@/lib/people";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -66,4 +67,50 @@ export async function createFamilyAction(_prevState: ActionState, formData: Form
 export async function logoutAction() {
   await destroySession();
   redirect("/login");
+}
+
+export async function addPersonAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role === "viewer") {
+    return { error: "Sizda odam qo'shish uchun ruxsat yo'q." };
+  }
+
+  const firstName = String(formData.get("firstName") || "").trim();
+  if (!firstName) {
+    return { error: "Ismni kiriting." };
+  }
+
+  const lastName = String(formData.get("lastName") || "");
+  const gender = String(formData.get("gender") || "");
+  const birthDate = String(formData.get("birthDate") || "");
+  const deathDate = String(formData.get("deathDate") || "");
+  const biography = String(formData.get("biography") || "");
+
+  const person = await createPerson(
+    family.id,
+    { firstName, lastName, gender, birthDate, deathDate, biography },
+    session.id
+  );
+
+  const relationType = String(formData.get("relationType") || "none");
+  const relatedPersonId = String(formData.get("relatedPersonId") || "");
+
+  if (relatedPersonId && (relationType === "child_of" || relationType === "spouse_of")) {
+    const type: RelationshipType = relationType === "child_of" ? "parent" : "spouse";
+    if (type === "parent") {
+      // relatedPerson is the parent, new person is the child
+      await createRelationship(family.id, relatedPersonId, person.id, "parent");
+    } else {
+      await createRelationship(family.id, person.id, relatedPersonId, "spouse");
+    }
+  }
+
+  redirect(`/${familySlug}/dashboard?view=tree`);
 }
