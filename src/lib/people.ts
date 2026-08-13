@@ -10,6 +10,7 @@ export type Person = {
   birth_date: string | null;
   death_date: string | null;
   biography: string | null;
+  profile_photo_url: string | null;
   linked_user_id: string | null;
   created_by: string;
   created_at: string;
@@ -53,6 +54,15 @@ export async function getPersonById(personId: string, familyId: string): Promise
   return rows[0] ?? null;
 }
 
+/** Joriy foydalanuvchining shu oiladagi shaxsiy "Men" yozuvini topadi (agar bo'lsa). */
+export async function getPersonForUser(familyId: string, userId: string): Promise<Person | null> {
+  await ensureSchema();
+  const rows = (await sql`
+    SELECT * FROM people WHERE family_id = ${familyId} AND linked_user_id = ${userId}
+  `) as Person[];
+  return rows[0] ?? null;
+}
+
 export async function getRelationshipsForFamily(familyId: string): Promise<Relationship[]> {
   await ensureSchema();
   const rows = (await sql`
@@ -64,7 +74,8 @@ export async function getRelationshipsForFamily(familyId: string): Promise<Relat
 export async function createPerson(
   familyId: string,
   input: NewPersonInput,
-  createdBy: string
+  createdBy: string,
+  linkedUserId: string | null = null
 ): Promise<Person> {
   await ensureSchema();
 
@@ -78,8 +89,8 @@ export async function createPerson(
   const biography = input.biography?.trim() || null;
 
   await sql`
-    INSERT INTO people (id, family_id, first_name, last_name, gender, birth_date, death_date, biography, created_by, created_at)
-    VALUES (${id}, ${familyId}, ${firstName}, ${lastName}, ${gender}, ${birthDate}, ${deathDate}, ${biography}, ${createdBy}, ${createdAt})
+    INSERT INTO people (id, family_id, first_name, last_name, gender, birth_date, death_date, biography, linked_user_id, created_by, created_at)
+    VALUES (${id}, ${familyId}, ${firstName}, ${lastName}, ${gender}, ${birthDate}, ${deathDate}, ${biography}, ${linkedUserId}, ${createdBy}, ${createdAt})
   `;
 
   return {
@@ -91,10 +102,50 @@ export async function createPerson(
     birth_date: birthDate,
     death_date: deathDate,
     biography,
-    linked_user_id: null,
+    profile_photo_url: null,
+    linked_user_id: linkedUserId,
     created_by: createdBy,
     created_at: createdAt,
   };
+}
+
+export async function updatePerson(
+  personId: string,
+  familyId: string,
+  input: NewPersonInput
+): Promise<void> {
+  await ensureSchema();
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName?.trim() || null;
+  const gender = input.gender?.trim() || null;
+  const birthDate = input.birthDate?.trim() || null;
+  const deathDate = input.deathDate?.trim() || null;
+  const biography = input.biography?.trim() || null;
+
+  await sql`
+    UPDATE people SET
+      first_name = ${firstName},
+      last_name = ${lastName},
+      gender = ${gender},
+      birth_date = ${birthDate},
+      death_date = ${deathDate},
+      biography = ${biography}
+    WHERE id = ${personId} AND family_id = ${familyId}
+  `;
+}
+
+export async function updatePersonPhoto(personId: string, familyId: string, photoUrl: string): Promise<void> {
+  await ensureSchema();
+  await sql`
+    UPDATE people SET profile_photo_url = ${photoUrl}
+    WHERE id = ${personId} AND family_id = ${familyId}
+  `;
+}
+
+export async function deletePerson(personId: string, familyId: string): Promise<void> {
+  await ensureSchema();
+  await sql`DELETE FROM relationships WHERE family_id = ${familyId} AND (person_a_id = ${personId} OR person_b_id = ${personId})`;
+  await sql`DELETE FROM people WHERE id = ${personId} AND family_id = ${familyId}`;
 }
 
 export async function createRelationship(

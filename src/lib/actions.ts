@@ -5,7 +5,15 @@ import { findUserByEmail, createUser } from "@/lib/user";
 import { verifyPassword } from "@/lib/password";
 import { createSession, destroySession, getSession } from "@/lib/session";
 import { createFamily, getFamiliesForUser, getFamilyBySlug, getMembership } from "@/lib/family";
-import { createPerson, createRelationship, type RelationshipType } from "@/lib/people";
+import {
+  createPerson,
+  createRelationship,
+  updatePerson,
+  updatePersonPhoto,
+  deletePerson,
+  type RelationshipType,
+} from "@/lib/people";
+import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -61,6 +69,18 @@ export async function createFamilyAction(_prevState: ActionState, formData: Form
   }
 
   const family = await createFamily(familyName, session.id);
+
+  // Foydalanuvchining o'zini oila daraxtiga "Men" sifatida avtomatik qo'shamiz —
+  // shunda daraxt boshidanoq ankor nuqtaga ega bo'ladi va qarindoshlik
+  // nomlari (Otasi, Akasi va h.k.) shu nuqtadan hisoblanadi.
+  const [firstName, ...rest] = session.name.trim().split(" ");
+  await createPerson(
+    family.id,
+    { firstName: firstName || session.name, lastName: rest.join(" ") || undefined },
+    session.id,
+    session.id
+  );
+
   redirect(`/${family.slug}/dashboard`);
 }
 
@@ -153,6 +173,93 @@ export async function linkPersonAction(_prevState: ActionState, formData: FormDa
     await createRelationship(family.id, personId, otherPersonId, "spouse");
   } else {
     return { error: "Bog'lanish turini tanlang." };
+  }
+
+  redirect(`/${familySlug}/dashboard?view=tree`);
+}
+
+export async function editPersonAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const personId = String(formData.get("personId") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role === "viewer") {
+    return { error: "Sizda tahrirlash uchun ruxsat yo'q." };
+  }
+
+  const firstName = String(formData.get("firstName") || "").trim();
+  if (!firstName) {
+    return { error: "Ismni kiriting." };
+  }
+
+  await updatePerson(personId, family.id, {
+    firstName,
+    lastName: String(formData.get("lastName") || ""),
+    gender: String(formData.get("gender") || ""),
+    birthDate: String(formData.get("birthDate") || ""),
+    deathDate: String(formData.get("deathDate") || ""),
+    biography: String(formData.get("biography") || ""),
+  });
+
+  redirect(`/${familySlug}/dashboard?view=tree`);
+}
+
+export async function deletePersonAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const personId = String(formData.get("personId") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role === "viewer") {
+    return { error: "Sizda o'chirish uchun ruxsat yo'q." };
+  }
+
+  await deletePerson(personId, family.id);
+  redirect(`/${familySlug}/dashboard?view=tree`);
+}
+
+export async function uploadPersonPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const personId = String(formData.get("personId") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role === "viewer") {
+    return { error: "Sizda rasm yuklash uchun ruxsat yo'q." };
+  }
+
+  const file = formData.get("photo") as File | null;
+  if (!file || file.size === 0) {
+    return { error: "Rasm tanlanmadi." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { error: "Faqat rasm fayllari qabul qilinadi." };
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: "Rasm hajmi 5MB dan oshmasligi kerak." };
+  }
+
+  try {
+    const blob = await put(`people/${personId}-${Date.now()}`, file, {
+      access: "public",
+      addRandomSuffix: true,
+    });
+    await updatePersonPhoto(personId, family.id, blob.url);
+  } catch {
+    return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
   }
 
   redirect(`/${familySlug}/dashboard?view=tree`);

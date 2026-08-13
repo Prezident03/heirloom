@@ -3,9 +3,10 @@
 import React, { useState, useRef, useMemo, useLayoutEffect, useCallback, useActionState } from "react";
 import {
   Home, BookImage, TreePine, Clock, Heart, Users, MapPin, Search, Plus, X,
-  ChevronRight, ChevronLeft, Calendar, MapPinned, Type, Sticker, LayoutGrid, Settings, LogOut,
+  ChevronRight, ChevronLeft, Calendar, MapPinned, Type, Sticker, LayoutGrid, Settings, LogOut, Camera,
 } from "lucide-react";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
+import { relationLabelBetween } from "@/lib/relationshipLabels";
 
 const VIEWS = {
   DASHBOARD: "dashboard",
@@ -326,6 +327,9 @@ function buildFamilyGenerations(people, relationships) {
           years: personYears(byId[pid]),
           seed: byId[pid].id,
           biography: byId[pid].biography,
+          photoUrl: byId[pid].profile_photo_url,
+          gender: byId[pid].gender,
+          raw: byId[pid],
         })),
       });
     });
@@ -333,10 +337,29 @@ function buildFamilyGenerations(people, relationships) {
   return gens;
 }
 
-function PersonNode({ person, onSelect, nodeRef }) {
+function PersonNode({ person, onSelect, nodeRef, isMe }) {
   return (
-    <div ref={nodeRef} onClick={() => onSelect(person)} className="fm-person" style={{ border: person.isMe ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}` }}>
-      <div style={{ width: 44, height: 44, borderRadius: "50%", backgroundImage: `url(https://picsum.photos/seed/${person.seed}/120/120)`, backgroundSize: "cover", backgroundPosition: "center", flexShrink: 0 }} />
+    <div ref={nodeRef} onClick={() => onSelect(person)} className="fm-person" style={{ border: isMe ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}` }}>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          background: person.photoUrl ? undefined : TOKENS.parchmentDeep,
+          backgroundImage: person.photoUrl ? `url(${person.photoUrl})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          flexShrink: 0,
+          display: person.photoUrl ? undefined : "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Fraunces, serif",
+          fontSize: 15,
+          color: TOKENS.ink60,
+        }}
+      >
+        {!person.photoUrl && (person.name?.[0]?.toUpperCase() || "?")}
+      </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontFamily: "Fraunces, serif", fontSize: 13.5, fontWeight: 500, color: TOKENS.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{person.name}</div>
         <div style={{ fontSize: 11, color: TOKENS.ink60, marginTop: 1 }}>{person.years}</div>
@@ -368,13 +391,32 @@ function EmptyFamilyTree({ familyName, canEdit, onAddPerson }) {
   );
 }
 
-function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit, addPersonAction, linkPersonAction }) {
+function FamilyTreeView({
+  familyName,
+  familySlug,
+  people,
+  relationships,
+  canEdit,
+  mePersonId,
+  addPersonAction,
+  linkPersonAction,
+  editPersonAction,
+  deletePersonAction,
+  uploadPersonPhotoAction,
+}) {
   const [selected, setSelected] = useState(null);
   const [paths, setPaths] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const containerRef = useRef(null);
   const unitRefs = useRef({});
+
+  const relationToMe = useMemo(() => {
+    if (!selected || !mePersonId) return null;
+    return relationLabelBetween(mePersonId, selected.id, people, relationships);
+  }, [selected, mePersonId, people, relationships]);
 
   const generations = useMemo(() => buildFamilyGenerations(people, relationships), [people, relationships]);
 
@@ -452,7 +494,7 @@ function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit
                     {unit.people.map((person, i) => (
                       <React.Fragment key={person.id}>
                         {i > 0 && <div className="fm-couple-link" />}
-                        <PersonNode person={person} onSelect={setSelected} />
+                        <PersonNode person={person} onSelect={setSelected} isMe={person.id === mePersonId} />
                       </React.Fragment>
                     ))}
                   </div>
@@ -466,14 +508,43 @@ function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit
       {selected && (
         <div className="fm-panel-enter" style={{ width: 300, flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto" }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4 }}><X size={18} /></button>
+            <button onClick={() => { setSelected(null); setConfirmDelete(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4 }}><X size={18} /></button>
           </div>
-          <div style={{ width: 84, height: 84, borderRadius: "50%", margin: "6px auto 16px", backgroundImage: `url(https://picsum.photos/seed/${selected.seed}/200/200)`, backgroundSize: "cover", backgroundPosition: "center", border: `3px solid ${TOKENS.parchmentDeep}` }} />
-          <div style={{ textAlign: "center", marginBottom: 22 }}>
+
+          <div style={{ position: "relative", width: 84, height: 84, margin: "6px auto 16px" }}>
+            <div
+              style={{
+                width: 84, height: 84, borderRadius: "50%",
+                background: selected.photoUrl ? undefined : TOKENS.parchmentDeep,
+                backgroundImage: selected.photoUrl ? `url(${selected.photoUrl})` : undefined,
+                backgroundSize: "cover", backgroundPosition: "center",
+                border: `3px solid ${TOKENS.parchmentDeep}`,
+                display: selected.photoUrl ? undefined : "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: "Fraunces, serif", fontSize: 28, color: TOKENS.ink60,
+              }}
+            >
+              {!selected.photoUrl && (selected.name?.[0]?.toUpperCase() || "?")}
+            </div>
+            {canEdit && uploadPersonPhotoAction && (
+              <PhotoUploadButton
+                familySlug={familySlug}
+                personId={selected.id}
+                uploadPersonPhotoAction={uploadPersonPhotoAction}
+              />
+            )}
+          </div>
+
+          <div style={{ textAlign: "center", marginBottom: 10 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500 }}>{selected.name}</div>
             {selected.years && <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Calendar size={12} /> {selected.years}</div>}
+            {selected.id === mePersonId ? (
+              <div style={{ fontSize: 11, fontWeight: 600, color: TOKENS.gold, marginTop: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Bu — sizsiz</div>
+            ) : relationToMe ? (
+              <div style={{ fontSize: 11.5, color: TOKENS.teal, marginTop: 6, fontWeight: 600 }}>Sizga: {relationToMe}</div>
+            ) : null}
           </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 20, marginTop: 12 }}>
             {["Vaqt chizig'i", "Rasmlar", "Hikoyalar"].map((tab, i) => (
               <div key={tab} style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 10px", borderRadius: 20, background: i === 0 ? TOKENS.ink : "transparent", color: i === 0 ? TOKENS.parchment : TOKENS.ink60, border: i === 0 ? "none" : `1px solid ${TOKENS.parchmentDeep}`, cursor: "pointer" }}>{tab}</div>
             ))}
@@ -482,12 +553,41 @@ function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit
             {selected.biography || "Bu odam haqida hali biografiya qo'shilmagan. Uning hayoti haqidagi voqealar, rasmlar va hikoyalarni shu yerga qo'shishingiz mumkin."}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: TOKENS.ink40 }}><MapPinned size={12} /> Joylashuv qo'shilmagan</div>
+
           {canEdit && (
-            <button onClick={() => setShowLinkModal(true)} style={{ marginTop: 20, width: "100%", background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              Boshqa odam bilan bog'lash
-            </button>
+            <>
+              <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+                <button onClick={() => setShowEditModal(true)} style={{ flex: 1, background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                  Tahrirlash
+                </button>
+                <button onClick={() => setShowLinkModal(true)} style={{ flex: 1, background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                  Bog'lash
+                </button>
+              </div>
+
+              {!confirmDelete ? (
+                <button onClick={() => setConfirmDelete(true)} style={{ marginTop: 10, width: "100%", background: "transparent", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                  O'chirish
+                </button>
+              ) : (
+                <div style={{ marginTop: 10, padding: 12, background: "rgba(168,69,58,0.08)", borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: TOKENS.danger, marginBottom: 10 }}>
+                    Rostdan ham o'chirasizmi? Bog'lanishlari ham o'chadi. Bu amalni ortga qaytarib bo'lmaydi.
+                  </div>
+                  <form action={deletePersonAction} style={{ display: "flex", gap: 8 }}>
+                    <input type="hidden" name="familySlug" value={familySlug} />
+                    <input type="hidden" name="personId" value={selected.id} />
+                    <button type="submit" style={{ flex: 1, background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      Ha, o'chirish
+                    </button>
+                    <button type="button" onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: "transparent", color: TOKENS.ink60, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      Bekor qilish
+                    </button>
+                  </form>
+                </div>
+              )}
+            </>
           )}
-          <button style={{ marginTop: 10, width: "100%", background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>To'liq profilni ochish</button>
         </div>
       )}
 
@@ -504,7 +604,59 @@ function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit
           onClose={() => setShowLinkModal(false)}
         />
       )}
+
+      {showEditModal && selected && (
+        <EditPersonModal
+          familySlug={familySlug}
+          person={selected}
+          editPersonAction={editPersonAction}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
     </div>
+  );
+}
+
+/* ---------------- Profile photo upload (small inline form + camera button) ---------------- */
+
+function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction }) {
+  const [state, formAction, pending] = useActionState(uploadPersonPhotoAction, undefined);
+  const inputRef = useRef(null);
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="familySlug" value={familySlug} />
+      <input type="hidden" name="personId" value={personId} />
+      <input
+        ref={inputRef}
+        type="file"
+        name="photo"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          if (e.target.files?.length) e.target.form.requestSubmit();
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={pending}
+        title="Rasm yuklash"
+        style={{
+          position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: "50%",
+          background: TOKENS.ink, border: `2px solid ${TOKENS.card}`, color: TOKENS.parchment,
+          display: "flex", alignItems: "center", justifyContent: "center", cursor: pending ? "default" : "pointer",
+          opacity: pending ? 0.6 : 1,
+        }}
+      >
+        <Camera size={13} />
+      </button>
+      {state?.error && (
+        <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6, width: 180, fontSize: 10.5, color: TOKENS.danger, textAlign: "center" }}>
+          {state.error}
+        </div>
+      )}
+    </form>
   );
 }
 
@@ -578,6 +730,68 @@ function AddPersonModal({ familySlug, people, addPersonAction, onClose }) {
 
           <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
             {pending ? "Saqlanmoqda..." : "Qo'shish"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Edit Person modal ---------------- */
+
+function EditPersonModal({ familySlug, person, editPersonAction, onClose }) {
+  const [state, formAction, pending] = useActionState(editPersonAction, undefined);
+  // `person` bu yerda daraxt uchun formatlangan obyekt (name/years), shuning
+  // uchun asl ism/familiya/sana qiymatlarini uning `name`/`years`idan emas,
+  // balki alohida saqlangan xom maydonlaridan olamiz (agar mavjud bo'lsa).
+  const raw = person.raw || {};
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(30,38,33,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fm-panel-enter"
+        style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflow: "auto", background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Ma'lumotlarni tahrirlash</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
+        </div>
+
+        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <input type="hidden" name="familySlug" value={familySlug} />
+          <input type="hidden" name="personId" value={person.id} />
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <input name="firstName" placeholder="Ism" defaultValue={raw.first_name || ""} required className="fm-modal-input" style={inputStyle} />
+            <input name="lastName" placeholder="Familiya" defaultValue={raw.last_name || ""} className="fm-modal-input" style={inputStyle} />
+          </div>
+
+          <select name="gender" defaultValue={raw.gender || ""} style={inputStyle}>
+            <option value="">Jinsi (ixtiyoriy)</option>
+            <option value="female">Ayol</option>
+            <option value="male">Erkak</option>
+            <option value="other">Boshqa</option>
+          </select>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <input name="birthDate" placeholder="Tug'ilgan yil" defaultValue={raw.birth_date || ""} style={inputStyle} />
+            <input name="deathDate" placeholder="Vafot yili (agar bo'lsa)" defaultValue={raw.death_date || ""} style={inputStyle} />
+          </div>
+
+          <textarea name="biography" placeholder="Qisqacha hikoya yoki biografiya" defaultValue={raw.biography || ""} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+
+          {state?.error && (
+            <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
+              {state.error}
+            </div>
+          )}
+
+          <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+            {pending ? "Saqlanmoqda..." : "Saqlash"}
           </button>
         </form>
       </div>
@@ -830,10 +1044,14 @@ function AlbumsView({ openAlbum, setOpenAlbum }) {
  *   people?: any[],
  *   relationships?: any[],
  *   canEdit?: boolean,
+ *   mePersonId?: string | null,
  *   initialView?: string,
  *   onLogout?: any,
  *   addPersonAction?: any,
  *   linkPersonAction?: any,
+ *   editPersonAction?: any,
+ *   deletePersonAction?: any,
+ *   uploadPersonPhotoAction?: any,
  * }} props
  */
 export default function HeirloomApp({
@@ -843,10 +1061,14 @@ export default function HeirloomApp({
   people = /** @type {any[]} */ ([]),
   relationships = /** @type {any[]} */ ([]),
   canEdit = true,
+  mePersonId = null,
   initialView = "dashboard",
   onLogout,
   addPersonAction,
   linkPersonAction,
+  editPersonAction,
+  deletePersonAction,
+  uploadPersonPhotoAction,
 }) {
   const [view, setView] = useState(initialView === "tree" ? VIEWS.TREE : initialView === "albums" ? VIEWS.ALBUMS : VIEWS.DASHBOARD);
   const [openAlbum, setOpenAlbum] = useState(null);
@@ -877,8 +1099,12 @@ export default function HeirloomApp({
               people={people}
               relationships={relationships}
               canEdit={canEdit}
+              mePersonId={mePersonId}
               addPersonAction={addPersonAction}
               linkPersonAction={linkPersonAction}
+              editPersonAction={editPersonAction}
+              deletePersonAction={deletePersonAction}
+              uploadPersonPhotoAction={uploadPersonPhotoAction}
             />
           )}
           {view === VIEWS.ALBUMS && <AlbumsView openAlbum={openAlbum} setOpenAlbum={setOpenAlbum} />}

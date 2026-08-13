@@ -89,6 +89,10 @@ export async function ensureSchema(): Promise<void> {
         created_at TEXT NOT NULL
       )
     `;
+
+    // Eski (allaqachon deploy qilingan) bazalarda ham ishlashi uchun
+    // yangi ustunlarni alohida, xavfsiz tarzda qo'shamiz.
+    await sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS profile_photo_url TEXT`;
   })();
 
   return _schemaReady;

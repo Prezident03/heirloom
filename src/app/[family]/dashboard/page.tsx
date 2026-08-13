@@ -5,7 +5,14 @@ import { getSession } from "@/lib/session";
 import { getFamilyBySlug, getMembership } from "@/lib/family";
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import HeirloomApp from "@/components/HeirloomApp";
-import { logoutAction, addPersonAction, linkPersonAction } from "@/lib/actions";
+import {
+  logoutAction,
+  addPersonAction,
+  linkPersonAction,
+  editPersonAction,
+  deletePersonAction,
+  uploadPersonPhotoAction,
+} from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
   params,
@@ -30,6 +37,8 @@ export default async function FamilyDashboardPage({
     getRelationshipsForFamily(family.id),
   ]);
 
+  const mePerson = people.find((p) => p.linked_user_id === session.id) ?? null;
+
   return (
     <HeirloomApp
       userName={session.name.split(" ")[0]}
@@ -38,10 +47,14 @@ export default async function FamilyDashboardPage({
       people={people}
       relationships={relationships}
       canEdit={membership.role !== "viewer"}
+      mePersonId={mePerson?.id ?? null}
       initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : "dashboard"}
       onLogout={logoutAction}
       addPersonAction={addPersonAction}
       linkPersonAction={linkPersonAction}
+      editPersonAction={editPersonAction}
+      deletePersonAction={deletePersonAction}
+      uploadPersonPhotoAction={uploadPersonPhotoAction}
     />
   );
 }
