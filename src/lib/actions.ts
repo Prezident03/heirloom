@@ -13,6 +13,19 @@ import {
   deletePerson,
   type RelationshipType,
 } from "@/lib/people";
+import {
+  createAlbum,
+  createAlbumPage,
+  changePageLayout,
+  updateElementPhoto,
+  updateElementText,
+  updatePageMeta,
+  deletePage,
+  deleteAlbum,
+  setAlbumCover,
+  getAlbumById,
+  type LayoutId,
+} from "@/lib/albums";
 import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string } | undefined;
@@ -263,4 +276,138 @@ export async function uploadPersonPhotoAction(_prevState: ActionState, formData:
   }
 
   redirect(`/${familySlug}/dashboard?view=tree`);
+}
+
+async function requireEditableFamily(familySlug: string) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." } as const;
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role === "viewer") {
+    return { error: "Sizda bu amal uchun ruxsat yo'q." } as const;
+  }
+
+  return { session, family } as const;
+}
+
+export async function createAlbumAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const title = String(formData.get("title") || "").trim();
+  if (!title) return { error: "Albom nomini kiriting." };
+
+  const album = await createAlbum(check.family.id, check.session.id, {
+    title,
+    description: String(formData.get("description") || ""),
+    dateLabel: String(formData.get("dateLabel") || ""),
+    location: String(formData.get("location") || ""),
+  });
+
+  redirect(`/${familySlug}/dashboard?view=albums&album=${album.id}`);
+}
+
+export async function deleteAlbumAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  await deleteAlbum(albumId, check.family.id);
+  redirect(`/${familySlug}/dashboard?view=albums`);
+}
+
+export async function addAlbumPageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  await createAlbumPage(albumId, "l1");
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function deleteAlbumPageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  await deletePage(pageId);
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function changePageLayoutAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const layoutId = String(formData.get("layoutId") || "l1") as LayoutId;
+  await changePageLayout(pageId, layoutId);
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function updatePageMetaAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  await updatePageMeta(pageId, String(formData.get("dateLabel") || ""), String(formData.get("location") || ""));
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function updateElementTextAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const elementId = String(formData.get("elementId") || "").trim();
+  await updateElementText(elementId, String(formData.get("text") || ""));
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function uploadElementPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const elementId = String(formData.get("elementId") || "").trim();
+  const setCover = formData.get("setCover") === "1";
+
+  const file = formData.get("photo") as File | null;
+  if (!file || file.size === 0) return { error: "Rasm tanlanmadi." };
+  if (!file.type.startsWith("image/")) return { error: "Faqat rasm fayllari qabul qilinadi." };
+  if (file.size > 8 * 1024 * 1024) return { error: "Rasm hajmi 8MB dan oshmasligi kerak." };
+
+  try {
+    const blob = await put(`albums/${albumId}/${elementId}-${Date.now()}`, file, {
+      access: "public",
+      addRandomSuffix: true,
+    });
+    await updateElementPhoto(elementId, blob.url);
+
+    if (setCover) {
+      await setAlbumCover(albumId, blob.url);
+    } else {
+      const album = await getAlbumById(albumId, check.family.id);
+      if (album && !album.cover_url) {
+        await setAlbumCover(albumId, blob.url);
+      }
+    }
+  } catch {
+    return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
+  }
+
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }

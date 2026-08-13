@@ -108,12 +108,6 @@ function Sidebar({ current, onNavigate, onLogout }) {
 
 /* ---------------- Dashboard view ---------------- */
 
-const albumsMock = [
-  { id: 1, title: "2026 — Parij", sub: "May 2026 · 86 rasm", seed: "paris-fam", rot: -3 },
-  { id: 2, title: "Yozgi ta'til", sub: "2025 · 142 rasm", seed: "summer-fam", rot: 2 },
-  { id: 3, title: "Universitet", sub: "2019–2023 · 58 rasm", seed: "uni-fam", rot: -2 },
-  { id: 4, title: "Bolalik", sub: "1998–2005 · 210 rasm", seed: "childhood-fam", rot: 3 },
-];
 const memoriesMock = [
   { id: 1, years: "3 yil oldin", caption: "Parijda", seed: "mem1" },
   { id: 2, years: "5 yil oldin", caption: "Universitetda", seed: "mem2" },
@@ -156,7 +150,7 @@ function Polaroid({ seed, caption, sub, rot = 0 }) {
   );
 }
 
-function DashboardView({ onNavigate, onOpenAlbum, userName, familyName, peopleCount }) {
+function DashboardView({ onNavigate, onOpenAlbum, userName, familyName, peopleCount, albums }) {
   const [query, setQuery] = useState("");
   const [greeting] = useState(() => {
     const h = new Date().getHours();
@@ -190,15 +184,34 @@ function DashboardView({ onNavigate, onOpenAlbum, userName, familyName, peopleCo
 
       <section style={{ marginBottom: 48 }}>
         <SectionLabel eyebrow="Arxiv" title="Mening albomlarim" action="Barchasi" onAction={() => onNavigate(VIEWS.ALBUMS)} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 18 }}>
-          {albumsMock.map((a) => (
-            <div key={a.id} className="fm-album-card" onClick={() => onOpenAlbum(a)} style={{ background: TOKENS.card, borderRadius: 10, padding: 14, boxShadow: "0 2px 8px rgba(30,38,33,0.06)", border: `1px solid ${TOKENS.parchmentDeep}` }}>
-              <div style={{ width: "100%", aspectRatio: "4/3", borderRadius: 6, backgroundImage: `url(https://picsum.photos/seed/${a.seed}/400/300)`, backgroundSize: "cover", backgroundPosition: "center", marginBottom: 12 }} />
-              <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 500 }}>{a.title}</div>
-              <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>{a.sub}</div>
-            </div>
-          ))}
-        </div>
+        {albums.length === 0 ? (
+          <div
+            onClick={() => onNavigate(VIEWS.ALBUMS)}
+            style={{ cursor: "pointer", textAlign: "center", padding: "34px 20px", border: `1.5px dashed ${TOKENS.parchmentDeep}`, borderRadius: 12, color: TOKENS.ink60, fontSize: 13 }}
+          >
+            Hali albom yo'q — birinchisini yaratish uchun bosing
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 18 }}>
+            {albums.slice(0, 4).map((a) => (
+              <div key={a.id} className="fm-album-card" onClick={() => onOpenAlbum(a)} style={{ background: TOKENS.card, borderRadius: 10, padding: 14, boxShadow: "0 2px 8px rgba(30,38,33,0.06)", border: `1px solid ${TOKENS.parchmentDeep}` }}>
+                <div
+                  style={{
+                    width: "100%", aspectRatio: "4/3", borderRadius: 6, marginBottom: 12,
+                    background: a.cover_url ? undefined : TOKENS.parchmentDeep,
+                    backgroundImage: a.cover_url ? `url(${a.cover_url})` : undefined,
+                    backgroundSize: "cover", backgroundPosition: "center",
+                    display: a.cover_url ? undefined : "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {!a.cover_url && <BookImage size={22} color={TOKENS.ink40} />}
+                </div>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 500 }}>{a.title}</div>
+                <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>{[a.date_label, `${a.pages.length} sahifa`].filter(Boolean).join(" · ")}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section style={{ marginBottom: 48 }}>
@@ -892,37 +905,73 @@ function LinkPersonModal({ familySlug, person, people, linkPersonAction, onClose
 
 /* ---------------- Albums view ---------------- */
 
-const ALBUMS = [
-  { id: 1, title: "2026 — Parij", sub: "May 2026 · 86 rasm · 12 sahifa", seed: "paris-fam" },
-  { id: 2, title: "Yozgi ta'til", sub: "2025 · 142 rasm · 18 sahifa", seed: "summer-fam" },
-  { id: 3, title: "Universitet", sub: "2019–2023 · 58 rasm · 9 sahifa", seed: "uni-fam" },
-  { id: 4, title: "Bolalik", sub: "1998–2005 · 210 rasm · 24 sahifa", seed: "childhood-fam" },
-  { id: 5, title: "To'y", sub: "2023 · 96 rasm · 14 sahifa", seed: "wedding-fam" },
-  { id: 6, title: "Do'stlar", sub: "2024 · 40 rasm · 6 sahifa", seed: "friends-fam" },
-];
-
 const LAYOUTS = [
-  { id: "l1", name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60, seed: "a" }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
-  { id: "l2", name: "Ikkita yonma-yon", slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 70, seed: "b" }, { type: "photo", x: 53, y: 8, w: 41, h: 70, seed: "c" }, { type: "text", x: 6, y: 82, w: 88, h: 12 }] },
-  { id: "l3", name: "Katta + ikkita kichik", slots: [{ type: "photo", x: 6, y: 6, w: 60, h: 50, seed: "d" }, { type: "photo", x: 68, y: 6, w: 26, h: 24, seed: "e" }, { type: "photo", x: 68, y: 32, w: 26, h: 24, seed: "f" }, { type: "text", x: 6, y: 60, w: 88, h: 32 }] },
-  { id: "l4", name: "Uchtasi qatorda", slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55, seed: "g" }, { type: "photo", x: 36, y: 10, w: 28, h: 55, seed: "h" }, { type: "photo", x: 67, y: 10, w: 28, h: 55, seed: "i" }, { type: "text", x: 5, y: 70, w: 90, h: 22 }] },
-];
-
-const INITIAL_PAGES = [
-  { id: 1, layoutId: "l1", texts: { t0: "Eiffel minorasi ostida — birinchi kunimiz." }, dateLabel: "12 May 2026", location: "Parij, Fransiya" },
-  { id: 2, layoutId: "l2", texts: { t0: "Sena bo'ylab sayr qilib, kechqurun mahalliy kafeda ovqatlandik." }, dateLabel: "13 May 2026", location: "Parij, Fransiya" },
-  { id: 3, layoutId: "l3", texts: { t0: "Lувр muzeyi — Mona Liza oldida navbatda kutdik, lekin arziydi." }, dateLabel: "14 May 2026", location: "Parij, Fransiya" },
+  { id: "l1", name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
+  { id: "l2", name: "Ikkita yonma-yon", slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 70 }, { type: "photo", x: 53, y: 8, w: 41, h: 70 }, { type: "text", x: 6, y: 82, w: 88, h: 12 }] },
+  { id: "l3", name: "Katta + ikkita kichik", slots: [{ type: "photo", x: 6, y: 6, w: 60, h: 50 }, { type: "photo", x: 68, y: 6, w: 26, h: 24 }, { type: "photo", x: 68, y: 32, w: 26, h: 24 }, { type: "text", x: 6, y: 60, w: 88, h: 32 }] },
+  { id: "l4", name: "Uchtasi qatorda", slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55 }, { type: "photo", x: 36, y: 10, w: 28, h: 55 }, { type: "photo", x: 67, y: 10, w: 28, h: 55 }, { type: "text", x: 5, y: 70, w: 90, h: 22 }] },
 ];
 
 function ChipButton({ children, active, onClick }) {
   return (
-    <button onClick={onClick} style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 20, border: active ? "none" : `1px solid ${TOKENS.parchmentDeep}`, background: active ? TOKENS.ink : "transparent", color: active ? TOKENS.parchment : TOKENS.ink60, cursor: "pointer", whiteSpace: "nowrap" }}>
+    <button onClick={onClick} type="button" style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 20, border: active ? "none" : `1px solid ${TOKENS.parchmentDeep}`, background: active ? TOKENS.ink : "transparent", color: active ? TOKENS.parchment : TOKENS.ink60, cursor: "pointer", whiteSpace: "nowrap" }}>
       {children}
     </button>
   );
 }
 
-function AlbumGrid({ onOpen }) {
+/* ---------------- Empty state ---------------- */
+
+function EmptyAlbums({ onCreate }) {
+  return (
+    <div style={{ maxWidth: 460, margin: "80px auto", textAlign: "center" }}>
+      <div style={{ width: 56, height: 56, borderRadius: 14, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})`, margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <BookImage size={24} color="#fff" />
+      </div>
+      <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, margin: "0 0 8px" }}>Hali albom yo'q</h2>
+      <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6, margin: "0 0 22px" }}>
+        Birinchi xotirangizni saqlang — sayohat, oilaviy kun, yoki shunchaki oddiy bir lahza.
+      </p>
+      <button onClick={onCreate} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "12px 22px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+        <Plus size={15} /> Birinchi albomni yaratish
+      </button>
+    </div>
+  );
+}
+
+/* ---------------- Create Album modal ---------------- */
+
+function CreateAlbumModal({ familySlug, createAlbumAction, onClose }) {
+  const [state, formAction, pending] = useActionState(createAlbumAction, undefined);
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,38,33,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} className="fm-panel-enter" style={{ width: "100%", maxWidth: 440, background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Yangi albom</h2>
+          <button onClick={onClose} type="button" style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
+        </div>
+        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <input type="hidden" name="familySlug" value={familySlug} />
+          <input name="title" placeholder="Albom nomi (masalan: 2026 — Parij)" required style={inputStyle} autoFocus />
+          <div style={{ display: "flex", gap: 10 }}>
+            <input name="dateLabel" placeholder="Sana (masalan: May 2026)" style={inputStyle} />
+            <input name="location" placeholder="Joy (ixtiyoriy)" style={inputStyle} />
+          </div>
+          <textarea name="description" placeholder="Qisqacha tavsif (ixtiyoriy)" rows={2} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+          {state?.error && <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>{state.error}</div>}
+          <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+            {pending ? "Yaratilmoqda..." : "Albom yaratish"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
+  const [showCreate, setShowCreate] = useState(false);
+
   return (
     <div style={{ padding: "36px 48px 60px", maxWidth: 1180, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 30 }}>
@@ -930,60 +979,193 @@ function AlbumGrid({ onOpen }) {
           <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Arxiv</div>
           <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>Mening albomlarim</h1>
         </div>
-        <button style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          <Plus size={14} /> Yangi albom
-        </button>
+        {canEdit && albums.length > 0 && (
+          <button onClick={() => setShowCreate(true)} style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            <Plus size={14} /> Yangi albom
+          </button>
+        )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
-        {ALBUMS.map((a) => (
-          <div key={a.id} onClick={() => onOpen(a)} className="fm-album-card" style={{ background: TOKENS.card, borderRadius: 12, padding: 14, border: `1px solid ${TOKENS.parchmentDeep}` }}>
-            <div style={{ width: "100%", aspectRatio: "4/3", borderRadius: 7, backgroundImage: `url(https://picsum.photos/seed/${a.seed}/420/320)`, backgroundSize: "cover", backgroundPosition: "center", marginBottom: 13 }} />
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 16.5, fontWeight: 500 }}>{a.title}</div>
-            <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>{a.sub}</div>
-          </div>
-        ))}
-      </div>
+
+      {albums.length === 0 ? (
+        <EmptyAlbums onCreate={() => setShowCreate(true)} />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+          {albums.map((a) => {
+            const photoCount = a.pages.reduce((sum, p) => sum + p.elements.filter((e) => e.type === "photo" && e.photo_url).length, 0);
+            return (
+              <div key={a.id} onClick={() => onOpen(a)} className="fm-album-card" style={{ background: TOKENS.card, borderRadius: 12, padding: 14, border: `1px solid ${TOKENS.parchmentDeep}` }}>
+                <div
+                  style={{
+                    width: "100%", aspectRatio: "4/3", borderRadius: 7, marginBottom: 13,
+                    background: a.cover_url ? undefined : TOKENS.parchmentDeep,
+                    backgroundImage: a.cover_url ? `url(${a.cover_url})` : undefined,
+                    backgroundSize: "cover", backgroundPosition: "center",
+                    display: a.cover_url ? undefined : "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >
+                  {!a.cover_url && <BookImage size={26} color={TOKENS.ink40} />}
+                </div>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 16.5, fontWeight: 500 }}>{a.title}</div>
+                <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>
+                  {[a.date_label, a.location, `${a.pages.length} sahifa`, `${photoCount} rasm`].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showCreate && <CreateAlbumModal familySlug={familySlug} createAlbumAction={createAlbumAction} onClose={() => setShowCreate(false)} />}
     </div>
   );
 }
 
-function PageCanvas({ page, layout }) {
-  let textIndex = 0;
+/* ---------------- Page canvas (real elementlar bilan) ---------------- */
+
+function PhotoSlot({ element, familySlug, albumId, uploadElementPhotoAction, canEdit, style }) {
+  const [state, formAction, pending] = useActionState(uploadElementPhotoAction, undefined);
+  const inputRef = useRef(null);
+
+  return (
+    <div style={{ ...style, position: "absolute" }}>
+      <div
+        style={{
+          width: "100%", height: "100%", borderRadius: 3, position: "relative", overflow: "hidden",
+          background: element.photo_url ? undefined : TOKENS.parchment,
+          backgroundImage: element.photo_url ? `url(${element.photo_url})` : undefined,
+          backgroundSize: "cover", backgroundPosition: "center",
+          boxShadow: element.photo_url ? "0 3px 10px rgba(0,0,0,0.12)" : "none",
+          border: element.photo_url ? "none" : `1.5px dashed ${TOKENS.parchmentDeep}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
+        {canEdit && (
+          <form action={formAction} style={{ position: "absolute", inset: 0 }}>
+            <input type="hidden" name="familySlug" value={familySlug} />
+            <input type="hidden" name="albumId" value={albumId} />
+            <input type="hidden" name="elementId" value={element.id} />
+            <input
+              ref={inputRef}
+              type="file"
+              name="photo"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => { if (e.target.files?.length) e.target.form.requestSubmit(); }}
+            />
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={pending}
+              style={{
+                position: "absolute", inset: 0, width: "100%", height: "100%", background: "rgba(30,38,33,0.0)",
+                border: "none", cursor: pending ? "default" : "pointer",
+              }}
+              title="Rasm yuklash"
+            >
+              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
+            </button>
+          </form>
+        )}
+      </div>
+      {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{state.error}</div>}
+    </div>
+  );
+}
+
+function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEdit, style }) {
+  const [state, formAction] = useActionState(updateElementTextAction, undefined);
+  const [value, setValue] = useState(element.text_content || "");
+  const formRef = useRef(null);
+
+  return (
+    <div style={{ ...style, position: "absolute" }}>
+      <form ref={formRef} action={formAction}>
+        <input type="hidden" name="familySlug" value={familySlug} />
+        <input type="hidden" name="albumId" value={albumId} />
+        <input type="hidden" name="elementId" value={element.id} />
+        <input type="hidden" name="text" value={value} />
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => { if (canEdit && value !== (element.text_content || "")) formRef.current?.requestSubmit(); }}
+          readOnly={!canEdit}
+          placeholder={canEdit ? "Matn yozing..." : ""}
+          style={{
+            width: "100%", height: "100%", border: "none", outline: "none", resize: "none", background: "transparent",
+            fontFamily: "Fraunces, serif", fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5, color: TOKENS.ink,
+          }}
+        />
+      </form>
+      {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger }}>{state.error}</div>}
+    </div>
+  );
+}
+
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction }) {
   return (
     <div style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)" }}>
       {layout.slots.map((slot, i) => {
+        const element = page.elements[i];
+        if (!element) return null;
+        const style = { left: `${slot.x}%`, top: `${slot.y}%`, width: `${slot.w}%`, height: `${slot.h}%` };
         if (slot.type === "photo") {
-          return <div key={i} style={{ position: "absolute", left: `${slot.x}%`, top: `${slot.y}%`, width: `${slot.w}%`, height: `${slot.h}%`, backgroundImage: `url(https://picsum.photos/seed/${page.id}-${slot.seed}/500/400)`, backgroundSize: "cover", backgroundPosition: "center", borderRadius: 3, boxShadow: "0 3px 10px rgba(0,0,0,0.12)" }} />;
+          return (
+            <PhotoSlot
+              key={element.id}
+              element={element}
+              familySlug={familySlug}
+              albumId={albumId}
+              uploadElementPhotoAction={uploadElementPhotoAction}
+              canEdit={canEdit}
+              style={style}
+            />
+          );
         }
-        const key = `t${textIndex++}`;
-        return <div key={i} style={{ position: "absolute", left: `${slot.x}%`, top: `${slot.y}%`, width: `${slot.w}%`, height: `${slot.h}%`, fontFamily: "Fraunces, serif", fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5, color: TOKENS.ink, overflow: "hidden" }}>{page.texts[key]}</div>;
+        return (
+          <TextSlot
+            key={element.id}
+            element={element}
+            familySlug={familySlug}
+            albumId={albumId}
+            updateElementTextAction={updateElementTextAction}
+            canEdit={canEdit}
+            style={style}
+          />
+        );
       })}
       <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.dateLabel}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>
+        {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
+        {page.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>}
       </div>
     </div>
   );
 }
 
-function AlbumEditor({ album, onBack }) {
-  const [pages, setPages] = useState(INITIAL_PAGES);
+function AlbumEditor({
+  album,
+  onBack,
+  familySlug,
+  canEdit,
+  addAlbumPageAction,
+  deleteAlbumPageAction,
+  changePageLayoutAction,
+  uploadElementPhotoAction,
+  updateElementTextAction,
+  deleteAlbumAction,
+}) {
   const [pageIndex, setPageIndex] = useState(0);
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
-  const currentPage = pages[pageIndex];
-  const currentLayout = LAYOUTS.find((l) => l.id === currentPage.layoutId);
+  const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
 
-  const addPage = () => {
-    const newPage = { id: pages.length + 1, layoutId: "l1", texts: { t0: "" }, dateLabel: "Sana qo'shilmagan", location: "Joy qo'shilmagan" };
-    setPages([...pages, newPage]);
-    setPageIndex(pages.length);
-  };
-  const applyLayout = (layoutId) => {
-    const updated = [...pages];
-    updated[pageIndex] = { ...updated[pageIndex], layoutId };
-    setPages(updated);
-    setShowLayoutPicker(false);
-  };
+  const pages = album.pages;
+  const currentPage = pages[Math.min(pageIndex, pages.length - 1)];
+  const currentLayout = currentPage ? LAYOUTS.find((l) => l.id === currentPage.layout_id) || LAYOUTS[0] : LAYOUTS[0];
+
+  const [addPageState, addPageFormAction, addPagePending] = useActionState(addAlbumPageAction, undefined);
+  const [layoutState, layoutFormAction] = useActionState(changePageLayoutAction, undefined);
+  const [deletePageState, deletePageFormAction] = useActionState(deleteAlbumPageAction, undefined);
+  const [deleteAlbumState, deleteAlbumFormAction, deleteAlbumPending] = useActionState(deleteAlbumAction, undefined);
 
   return (
     <div style={{ padding: "26px 40px 60px", maxWidth: 1100, margin: "0 auto" }}>
@@ -991,63 +1173,162 @@ function AlbumEditor({ album, onBack }) {
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.ink60, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           <ChevronLeft size={16} /> Albomlarga qaytish
         </button>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.ink, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>Ulashish</button>
-          <button style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.parchment, background: TOKENS.ink, border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>Saqlash</button>
-        </div>
+        {canEdit && (
+          !confirmDeleteAlbum ? (
+            <button onClick={() => setConfirmDeleteAlbum(true)} style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.danger, background: "transparent", border: `1px solid ${TOKENS.danger}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>
+              Albomni o'chirish
+            </button>
+          ) : (
+            <form action={deleteAlbumFormAction} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input type="hidden" name="familySlug" value={familySlug} />
+              <input type="hidden" name="albumId" value={album.id} />
+              <span style={{ fontSize: 11.5, color: TOKENS.danger }}>Rostdan ham?</span>
+              <button type="submit" disabled={deleteAlbumPending} style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: TOKENS.danger, border: "none", borderRadius: 6, padding: "7px 12px", cursor: "pointer" }}>
+                Ha, o'chirish
+              </button>
+              <button type="button" onClick={() => setConfirmDeleteAlbum(false)} style={{ fontSize: 12, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "7px 12px", cursor: "pointer" }}>
+                Bekor qilish
+              </button>
+            </form>
+          )
+        )}
       </div>
+
       <div style={{ marginBottom: 26 }}>
         <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 27, fontWeight: 500, margin: 0 }}>{album.title}</h1>
-        <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 4 }}>{album.sub}</div>
+        <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 4 }}>{[album.date_label, album.location].filter(Boolean).join(" · ")}</div>
       </div>
-      <div style={{ display: "flex", gap: 28 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            <ChipButton active={showLayoutPicker} onClick={() => setShowLayoutPicker(!showLayoutPicker)}><span style={{ display: "flex", alignItems: "center", gap: 5 }}><LayoutGrid size={13} /> Layout</span></ChipButton>
-            <ChipButton><span style={{ display: "flex", alignItems: "center", gap: 5 }}><Type size={13} /> Matn</span></ChipButton>
-            <ChipButton><span style={{ display: "flex", alignItems: "center", gap: 5 }}><Sticker size={13} /> Stiker</span></ChipButton>
-          </div>
-          {showLayoutPicker && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
-              {LAYOUTS.map((l) => (
-                <div key={l.id} onClick={() => applyLayout(l.id)} style={{ cursor: "pointer", border: currentLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}>
-                  <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
-                    {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
-                  </div>
-                  <div style={{ fontSize: 10, color: TOKENS.ink60, textAlign: "center" }}>{l.name}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          <PageCanvas page={currentPage} layout={currentLayout} />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 20 }}>
-            <button onClick={() => setPageIndex(Math.max(0, pageIndex - 1))} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: pageIndex === 0 ? TOKENS.ink40 : TOKENS.ink, opacity: pageIndex === 0 ? 0.4 : 1 }}><ChevronLeft size={20} /></button>
-            <span style={{ fontSize: 12.5, color: TOKENS.ink60, fontWeight: 500 }}>Sahifa {pageIndex + 1} / {pages.length}</span>
-            <button onClick={() => setPageIndex(Math.min(pages.length - 1, pageIndex + 1))} disabled={pageIndex === pages.length - 1} style={{ background: "none", border: "none", cursor: pageIndex === pages.length - 1 ? "default" : "pointer", color: pageIndex === pages.length - 1 ? TOKENS.ink40 : TOKENS.ink, opacity: pageIndex === pages.length - 1 ? 0.4 : 1 }}><ChevronRight size={20} /></button>
-          </div>
-        </div>
-        <div style={{ width: 128, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: "0.1em", color: TOKENS.ink40, textTransform: "uppercase", marginBottom: 12 }}>Sahifalar</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 480, overflowY: "auto" }}>
-            {pages.map((p, i) => (
-              <div key={p.id} onClick={() => setPageIndex(i)} style={{ width: "100%", aspectRatio: "4/3", borderRadius: 4, background: "#fff", border: i === pageIndex ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                {LAYOUTS.find((l) => l.id === p.layoutId).slots.filter((s) => s.type === "photo").slice(0, 1).map((s, si) => (
-                  <div key={si} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, backgroundImage: `url(https://picsum.photos/seed/${p.id}-${s.seed}/120/100)`, backgroundSize: "cover", borderRadius: 2 }} />
+
+      {pages.length === 0 || !currentPage ? (
+        <div style={{ textAlign: "center", padding: "60px 0", color: TOKENS.ink60, fontSize: 13.5 }}>Bu albomda hali sahifa yo'q.</div>
+      ) : (
+        <div style={{ display: "flex", gap: 28 }}>
+          <div style={{ flex: 1 }}>
+            {canEdit && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <ChipButton active={showLayoutPicker} onClick={() => setShowLayoutPicker(!showLayoutPicker)}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}><LayoutGrid size={13} /> Layout</span>
+                </ChipButton>
+              </div>
+            )}
+
+            {showLayoutPicker && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
+                {LAYOUTS.map((l) => (
+                  <form key={l.id} action={layoutFormAction} onSubmit={() => setShowLayoutPicker(false)}>
+                    <input type="hidden" name="familySlug" value={familySlug} />
+                    <input type="hidden" name="albumId" value={album.id} />
+                    <input type="hidden" name="pageId" value={currentPage.id} />
+                    <input type="hidden" name="layoutId" value={l.id} />
+                    <button
+                      type="submit"
+                      style={{ width: "100%", cursor: "pointer", border: currentLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
+                    >
+                      <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
+                        {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
+                      </div>
+                      <div style={{ fontSize: 10, color: TOKENS.ink60, textAlign: "center" }}>{l.name}</div>
+                    </button>
+                  </form>
                 ))}
               </div>
-            ))}
-            <button onClick={addPage} style={{ width: "100%", aspectRatio: "4/3", borderRadius: 4, border: `1.5px dashed ${TOKENS.parchmentDeep}`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink40, cursor: "pointer" }}><Plus size={18} /></button>
+            )}
+            {layoutState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10 }}>{layoutState.error}</div>}
+
+            <PageCanvas
+              page={currentPage}
+              layout={currentLayout}
+              familySlug={familySlug}
+              albumId={album.id}
+              canEdit={canEdit}
+              uploadElementPhotoAction={uploadElementPhotoAction}
+              updateElementTextAction={updateElementTextAction}
+            />
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 20 }}>
+              <button onClick={() => setPageIndex(Math.max(0, pageIndex - 1))} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: pageIndex === 0 ? TOKENS.ink40 : TOKENS.ink, opacity: pageIndex === 0 ? 0.4 : 1 }}><ChevronLeft size={20} /></button>
+              <span style={{ fontSize: 12.5, color: TOKENS.ink60, fontWeight: 500 }}>Sahifa {pageIndex + 1} / {pages.length}</span>
+              <button onClick={() => setPageIndex(Math.min(pages.length - 1, pageIndex + 1))} disabled={pageIndex === pages.length - 1} style={{ background: "none", border: "none", cursor: pageIndex === pages.length - 1 ? "default" : "pointer", color: pageIndex === pages.length - 1 ? TOKENS.ink40 : TOKENS.ink, opacity: pageIndex === pages.length - 1 ? 0.4 : 1 }}><ChevronRight size={20} /></button>
+            </div>
+
+            {canEdit && pages.length > 1 && (
+              <form action={deletePageFormAction} style={{ textAlign: "center", marginTop: 14 }}>
+                <input type="hidden" name="familySlug" value={familySlug} />
+                <input type="hidden" name="albumId" value={album.id} />
+                <input type="hidden" name="pageId" value={currentPage.id} />
+                <button type="submit" style={{ fontSize: 11.5, color: TOKENS.danger, background: "none", border: "none", cursor: "pointer" }}>
+                  Bu sahifani o'chirish
+                </button>
+              </form>
+            )}
+            {deletePageState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, textAlign: "center", marginTop: 6 }}>{deletePageState.error}</div>}
+          </div>
+
+          <div style={{ width: 128, flexShrink: 0 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.1em", color: TOKENS.ink40, textTransform: "uppercase", marginBottom: 12 }}>Sahifalar</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 480, overflowY: "auto" }}>
+              {pages.map((p, i) => {
+                const firstPhoto = p.elements.find((e) => e.type === "photo" && e.photo_url);
+                return (
+                  <div key={p.id} onClick={() => setPageIndex(i)} style={{ width: "100%", aspectRatio: "4/3", borderRadius: 4, background: "#fff", border: i === pageIndex ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, cursor: "pointer", position: "relative", overflow: "hidden" }}>
+                    {firstPhoto && <div style={{ position: "absolute", inset: 4, backgroundImage: `url(${firstPhoto.photo_url})`, backgroundSize: "cover", borderRadius: 2 }} />}
+                  </div>
+                );
+              })}
+              {canEdit && (
+                <form action={addPageFormAction}>
+                  <input type="hidden" name="familySlug" value={familySlug} />
+                  <input type="hidden" name="albumId" value={album.id} />
+                  <button type="submit" disabled={addPagePending} style={{ width: "100%", aspectRatio: "4/3", borderRadius: 4, border: `1.5px dashed ${TOKENS.parchmentDeep}`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink40, cursor: addPagePending ? "default" : "pointer" }}>
+                    <Plus size={18} />
+                  </button>
+                </form>
+              )}
+            </div>
+            {addPageState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 8 }}>{addPageState.error}</div>}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function AlbumsView({ openAlbum, setOpenAlbum }) {
+function AlbumsView({
+  albums,
+  activeAlbumId,
+  openAlbumId,
+  setOpenAlbumId,
+  familySlug,
+  canEdit,
+  createAlbumAction,
+  deleteAlbumAction,
+  addAlbumPageAction,
+  deleteAlbumPageAction,
+  changePageLayoutAction,
+  uploadElementPhotoAction,
+  updateElementTextAction,
+}) {
+  const effectiveOpenId = openAlbumId ?? activeAlbumId;
+  const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
+
   return (
     <div className="fm-fade" style={{ height: "100%", overflow: "auto" }}>
-      {openAlbum ? <AlbumEditor album={openAlbum} onBack={() => setOpenAlbum(null)} /> : <AlbumGrid onOpen={setOpenAlbum} />}
+      {openAlbum ? (
+        <AlbumEditor
+          album={openAlbum}
+          onBack={() => setOpenAlbumId(null)}
+          familySlug={familySlug}
+          canEdit={canEdit}
+          addAlbumPageAction={addAlbumPageAction}
+          deleteAlbumPageAction={deleteAlbumPageAction}
+          changePageLayoutAction={changePageLayoutAction}
+          uploadElementPhotoAction={uploadElementPhotoAction}
+          updateElementTextAction={updateElementTextAction}
+          deleteAlbumAction={deleteAlbumAction}
+        />
+      ) : (
+        <AlbumGrid albums={albums} onOpen={(a) => setOpenAlbumId(a.id)} canEdit={canEdit} createAlbumAction={createAlbumAction} familySlug={familySlug} />
+      )}
     </div>
   );
 }
@@ -1061,6 +1342,8 @@ function AlbumsView({ openAlbum, setOpenAlbum }) {
  *   familySlug?: string,
  *   people?: any[],
  *   relationships?: any[],
+ *   albums?: any[],
+ *   activeAlbumId?: string | null,
  *   canEdit?: boolean,
  *   mePersonId?: string | null,
  *   initialView?: string,
@@ -1070,6 +1353,14 @@ function AlbumsView({ openAlbum, setOpenAlbum }) {
  *   editPersonAction?: any,
  *   deletePersonAction?: any,
  *   uploadPersonPhotoAction?: any,
+ *   createAlbumAction?: any,
+ *   deleteAlbumAction?: any,
+ *   addAlbumPageAction?: any,
+ *   deleteAlbumPageAction?: any,
+ *   changePageLayoutAction?: any,
+ *   updatePageMetaAction?: any,
+ *   updateElementTextAction?: any,
+ *   uploadElementPhotoAction?: any,
  * }} props
  */
 export default function HeirloomApp({
@@ -1078,6 +1369,8 @@ export default function HeirloomApp({
   familySlug = "",
   people = /** @type {any[]} */ ([]),
   relationships = /** @type {any[]} */ ([]),
+  albums = /** @type {any[]} */ ([]),
+  activeAlbumId = null,
   canEdit = true,
   mePersonId = null,
   initialView = "dashboard",
@@ -1087,17 +1380,25 @@ export default function HeirloomApp({
   editPersonAction,
   deletePersonAction,
   uploadPersonPhotoAction,
+  createAlbumAction,
+  deleteAlbumAction,
+  addAlbumPageAction,
+  deleteAlbumPageAction,
+  changePageLayoutAction,
+  updatePageMetaAction,
+  updateElementTextAction,
+  uploadElementPhotoAction,
 }) {
   const [view, setView] = useState(initialView === "tree" ? VIEWS.TREE : initialView === "albums" ? VIEWS.ALBUMS : VIEWS.DASHBOARD);
-  const [openAlbum, setOpenAlbum] = useState(null);
+  const [openAlbumId, setOpenAlbumId] = useState(null);
 
   const navigate = (target) => {
-    if (target === VIEWS.ALBUMS) setOpenAlbum(null);
+    if (target === VIEWS.ALBUMS) setOpenAlbumId(null);
     setView(target);
   };
 
   const openAlbumFromDashboard = (album) => {
-    setOpenAlbum(album.title ? { ...album, sub: album.sub } : album);
+    setOpenAlbumId(album.id);
     setView(VIEWS.ALBUMS);
   };
 
@@ -1108,7 +1409,7 @@ export default function HeirloomApp({
         <Sidebar current={view} onNavigate={navigate} onLogout={onLogout} />
         <main style={{ flex: 1, overflow: "auto" }}>
           {view === VIEWS.DASHBOARD && (
-            <DashboardView onNavigate={navigate} onOpenAlbum={openAlbumFromDashboard} userName={userName} familyName={familyName} peopleCount={people.length} />
+            <DashboardView onNavigate={navigate} onOpenAlbum={openAlbumFromDashboard} userName={userName} familyName={familyName} peopleCount={people.length} albums={albums} />
           )}
           {view === VIEWS.TREE && (
             <FamilyTreeView
@@ -1125,7 +1426,23 @@ export default function HeirloomApp({
               uploadPersonPhotoAction={uploadPersonPhotoAction}
             />
           )}
-          {view === VIEWS.ALBUMS && <AlbumsView openAlbum={openAlbum} setOpenAlbum={setOpenAlbum} />}
+          {view === VIEWS.ALBUMS && (
+            <AlbumsView
+              albums={albums}
+              activeAlbumId={activeAlbumId}
+              openAlbumId={openAlbumId}
+              setOpenAlbumId={setOpenAlbumId}
+              familySlug={familySlug}
+              canEdit={canEdit}
+              createAlbumAction={createAlbumAction}
+              deleteAlbumAction={deleteAlbumAction}
+              addAlbumPageAction={addAlbumPageAction}
+              deleteAlbumPageAction={deleteAlbumPageAction}
+              changePageLayoutAction={changePageLayoutAction}
+              uploadElementPhotoAction={uploadElementPhotoAction}
+              updateElementTextAction={updateElementTextAction}
+            />
+          )}
         </main>
       </div>
     </div>

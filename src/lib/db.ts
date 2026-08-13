@@ -93,6 +93,40 @@ export async function ensureSchema(): Promise<void> {
     // Eski (allaqachon deploy qilingan) bazalarda ham ishlashi uchun
     // yangi ustunlarni alohida, xavfsiz tarzda qo'shamiz.
     await sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS profile_photo_url TEXT`;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS albums (
+        id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL REFERENCES families(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        date_label TEXT,
+        location TEXT,
+        cover_url TEXT,
+        created_by TEXT NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS album_pages (
+        id TEXT PRIMARY KEY,
+        album_id TEXT NOT NULL REFERENCES albums(id),
+        page_order INTEGER NOT NULL,
+        layout_id TEXT NOT NULL,
+        date_label TEXT,
+        location TEXT
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS page_elements (
+        id TEXT PRIMARY KEY,
+        page_id TEXT NOT NULL REFERENCES album_pages(id),
+        slot_index INTEGER NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('photo','text')),
+        photo_url TEXT,
+        text_content TEXT
+      )
+    `;
   })();
 
   return _schemaReady;

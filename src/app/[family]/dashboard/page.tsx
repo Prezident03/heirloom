@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getFamilyBySlug, getMembership } from "@/lib/family";
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
+import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib/albums";
 import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
@@ -12,6 +13,14 @@ import {
   editPersonAction,
   deletePersonAction,
   uploadPersonPhotoAction,
+  createAlbumAction,
+  deleteAlbumAction,
+  addAlbumPageAction,
+  deleteAlbumPageAction,
+  changePageLayoutAction,
+  updatePageMetaAction,
+  updateElementTextAction,
+  uploadElementPhotoAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -19,10 +28,10 @@ export default async function FamilyDashboardPage({
   searchParams,
 }: {
   params: Promise<{ family: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; album?: string }>;
 }) {
   const { family: familySlug } = await params;
-  const { view } = await searchParams;
+  const { view, album: activeAlbumId } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -32,10 +41,27 @@ export default async function FamilyDashboardPage({
   const membership = await getMembership(family.id, session.id);
   if (!membership) notFound();
 
-  const [people, relationships] = await Promise.all([
+  const [people, relationships, albums] = await Promise.all([
     getPeopleForFamily(family.id),
     getRelationshipsForFamily(family.id),
+    getAlbumsForFamily(family.id),
   ]);
+
+  // Har bir albom uchun sahifa va elementlarni yig'amiz (nested struktura,
+  // shunda client komponentda alohida so'rov qilishning hojati yo'q).
+  const albumsWithPages = await Promise.all(
+    albums.map(async (album) => {
+      const pages = await getPagesForAlbum(album.id);
+      const elements = await getElementsForPages(pages.map((p) => p.id));
+      return {
+        ...album,
+        pages: pages.map((page) => ({
+          ...page,
+          elements: elements.filter((e) => e.page_id === page.id).sort((a, b) => a.slot_index - b.slot_index),
+        })),
+      };
+    })
+  );
 
   const mePerson = people.find((p) => p.linked_user_id === session.id) ?? null;
 
@@ -46,6 +72,8 @@ export default async function FamilyDashboardPage({
       familySlug={family.slug}
       people={people}
       relationships={relationships}
+      albums={albumsWithPages}
+      activeAlbumId={activeAlbumId ?? null}
       canEdit={membership.role !== "viewer"}
       mePersonId={mePerson?.id ?? null}
       initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : "dashboard"}
@@ -55,6 +83,14 @@ export default async function FamilyDashboardPage({
       editPersonAction={editPersonAction}
       deletePersonAction={deletePersonAction}
       uploadPersonPhotoAction={uploadPersonPhotoAction}
+      createAlbumAction={createAlbumAction}
+      deleteAlbumAction={deleteAlbumAction}
+      addAlbumPageAction={addAlbumPageAction}
+      deleteAlbumPageAction={deleteAlbumPageAction}
+      changePageLayoutAction={changePageLayoutAction}
+      updatePageMetaAction={updatePageMetaAction}
+      updateElementTextAction={updateElementTextAction}
+      uploadElementPhotoAction={uploadElementPhotoAction}
     />
   );
 }
