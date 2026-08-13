@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import { getFamilyBySlug, getMembership } from "@/lib/family";
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import HeirloomApp from "@/components/HeirloomApp";
-import { logoutAction, addPersonAction } from "@/lib/actions";
+import { logoutAction, addPersonAction, linkPersonAction } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
   params,
@@ -41,6 +41,7 @@ export default async function FamilyDashboardPage({
       initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : "dashboard"}
       onLogout={logoutAction}
       addPersonAction={addPersonAction}
+      linkPersonAction={linkPersonAction}
     />
   );
 }

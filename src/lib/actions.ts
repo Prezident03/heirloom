@@ -114,3 +114,46 @@ export async function addPersonAction(_prevState: ActionState, formData: FormDat
 
   redirect(`/${familySlug}/dashboard?view=tree`);
 }
+
+/**
+ * Ikki ALLAQACHON MAVJUD odamni bir-biriga bog'laydi (ota-ona/farzand yoki turmush o'rtoqlik).
+ * Bu — avval qo'shilgan, lekin daraxtda bog'lanmagan odamlarni tuzatish uchun.
+ */
+export async function linkPersonAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role === "viewer") {
+    return { error: "Sizda bog'lash uchun ruxsat yo'q." };
+  }
+
+  const personId = String(formData.get("personId") || "").trim();
+  const otherPersonId = String(formData.get("otherPersonId") || "").trim();
+  const relationType = String(formData.get("relationType") || "");
+
+  if (!personId || !otherPersonId) {
+    return { error: "Bog'lanadigan odamni tanlang." };
+  }
+  if (personId === otherPersonId) {
+    return { error: "Odamni o'ziga bog'lab bo'lmaydi." };
+  }
+
+  if (relationType === "other_is_parent") {
+    // otherPerson — personning ota-onasi
+    await createRelationship(family.id, otherPersonId, personId, "parent");
+  } else if (relationType === "other_is_child") {
+    // otherPerson — personning farzandi
+    await createRelationship(family.id, personId, otherPersonId, "parent");
+  } else if (relationType === "spouse") {
+    await createRelationship(family.id, personId, otherPersonId, "spouse");
+  } else {
+    return { error: "Bog'lanish turini tanlang." };
+  }
+
+  redirect(`/${familySlug}/dashboard?view=tree`);
+}

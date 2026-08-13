@@ -368,10 +368,11 @@ function EmptyFamilyTree({ familyName, canEdit, onAddPerson }) {
   );
 }
 
-function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit, addPersonAction }) {
+function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit, addPersonAction, linkPersonAction }) {
   const [selected, setSelected] = useState(null);
   const [paths, setPaths] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
   const containerRef = useRef(null);
   const unitRefs = useRef({});
 
@@ -481,12 +482,27 @@ function FamilyTreeView({ familyName, familySlug, people, relationships, canEdit
             {selected.biography || "Bu odam haqida hali biografiya qo'shilmagan. Uning hayoti haqidagi voqealar, rasmlar va hikoyalarni shu yerga qo'shishingiz mumkin."}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: TOKENS.ink40 }}><MapPinned size={12} /> Joylashuv qo'shilmagan</div>
-          <button style={{ marginTop: 20, width: "100%", background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>To'liq profilni ochish</button>
+          {canEdit && (
+            <button onClick={() => setShowLinkModal(true)} style={{ marginTop: 20, width: "100%", background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+              Boshqa odam bilan bog'lash
+            </button>
+          )}
+          <button style={{ marginTop: 10, width: "100%", background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>To'liq profilni ochish</button>
         </div>
       )}
 
       {showAddModal && (
         <AddPersonModal familySlug={familySlug} people={people} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
+      )}
+
+      {showLinkModal && selected && (
+        <LinkPersonModal
+          familySlug={familySlug}
+          person={selected}
+          people={people}
+          linkPersonAction={linkPersonAction}
+          onClose={() => setShowLinkModal(false)}
+        />
       )}
     </div>
   );
@@ -580,6 +596,67 @@ const inputStyle = {
   outline: "none",
   fontFamily: "Inter, sans-serif",
 };
+
+/* ---------------- Link two existing people ---------------- */
+
+function LinkPersonModal({ familySlug, person, people, linkPersonAction, onClose }) {
+  const [state, formAction, pending] = useActionState(linkPersonAction, undefined);
+  const otherPeople = people.filter((p) => p.id !== person.id);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(30,38,33,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="fm-panel-enter"
+        style={{ width: "100%", maxWidth: 420, background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 500, margin: 0 }}>Bog'lash</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
+        </div>
+        <p style={{ fontSize: 12.5, color: TOKENS.ink60, margin: "0 0 18px" }}>
+          <strong>{person.name}</strong>ni boshqa mavjud odamga bog'lang.
+        </p>
+
+        {otherPeople.length === 0 ? (
+          <div style={{ fontSize: 12.5, color: TOKENS.ink40 }}>Bog'lash uchun boshqa odam yo'q. Avval yana birortasini qo'shing.</div>
+        ) : (
+          <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input type="hidden" name="familySlug" value={familySlug} />
+            <input type="hidden" name="personId" value={person.id} />
+
+            <select name="otherPersonId" defaultValue="" required style={inputStyle}>
+              <option value="" disabled>Odamni tanlang</option>
+              {otherPeople.map((p) => (
+                <option key={p.id} value={p.id}>{personLabel(p)}</option>
+              ))}
+            </select>
+
+            <select name="relationType" defaultValue="" required style={inputStyle}>
+              <option value="" disabled>Bog'lanish turi</option>
+              <option value="other_is_parent">Tanlangan odam — {person.name}ning ota-onasi</option>
+              <option value="other_is_child">Tanlangan odam — {person.name}ning farzandi</option>
+              <option value="spouse">Tanlangan odam — {person.name}ning turmush o'rtog'i</option>
+            </select>
+
+            {state?.error && (
+              <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
+                {state.error}
+              </div>
+            )}
+
+            <button type="submit" disabled={pending} style={{ marginTop: 4, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+              {pending ? "Bog'lanmoqda..." : "Bog'lash"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* ---------------- Albums view ---------------- */
 
@@ -756,6 +833,7 @@ function AlbumsView({ openAlbum, setOpenAlbum }) {
  *   initialView?: string,
  *   onLogout?: any,
  *   addPersonAction?: any,
+ *   linkPersonAction?: any,
  * }} props
  */
 export default function HeirloomApp({
@@ -768,6 +846,7 @@ export default function HeirloomApp({
   initialView = "dashboard",
   onLogout,
   addPersonAction,
+  linkPersonAction,
 }) {
   const [view, setView] = useState(initialView === "tree" ? VIEWS.TREE : initialView === "albums" ? VIEWS.ALBUMS : VIEWS.DASHBOARD);
   const [openAlbum, setOpenAlbum] = useState(null);
@@ -799,6 +878,7 @@ export default function HeirloomApp({
               relationships={relationships}
               canEdit={canEdit}
               addPersonAction={addPersonAction}
+              linkPersonAction={linkPersonAction}
             />
           )}
           {view === VIEWS.ALBUMS && <AlbumsView openAlbum={openAlbum} setOpenAlbum={setOpenAlbum} />}
