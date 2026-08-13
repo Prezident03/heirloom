@@ -570,21 +570,12 @@ function FamilyTreeView({
                   O'chirish
                 </button>
               ) : (
-                <div style={{ marginTop: 10, padding: 12, background: "rgba(168,69,58,0.08)", borderRadius: 8 }}>
-                  <div style={{ fontSize: 12, color: TOKENS.danger, marginBottom: 10 }}>
-                    Rostdan ham o'chirasizmi? Bog'lanishlari ham o'chadi. Bu amalni ortga qaytarib bo'lmaydi.
-                  </div>
-                  <form action={deletePersonAction} style={{ display: "flex", gap: 8 }}>
-                    <input type="hidden" name="familySlug" value={familySlug} />
-                    <input type="hidden" name="personId" value={selected.id} />
-                    <button type="submit" style={{ flex: 1, background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      Ha, o'chirish
-                    </button>
-                    <button type="button" onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: "transparent", color: TOKENS.ink60, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      Bekor qilish
-                    </button>
-                  </form>
-                </div>
+                <DeletePersonConfirm
+                  familySlug={familySlug}
+                  personId={selected.id}
+                  deletePersonAction={deletePersonAction}
+                  onCancel={() => setConfirmDelete(false)}
+                />
               )}
             </>
           )}
@@ -795,6 +786,33 @@ function EditPersonModal({ familySlug, person, editPersonAction, onClose }) {
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+/* ---------------- Delete person confirm (useActionState orqali to'g'ri chaqiriladi) ---------------- */
+
+function DeletePersonConfirm({ familySlug, personId, deletePersonAction, onCancel }) {
+  const [state, formAction, pending] = useActionState(deletePersonAction, undefined);
+
+  return (
+    <div style={{ marginTop: 10, padding: 12, background: "rgba(168,69,58,0.08)", borderRadius: 8 }}>
+      <div style={{ fontSize: 12, color: TOKENS.danger, marginBottom: 10 }}>
+        Rostdan ham o'chirasizmi? Bog'lanishlari ham o'chadi. Bu amalni ortga qaytarib bo'lmaydi.
+      </div>
+      {state?.error && (
+        <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 8 }}>{state.error}</div>
+      )}
+      <form action={formAction} style={{ display: "flex", gap: 8 }}>
+        <input type="hidden" name="familySlug" value={familySlug} />
+        <input type="hidden" name="personId" value={personId} />
+        <button type="submit" disabled={pending} style={{ flex: 1, background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+          {pending ? "O'chirilmoqda..." : "Ha, o'chirish"}
+        </button>
+        <button type="button" onClick={onCancel} disabled={pending} style={{ flex: 1, background: "transparent", color: TOKENS.ink60, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          Bekor qilish
+        </button>
+      </form>
     </div>
   );
 }
