@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo, useLayoutEffect, useCallback, useActionState } from "react";
+import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback, useActionState } from "react";
 import {
   Home, BookImage, TreePine, Clock, Heart, Users, MapPin, Search, Plus, X,
   ChevronRight, ChevronLeft, Calendar, MapPinned, Type, Sticker, LayoutGrid, Settings, LogOut, Camera,
@@ -423,6 +423,7 @@ function FamilyTreeView({
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
   const containerRef = useRef(null);
   const unitRefs = useRef({});
 
@@ -430,6 +431,10 @@ function FamilyTreeView({
     if (!selected || !mePersonId) return null;
     return relationLabelBetween(mePersonId, selected.id, people, relationships);
   }, [selected, mePersonId, people, relationships]);
+
+  useEffect(() => {
+    setPhotoError(null);
+  }, [selected?.id]);
 
   const generations = useMemo(() => buildFamilyGenerations(people, relationships), [people, relationships]);
 
@@ -543,9 +548,16 @@ function FamilyTreeView({
                 familySlug={familySlug}
                 personId={selected.id}
                 uploadPersonPhotoAction={uploadPersonPhotoAction}
+                onError={setPhotoError}
               />
             )}
           </div>
+
+          {photoError && (
+            <div style={{ fontSize: 11, color: TOKENS.danger, textAlign: "center", marginBottom: 10, padding: "6px 10px", background: "rgba(168,69,58,0.08)", borderRadius: 6 }}>
+              {photoError}
+            </div>
+          )}
 
           <div style={{ textAlign: "center", marginBottom: 10 }}>
             <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500 }}>{selected.name}</div>
@@ -623,9 +635,13 @@ function FamilyTreeView({
 
 /* ---------------- Profile photo upload (small inline form + camera button) ---------------- */
 
-function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction }) {
+function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction, onError }) {
   const [state, formAction, pending] = useActionState(uploadPersonPhotoAction, undefined);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (onError) onError(state?.error || null);
+  }, [state?.error]);
 
   return (
     <form action={formAction}>
@@ -655,11 +671,6 @@ function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction }) {
       >
         <Camera size={13} />
       </button>
-      {state?.error && (
-        <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6, width: 180, fontSize: 10.5, color: TOKENS.danger, textAlign: "center" }}>
-          {state.error}
-        </div>
-      )}
     </form>
   );
 }
