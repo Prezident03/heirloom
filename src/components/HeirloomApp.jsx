@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback, useActionState } from "react";
 import {
-  Home, BookImage, TreePine, Clock, Heart, Users, MapPin, Search, Plus, X,
-  ChevronRight, ChevronLeft, Calendar, MapPinned, Type, Sticker, LayoutGrid, Settings, LogOut, Camera,
+  Home, BookImage, TreePine, Search, Plus, X,
+  ChevronRight, ChevronLeft, ChevronDown, Calendar, MapPinned, LayoutGrid, Settings, LogOut, Camera, UserPlus,
 } from "lucide-react";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 import { relationLabelBetween } from "@/lib/relationshipLabels";
@@ -14,14 +14,13 @@ const VIEWS = {
   TREE: "tree",
 };
 
+// Faqat haqiqatan ishlaydigan bo'limlar sidebar'da ko'rsatiladi. Timeline,
+// Memories, People, Places kabi hali qurilmagan bo'limlar "tez orada" degan
+// yozuv bilan chalg'itish o'rniga, tayyor bo'lgandagina shu ro'yxatga qo'shiladi.
 const NAV_CONFIG = [
   { id: VIEWS.DASHBOARD, icon: Home, label: "Bosh sahifa" },
   { id: VIEWS.ALBUMS, icon: BookImage, label: "Albomlar" },
   { id: VIEWS.TREE, icon: TreePine, label: "Oila daraxti" },
-  { id: "timeline", icon: Clock, label: "Vaqt chizig'i", soon: true },
-  { id: "memories", icon: Heart, label: "Xotiralar", soon: true },
-  { id: "people", icon: Users, label: "Odamlar", soon: true },
-  { id: "places", icon: MapPin, label: "Joylar", soon: true },
 ];
 
 /* ---------------- shared bits ---------------- */
@@ -84,13 +83,11 @@ function Sidebar({ current, onNavigate, onLogout }) {
         {NAV_CONFIG.map((item) => (
           <div
             key={item.id}
-            className={`fm-nav-item ${current === item.id ? "active" : ""} ${item.soon ? "soon" : ""}`}
-            onClick={() => !item.soon && onNavigate(item.id)}
-            title={item.soon ? "Tez orada" : undefined}
+            className={`fm-nav-item ${current === item.id ? "active" : ""}`}
+            onClick={() => onNavigate(item.id)}
           >
             <item.icon size={16} strokeWidth={2} />
             {item.label}
-            {item.soon && <span style={{ marginLeft: "auto", fontSize: 9.5, color: TOKENS.ink40 }}>tez orada</span>}
           </div>
         ))}
       </nav>
@@ -108,20 +105,6 @@ function Sidebar({ current, onNavigate, onLogout }) {
 
 /* ---------------- Dashboard view ---------------- */
 
-const memoriesMock = [
-  { id: 1, years: "3 yil oldin", caption: "Parijda", seed: "mem1" },
-  { id: 2, years: "5 yil oldin", caption: "Universitetda", seed: "mem2" },
-  { id: 3, years: "8 yil oldin", caption: "Oilaviy kechqurun", seed: "mem3" },
-  { id: 4, years: "12 yil oldin", caption: "Bobom bilan", seed: "mem4" },
-];
-const timelineMock = [
-  { year: "2000", label: "Tug'ilgan kun" },
-  { year: "2010", label: "Maktabning birinchi kuni" },
-  { year: "2015", label: "Oilaviy sayohat" },
-  { year: "2020", label: "Bitiruv" },
-  { year: "2023", label: "Universitet" },
-];
-
 function SectionLabel({ eyebrow, title, action, onAction }) {
   return (
     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 20 }}>
@@ -138,19 +121,117 @@ function SectionLabel({ eyebrow, title, action, onAction }) {
   );
 }
 
-function Polaroid({ seed, caption, sub, rot = 0 }) {
+/**
+ * Universal "+ Yangi" tugmasi. Faqat haqiqatan mavjud bo'lgan yaratish
+ * amallarini ko'rsatadi (hozircha: odam qo'shish, albom yaratish). Yangi
+ * feature (hikoya, xotira, voqea) qo'shilganda shu ro'yxatga qo'shiladi —
+ * hali yo'q narsani va'da qilib chalg'itmaymiz.
+ */
+function CreateMenu({ onCreateAlbum, onAddPerson }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const items = [
+    onCreateAlbum && { icon: BookImage, label: "Albom yaratish", onClick: onCreateAlbum },
+    onAddPerson && { icon: UserPlus, label: "Odam qo'shish", onClick: onAddPerson },
+  ].filter(Boolean);
+
   return (
-    <div className="fm-polaroid" style={{ transform: `rotate(${rot}deg)`, width: 168, flexShrink: 0 }}>
-      <div style={{ width: "100%", aspectRatio: "1/1", backgroundImage: `url(https://picsum.photos/seed/${seed}/400/400)`, backgroundSize: "cover", backgroundPosition: "center", borderRadius: 3 }} />
-      <div style={{ padding: "12px 6px 4px" }}>
-        <div style={{ fontFamily: "Fraunces, serif", fontSize: 14.5, color: TOKENS.ink, fontWeight: 500 }}>{caption}</div>
-        {sub && <div style={{ fontSize: 11.5, color: TOKENS.ink60, marginTop: 2 }}>{sub}</div>}
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: "flex", alignItems: "center", gap: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "0 18px", height: 44, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+      >
+        <Plus size={15} /> Yangi <ChevronDown size={13} style={{ opacity: 0.7, marginLeft: -2 }} />
+      </button>
+      {open && (
+        <div className="fm-panel-enter" style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, minWidth: 210, background: TOKENS.card, borderRadius: 12, border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 18px 40px rgba(30,38,33,0.18)", padding: 6, zIndex: 40 }}>
+          {items.map((it) => (
+            <button
+              key={it.label}
+              onClick={() => { setOpen(false); it.onClick(); }}
+              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: "none", border: "none", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontWeight: 500, color: TOKENS.ink, cursor: "pointer" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = TOKENS.parchment)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <it.icon size={15} color={TOKENS.gold} /> {it.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatItem({ value, label }) {
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 600, color: TOKENS.parchment }}>{value}</div>
+      <div style={{ fontSize: 10.5, color: "rgba(242,237,226,0.62)", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}
+
+/** Family Space'ning "shaxsiyati" — daraxt statistikasi asosida, hech qanday demo son yo'q. */
+function FamilyIdentityBar({ familyName, familySince, genCount, memberCount, albumCount, photoCount, onNavigate }) {
+  return (
+    <div
+      onClick={() => onNavigate(VIEWS.TREE)}
+      style={{
+        cursor: "pointer", background: `linear-gradient(120deg, ${TOKENS.ink} 0%, ${TOKENS.teal} 130%)`,
+        borderRadius: 16, padding: "24px 30px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 24, flexWrap: "wrap", marginBottom: 40,
+      }}
+    >
+      <div>
+        <div style={{ fontSize: 11, letterSpacing: "0.16em", color: TOKENS.goldSoft, fontWeight: 700, textTransform: "uppercase" }}>
+          {familyName}{familySince ? ` · ${familySince} yildan beri` : ""}
+        </div>
+        <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: TOKENS.parchment, marginTop: 4 }}>
+          Oilangizning raqamli uyi
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 30 }}>
+        <StatItem value={genCount} label="avlod" />
+        <StatItem value={memberCount} label="a'zo" />
+        <StatItem value={albumCount} label="albom" />
+        <StatItem value={photoCount} label="rasm" />
       </div>
     </div>
   );
 }
 
-function DashboardView({ onNavigate, onOpenAlbum, userName, familyName, peopleCount, albums }) {
+/** Family Space mutlaqo bo'sh bo'lganda (hali odam ham, albom ham yo'q) ko'rinadigan katta welcome ekrani. */
+function DashboardWelcome({ familyName, onAddPerson, onCreateAlbum }) {
+  return (
+    <div className="fm-fade" style={{ maxWidth: 560, margin: "60px auto 0", textAlign: "center" }}>
+      <div style={{ width: 60, height: 60, borderRadius: 16, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})`, margin: "0 auto 22px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <TreePine size={26} color="#fff" />
+      </div>
+      <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 28, fontWeight: 500, margin: "0 0 10px" }}>{familyName}ga xush kelibsiz</h1>
+      <p style={{ fontSize: 14, color: TOKENS.ink60, lineHeight: 1.7, margin: "0 0 30px" }}>
+        Bu — sizning oilangiz uchun bo'sh sahifa. Tayyor namuna yo'q, chunki hikoya faqat sizga tegishli. Odatda avval o'zingizni qo'shasiz, keyin oila a'zolaringizni va birinchi albomingizni yaratasiz.
+      </p>
+      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+        <button onClick={onAddPerson} style={{ display: "flex", alignItems: "center", gap: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "12px 22px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+          <UserPlus size={15} /> O'zingizni qo'shing
+        </button>
+        <button onClick={onCreateAlbum} style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", color: TOKENS.ink, border: `1.5px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: "12px 22px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+          <BookImage size={15} /> Albom yarating
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAlbum, userName, familyName, familySince, people, relationships, albums }) {
   const [query, setQuery] = useState("");
   const [greeting] = useState(() => {
     const h = new Date().getHours();
@@ -159,93 +240,79 @@ function DashboardView({ onNavigate, onOpenAlbum, userName, familyName, peopleCo
     return "Xayrli kech";
   });
 
+  const genCount = useMemo(() => buildFamilyGenerations(people, relationships).length, [people, relationships]);
+  const photoCount = useMemo(
+    () => albums.reduce((sum, a) => sum + a.pages.reduce((s, p) => s + p.elements.filter((e) => e.type === "photo" && e.photo_url).length, 0), 0),
+    [albums]
+  );
+  const isEmpty = people.length === 0 && albums.length === 0;
+
   return (
     <div className="fm-fade" style={{ padding: "40px 48px 64px", maxWidth: 1180, margin: "0 auto" }}>
-      <div style={{ marginBottom: 40 }}>
-        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 38, fontWeight: 500, margin: "0 0 8px", letterSpacing: "-0.01em" }}>{greeting}, {userName}</h1>
-        <p style={{ fontFamily: "Fraunces, serif", fontStyle: "italic", fontSize: 16.5, color: TOKENS.ink60, margin: "0 0 26px" }}>"Har bir oila o'z hikoyasiga ega."</p>
-        <div style={{ display: "flex", gap: 12 }}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: "11px 16px" }}>
+      <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 34, fontWeight: 500, margin: "0 0 6px", letterSpacing: "-0.01em" }}>{greeting}, {userName} 👋</h1>
+          <p style={{ fontFamily: "Fraunces, serif", fontStyle: "italic", fontSize: 15.5, color: TOKENS.ink60, margin: 0 }}>"Har bir oila o'z hikoyasiga ega."</p>
+        </div>
+        <div style={{ display: "flex", gap: 12, flex: "1 1 320px", maxWidth: 520 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: "0 16px", height: 44 }}>
             <Search size={16} color={TOKENS.ink40} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Xotiralar, odamlar qidirish..." style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, width: "100%", color: TOKENS.ink, fontFamily: "Inter, sans-serif" }} />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Odamlar, albomlar qidirish..." style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, width: "100%", color: TOKENS.ink, fontFamily: "Inter, sans-serif" }} />
           </div>
-          <button onClick={() => onNavigate(VIEWS.ALBUMS)} style={{ display: "flex", alignItems: "center", gap: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "0 20px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
-            <Plus size={15} /> Yangi
-          </button>
+          {(onCreateAlbum || onAddPerson) && <CreateMenu onCreateAlbum={onCreateAlbum} onAddPerson={onAddPerson} />}
         </div>
       </div>
 
-      <section style={{ marginBottom: 48 }}>
-        <SectionLabel eyebrow="Bugungi kun" title="Shu kunlarda xotiralar" />
-        <div className="fm-scroll" style={{ display: "flex", gap: 22, overflowX: "auto", paddingBottom: 14, paddingTop: 6 }}>
-          {memoriesMock.map((m) => <Polaroid key={m.id} seed={m.seed} caption={m.caption} sub={m.years} rot={m.id % 2 ? -3 : 3} />)}
-        </div>
-      </section>
-
-      <section style={{ marginBottom: 48 }}>
-        <SectionLabel eyebrow="Arxiv" title="Mening albomlarim" action="Barchasi" onAction={() => onNavigate(VIEWS.ALBUMS)} />
-        {albums.length === 0 ? (
-          <div
-            onClick={() => onNavigate(VIEWS.ALBUMS)}
-            style={{ cursor: "pointer", textAlign: "center", padding: "34px 20px", border: `1.5px dashed ${TOKENS.parchmentDeep}`, borderRadius: 12, color: TOKENS.ink60, fontSize: 13 }}
-          >
-            Hali albom yo'q — birinchisini yaratish uchun bosing
-          </div>
+      {isEmpty ? (
+        onAddPerson || onCreateAlbum ? (
+          <DashboardWelcome familyName={familyName} onAddPerson={onAddPerson} onCreateAlbum={onCreateAlbum} />
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 18 }}>
-            {albums.slice(0, 4).map((a) => (
-              <div key={a.id} className="fm-album-card" onClick={() => onOpenAlbum(a)} style={{ background: TOKENS.card, borderRadius: 10, padding: 14, boxShadow: "0 2px 8px rgba(30,38,33,0.06)", border: `1px solid ${TOKENS.parchmentDeep}` }}>
-                <div
-                  style={{
-                    width: "100%", aspectRatio: "4/3", borderRadius: 6, marginBottom: 12,
-                    background: a.cover_url ? undefined : TOKENS.parchmentDeep,
-                    backgroundImage: a.cover_url ? `url(${a.cover_url})` : undefined,
-                    backgroundSize: "cover", backgroundPosition: "center",
-                    display: a.cover_url ? undefined : "flex", alignItems: "center", justifyContent: "center",
-                  }}
-                >
-                  {!a.cover_url && <BookImage size={22} color={TOKENS.ink40} />}
-                </div>
-                <div style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 500 }}>{a.title}</div>
-                <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>{[a.date_label, `${a.pages.length} sahifa`].filter(Boolean).join(" · ")}</div>
+          <div style={{ textAlign: "center", padding: "80px 20px", color: TOKENS.ink60, fontSize: 13.5 }}>
+            Bu oila hali bo'sh.
+          </div>
+        )
+      ) : (
+        <>
+          <FamilyIdentityBar
+            familyName={familyName}
+            familySince={familySince}
+            genCount={genCount}
+            memberCount={people.length}
+            albumCount={albums.length}
+            photoCount={photoCount}
+            onNavigate={onNavigate}
+          />
+
+          <section style={{ marginBottom: 48 }}>
+            <SectionLabel eyebrow="Arxiv" title="So'nggi albomlar" action="Barchasi" onAction={() => onNavigate(VIEWS.ALBUMS)} />
+            {albums.length === 0 ? (
+              <div
+                onClick={onCreateAlbum}
+                style={{ cursor: "pointer", textAlign: "center", padding: "34px 20px", border: `1.5px dashed ${TOKENS.parchmentDeep}`, borderRadius: 12, color: TOKENS.ink60, fontSize: 13 }}
+              >
+                Hali albom yo'q — birinchisini yaratish uchun bosing
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 18 }}>
+                {albums.slice(0, 4).map((a) => (
+                  <AlbumCard key={a.id} album={a} onClick={() => onOpenAlbum(a)} compact />
+                ))}
+              </div>
+            )}
+          </section>
 
-      <section style={{ marginBottom: 48 }}>
-        <SectionLabel eyebrow="Hayot yo'li" title="Vaqt chizig'i" />
-        <div style={{ background: TOKENS.card, borderRadius: 14, padding: "28px 34px", border: `1px solid ${TOKENS.parchmentDeep}`, overflowX: "auto" }}>
-          <div style={{ display: "flex", alignItems: "center", minWidth: 620 }}>
-            {timelineMock.map((t, i) => (
-              <React.Fragment key={t.year}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                  <div style={{ width: 11, height: 11, borderRadius: "50%", background: TOKENS.card, border: `2.5px solid ${TOKENS.gold}` }} />
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, color: TOKENS.teal }}>{t.year}</div>
-                    <div style={{ fontSize: 11.5, color: TOKENS.ink60, marginTop: 2, maxWidth: 92 }}>{t.label}</div>
-                  </div>
-                </div>
-                {i < timelineMock.length - 1 && <div style={{ flex: 1, height: 1.5, background: TOKENS.parchmentDeep, marginBottom: 40 }} />}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <SectionLabel eyebrow="Avlodlar" title="Oila daraxti" action="Ochish" onAction={() => onNavigate(VIEWS.TREE)} />
-        <div onClick={() => onNavigate(VIEWS.TREE)} style={{ cursor: "pointer", background: `linear-gradient(135deg, ${TOKENS.teal}, ${TOKENS.ink})`, borderRadius: 14, padding: "30px 34px", display: "flex", alignItems: "center", justifyContent: "space-between", color: TOKENS.parchment }}>
-          <div>
-            <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, marginBottom: 6 }}>{familyName}</div>
-            <div style={{ fontSize: 12.5, color: "rgba(242,237,226,0.7)" }}>
-              {peopleCount > 0 ? `${peopleCount} a'zo qo'shilgan` : "Hali hech kim qo'shilmagan — boshlash uchun bosing"}
+          <section>
+            <SectionLabel eyebrow="Avlodlar" title="Oila daraxti" action="Ochish" onAction={() => onNavigate(VIEWS.TREE)} />
+            <div onClick={() => onNavigate(VIEWS.TREE)} style={{ cursor: "pointer", background: `linear-gradient(135deg, ${TOKENS.teal}, ${TOKENS.ink})`, borderRadius: 14, padding: "30px 34px", display: "flex", alignItems: "center", justifyContent: "space-between", color: TOKENS.parchment }}>
+              <div>
+                <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, marginBottom: 6 }}>{familyName}</div>
+                <div style={{ fontSize: 12.5, color: "rgba(242,237,226,0.7)" }}>{genCount} avlod · {people.length} a'zo</div>
+              </div>
+              <TreePine size={34} color={TOKENS.goldSoft} strokeWidth={1.3} />
             </div>
-          </div>
-          <TreePine size={34} color={TOKENS.goldSoft} strokeWidth={1.3} />
-        </div>
-      </section>
+          </section>
+        </>
+      )}
     </div>
   );
 }
@@ -980,6 +1047,50 @@ function CreateAlbumModal({ familySlug, createAlbumAction, onClose }) {
   );
 }
 
+/**
+ * Real fotosuratli albom cover'i, yoki (foydalanuvchi cover tanlamagan bo'lsa)
+ * albom nomidan olingan iliq, "generated" gradient — bo'sh kulrang quti emas.
+ */
+const COVER_GRADIENTS = [
+  [TOKENS.gold, TOKENS.teal],
+  [TOKENS.teal, TOKENS.ink],
+  [TOKENS.goldSoft, TOKENS.gold],
+  [TOKENS.ink, TOKENS.tealSoft],
+];
+function coverGradientFor(id) {
+  let hash = 0;
+  for (let i = 0; i < (id || "").length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  const [a, b] = COVER_GRADIENTS[hash % COVER_GRADIENTS.length];
+  return `linear-gradient(135deg, ${a}, ${b})`;
+}
+
+function AlbumCard({ album: a, onClick, compact }) {
+  const photoCount = a.pages.reduce((sum, p) => sum + p.elements.filter((e) => e.type === "photo" && e.photo_url).length, 0);
+  return (
+    <div onClick={onClick} className="fm-album-card" style={{ background: TOKENS.card, borderRadius: compact ? 10 : 12, padding: 14, boxShadow: compact ? "0 2px 8px rgba(30,38,33,0.06)" : undefined, border: `1px solid ${TOKENS.parchmentDeep}` }}>
+      <div
+        style={{
+          width: "100%", aspectRatio: "4/3", borderRadius: 7, marginBottom: 12,
+          background: a.cover_url ? undefined : coverGradientFor(a.id || a.title),
+          backgroundImage: a.cover_url ? `url(${a.cover_url})` : undefined,
+          backgroundSize: "cover", backgroundPosition: "center",
+          display: "flex", alignItems: "flex-end", justifyContent: "flex-start", padding: a.cover_url ? 0 : 12,
+        }}
+      >
+        {!a.cover_url && (
+          <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.2 }}>
+            {a.title}
+          </div>
+        )}
+      </div>
+      <div style={{ fontFamily: "Fraunces, serif", fontSize: compact ? 16 : 16.5, fontWeight: 500 }}>{a.title}</div>
+      <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>
+        {[a.date_label, a.location, `${a.pages.length} sahifa`, `${photoCount} rasm`].filter(Boolean).join(" · ")}
+      </div>
+    </div>
+  );
+}
+
 function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
   const [showCreate, setShowCreate] = useState(false);
 
@@ -1001,28 +1112,9 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
         <EmptyAlbums onCreate={() => setShowCreate(true)} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
-          {albums.map((a) => {
-            const photoCount = a.pages.reduce((sum, p) => sum + p.elements.filter((e) => e.type === "photo" && e.photo_url).length, 0);
-            return (
-              <div key={a.id} onClick={() => onOpen(a)} className="fm-album-card" style={{ background: TOKENS.card, borderRadius: 12, padding: 14, border: `1px solid ${TOKENS.parchmentDeep}` }}>
-                <div
-                  style={{
-                    width: "100%", aspectRatio: "4/3", borderRadius: 7, marginBottom: 13,
-                    background: a.cover_url ? undefined : TOKENS.parchmentDeep,
-                    backgroundImage: a.cover_url ? `url(${a.cover_url})` : undefined,
-                    backgroundSize: "cover", backgroundPosition: "center",
-                    display: a.cover_url ? undefined : "flex", alignItems: "center", justifyContent: "center",
-                  }}
-                >
-                  {!a.cover_url && <BookImage size={26} color={TOKENS.ink40} />}
-                </div>
-                <div style={{ fontFamily: "Fraunces, serif", fontSize: 16.5, fontWeight: 500 }}>{a.title}</div>
-                <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>
-                  {[a.date_label, a.location, `${a.pages.length} sahifa`, `${photoCount} rasm`].filter(Boolean).join(" · ")}
-                </div>
-              </div>
-            );
-          })}
+          {albums.map((a) => (
+            <AlbumCard key={a.id} album={a} onClick={() => onOpen(a)} />
+          ))}
         </div>
       )}
 
@@ -1350,6 +1442,7 @@ function AlbumsView({
  * @param {{
  *   userName?: string,
  *   familyName?: string,
+ *   familySince?: number | null,
  *   familySlug?: string,
  *   people?: any[],
  *   relationships?: any[],
@@ -1377,6 +1470,7 @@ function AlbumsView({
 export default function HeirloomApp({
   userName = "Foydalanuvchi",
   familyName = "Mening oilam",
+  familySince = null,
   familySlug = "",
   people = /** @type {any[]} */ ([]),
   relationships = /** @type {any[]} */ ([]),
@@ -1402,6 +1496,9 @@ export default function HeirloomApp({
 }) {
   const [view, setView] = useState(initialView === "tree" ? VIEWS.TREE : initialView === "albums" ? VIEWS.ALBUMS : VIEWS.DASHBOARD);
   const [openAlbumId, setOpenAlbumId] = useState(null);
+  // Dashboard'dagi "+ Yangi" menyusi qaysi view'da bo'lishidan qat'i nazar
+  // ishlashi uchun, create modallarini root darajasida boshqaramiz.
+  const [globalModal, setGlobalModal] = useState(/** @type {null | "addPerson" | "createAlbum"} */ (null));
 
   const navigate = (target) => {
     if (target === VIEWS.ALBUMS) setOpenAlbumId(null);
@@ -1420,7 +1517,18 @@ export default function HeirloomApp({
         <Sidebar current={view} onNavigate={navigate} onLogout={onLogout} />
         <main style={{ flex: 1, overflow: "auto" }}>
           {view === VIEWS.DASHBOARD && (
-            <DashboardView onNavigate={navigate} onOpenAlbum={openAlbumFromDashboard} userName={userName} familyName={familyName} peopleCount={people.length} albums={albums} />
+            <DashboardView
+              onNavigate={navigate}
+              onOpenAlbum={openAlbumFromDashboard}
+              onAddPerson={canEdit ? () => setGlobalModal("addPerson") : undefined}
+              onCreateAlbum={canEdit ? () => setGlobalModal("createAlbum") : undefined}
+              userName={userName}
+              familyName={familyName}
+              familySince={familySince}
+              people={people}
+              relationships={relationships}
+              albums={albums}
+            />
           )}
           {view === VIEWS.TREE && (
             <FamilyTreeView
@@ -1456,6 +1564,22 @@ export default function HeirloomApp({
           )}
         </main>
       </div>
+
+      {globalModal === "addPerson" && (
+        <AddPersonModal
+          familySlug={familySlug}
+          people={people}
+          addPersonAction={addPersonAction}
+          onClose={() => setGlobalModal(null)}
+        />
+      )}
+      {globalModal === "createAlbum" && (
+        <CreateAlbumModal
+          familySlug={familySlug}
+          createAlbumAction={createAlbumAction}
+          onClose={() => setGlobalModal(null)}
+        />
+      )}
     </div>
   );
 }

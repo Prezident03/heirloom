@@ -69,6 +69,7 @@ export default async function FamilyDashboardPage({
     <HeirloomApp
       userName={session.name.split(" ")[0]}
       familyName={family.name}
+      familySince={new Date(family.created_at).getFullYear()}
       familySlug={family.slug}
       people={people}
       relationships={relationships}
