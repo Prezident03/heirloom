@@ -28,7 +28,7 @@ import {
 } from "@/lib/albums";
 import { put } from "@vercel/blob";
 
-export type ActionState = { error?: string } | undefined;
+export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string } | undefined;
 
 export async function registerAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const name = String(formData.get("name") || "").trim();
@@ -87,14 +87,16 @@ export async function createFamilyAction(_prevState: ActionState, formData: Form
   // shunda daraxt boshidanoq ankor nuqtaga ega bo'ladi va qarindoshlik
   // nomlari (Otasi, Akasi va h.k.) shu nuqtadan hisoblanadi.
   const [firstName, ...rest] = session.name.trim().split(" ");
-  await createPerson(
+  const mePerson = await createPerson(
     family.id,
     { firstName: firstName || session.name, lastName: rest.join(" ") || undefined },
     session.id,
     session.id
   );
 
-  redirect(`/${family.slug}/dashboard`);
+  // Onboarding wizard shu natijadan foydalanib, sahifani tark etmasdan
+  // keyingi qadamga (oila a'zosi qo'shish) o'tadi.
+  return { ok: true, familySlug: family.slug, mePersonId: mePerson.id };
 }
 
 export async function logoutAction() {
@@ -143,6 +145,12 @@ export async function addPersonAction(_prevState: ActionState, formData: FormDat
     } else {
       await createRelationship(family.id, person.id, relatedPersonId, "spouse");
     }
+  }
+
+  // Onboarding wizard'dagi kabi ko'p qadamli oqimlarda sahifani tark etmasdan
+  // davom etish uchun ishlatiladi.
+  if (String(formData.get("skipRedirect") || "") === "1") {
+    return { ok: true };
   }
 
   redirect(`/${familySlug}/dashboard?view=tree`);
@@ -307,6 +315,10 @@ export async function createAlbumAction(_prevState: ActionState, formData: FormD
     dateLabel: String(formData.get("dateLabel") || ""),
     location: String(formData.get("location") || ""),
   });
+
+  if (String(formData.get("skipRedirect") || "") === "1") {
+    return { ok: true, albumId: album.id };
+  }
 
   redirect(`/${familySlug}/dashboard?view=albums&album=${album.id}`);
 }

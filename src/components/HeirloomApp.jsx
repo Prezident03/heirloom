@@ -68,13 +68,45 @@ function GlobalStyle() {
       @media (prefers-reduced-motion: reduce) {
         .fm-polaroid, .fm-album-card, .fm-person, .fm-fade, .fm-panel-enter { transition: none !important; animation: none !important; }
       }
+
+      /* ---- Mobile: app-like bottom nav + top bar (360px'dan boshlab) ---- */
+      .fm-mobile-topbar {
+        display: none;
+        align-items: center; justify-content: space-between;
+        padding: 12px 16px;
+        background: ${TOKENS.card};
+        border-bottom: 1px solid ${TOKENS.parchmentDeep};
+        position: sticky; top: 0; z-index: 20;
+      }
+      .fm-mobile-bottomnav {
+        display: none;
+        position: fixed; left: 0; right: 0; bottom: 0;
+        background: ${TOKENS.ink};
+        padding: 7px 4px calc(6px + env(safe-area-inset-bottom));
+        z-index: 30;
+        justify-content: space-around;
+        align-items: center;
+        box-shadow: 0 -6px 20px rgba(0,0,0,0.18);
+      }
+      .fm-mobile-nav-item {
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
+        background: none; border: none; color: rgba(242,237,226,0.55);
+        font-size: 9.5px; font-weight: 600; cursor: pointer; padding: 5px 12px;
+      }
+      .fm-mobile-nav-item.active { color: ${TOKENS.goldSoft}; }
+      @media (max-width: 768px) {
+        .fm-desktop-sidebar { display: none !important; }
+        .fm-mobile-topbar { display: flex; }
+        .fm-mobile-bottomnav { display: flex; }
+        .fm-main { padding-bottom: 76px; }
+      }
     `}</style>
   );
 }
 
 function Sidebar({ current, onNavigate, onLogout }) {
   return (
-    <aside style={{ width: 220, background: TOKENS.ink, padding: "26px 14px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+    <aside className="fm-desktop-sidebar" style={{ width: 220, background: TOKENS.ink, padding: "26px 14px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 10px 28px" }}>
         <div style={{ width: 26, height: 26, borderRadius: 6, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})` }} />
         <span style={{ fontFamily: "Fraunces, serif", fontSize: 17, color: TOKENS.parchment, fontWeight: 600 }}>Heirloom</span>
@@ -100,6 +132,41 @@ function Sidebar({ current, onNavigate, onLogout }) {
         </div>
       </div>
     </aside>
+  );
+}
+
+/* ---------------- Mobile top bar + bottom nav ---------------- */
+
+function MobileTopBar({ familyName, onLogout }) {
+  return (
+    <div className="fm-mobile-topbar">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <div style={{ width: 22, height: 22, borderRadius: 5, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})`, flexShrink: 0 }} />
+        <span style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, color: TOKENS.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{familyName}</span>
+      </div>
+      <button onClick={onLogout} title="Chiqish" style={{ background: "none", border: "none", color: TOKENS.ink60, cursor: "pointer", padding: 6, flexShrink: 0 }}>
+        <LogOut size={17} />
+      </button>
+    </div>
+  );
+}
+
+const MOBILE_NAV_ITEMS = [
+  { id: VIEWS.DASHBOARD, icon: Home, label: "Bosh sahifa" },
+  { id: VIEWS.ALBUMS, icon: BookImage, label: "Albomlar" },
+  { id: VIEWS.TREE, icon: TreePine, label: "Oila" },
+];
+
+function MobileBottomNav({ current, onNavigate }) {
+  return (
+    <nav className="fm-mobile-bottomnav">
+      {MOBILE_NAV_ITEMS.map((it) => (
+        <button key={it.id} onClick={() => onNavigate(it.id)} className={`fm-mobile-nav-item ${current === it.id ? "active" : ""}`}>
+          <it.icon size={20} strokeWidth={current === it.id ? 2.3 : 1.8} />
+          <span>{it.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -248,7 +315,7 @@ function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAlbum, us
   const isEmpty = people.length === 0 && albums.length === 0;
 
   return (
-    <div className="fm-fade" style={{ padding: "40px 48px 64px", maxWidth: 1180, margin: "0 auto" }}>
+    <div className="fm-fade" style={{ padding: "32px clamp(16px, 5vw, 48px) 64px", maxWidth: 1180, margin: "0 auto" }}>
       <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 34, fontWeight: 500, margin: "0 0 6px", letterSpacing: "-0.01em" }}>{greeting}, {userName} 👋</h1>
@@ -551,7 +618,7 @@ function FamilyTreeView({
   const genCount = generations.length;
 
   return (
-    <div className="fm-fade" style={{ display: "flex", height: "100%" }}>
+    <div className="fm-fade" style={{ display: "flex", height: "100%", flexWrap: "wrap" }}>
       <div style={{ flex: 1, padding: "36px 20px 60px", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", maxWidth: 900, margin: "0 auto 30px" }}>
           <div>
@@ -591,7 +658,7 @@ function FamilyTreeView({
       </div>
 
       {selected && (
-        <div className="fm-panel-enter" style={{ width: 300, flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto" }}>
+        <div className="fm-panel-enter" style={{ width: "min(300px, 100%)", flex: "1 1 300px", flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto", maxHeight: "100%" }}>
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <button onClick={() => { setSelected(null); setConfirmDelete(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4 }}><X size={18} /></button>
           </div>
@@ -1095,7 +1162,7 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
-    <div style={{ padding: "36px 48px 60px", maxWidth: 1180, margin: "0 auto" }}>
+    <div style={{ padding: "28px clamp(16px, 5vw, 48px) 60px", maxWidth: 1180, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 30 }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Arxiv</div>
@@ -1271,7 +1338,7 @@ function AlbumEditor({
   const [deleteAlbumState, deleteAlbumFormAction, deleteAlbumPending] = useActionState(deleteAlbumAction, undefined);
 
   return (
-    <div style={{ padding: "26px 40px 60px", maxWidth: 1100, margin: "0 auto" }}>
+    <div style={{ padding: "22px clamp(16px, 4vw, 40px) 60px", maxWidth: 1100, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.ink60, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           <ChevronLeft size={16} /> Albomlarga qaytish
@@ -1305,8 +1372,8 @@ function AlbumEditor({
       {pages.length === 0 || !currentPage ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: TOKENS.ink60, fontSize: 13.5 }}>Bu albomda hali sahifa yo'q.</div>
       ) : (
-        <div style={{ display: "flex", gap: 28 }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 260 }}>
             {canEdit && (
               <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                 <ChipButton active={showLayoutPicker} onClick={() => setShowLayoutPicker(!showLayoutPicker)}>
@@ -1515,55 +1582,59 @@ export default function HeirloomApp({
       <GlobalStyle />
       <div style={{ display: "flex", height: "100%" }}>
         <Sidebar current={view} onNavigate={navigate} onLogout={onLogout} />
-        <main style={{ flex: 1, overflow: "auto" }}>
-          {view === VIEWS.DASHBOARD && (
-            <DashboardView
-              onNavigate={navigate}
-              onOpenAlbum={openAlbumFromDashboard}
-              onAddPerson={canEdit ? () => setGlobalModal("addPerson") : undefined}
-              onCreateAlbum={canEdit ? () => setGlobalModal("createAlbum") : undefined}
-              userName={userName}
-              familyName={familyName}
-              familySince={familySince}
-              people={people}
-              relationships={relationships}
-              albums={albums}
-            />
-          )}
-          {view === VIEWS.TREE && (
-            <FamilyTreeView
-              familyName={familyName}
-              familySlug={familySlug}
-              people={people}
-              relationships={relationships}
-              canEdit={canEdit}
-              mePersonId={mePersonId}
-              addPersonAction={addPersonAction}
-              linkPersonAction={linkPersonAction}
-              editPersonAction={editPersonAction}
-              deletePersonAction={deletePersonAction}
-              uploadPersonPhotoAction={uploadPersonPhotoAction}
-            />
-          )}
-          {view === VIEWS.ALBUMS && (
-            <AlbumsView
-              albums={albums}
-              activeAlbumId={activeAlbumId}
-              openAlbumId={openAlbumId}
-              setOpenAlbumId={setOpenAlbumId}
-              familySlug={familySlug}
-              canEdit={canEdit}
-              createAlbumAction={createAlbumAction}
-              deleteAlbumAction={deleteAlbumAction}
-              addAlbumPageAction={addAlbumPageAction}
-              deleteAlbumPageAction={deleteAlbumPageAction}
-              changePageLayoutAction={changePageLayoutAction}
-              uploadElementPhotoAction={uploadElementPhotoAction}
-              updateElementTextAction={updateElementTextAction}
-            />
-          )}
-        </main>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
+          <MobileTopBar familyName={familyName} onLogout={onLogout} />
+          <main className="fm-main" style={{ flex: 1, overflow: "auto" }}>
+            {view === VIEWS.DASHBOARD && (
+              <DashboardView
+                onNavigate={navigate}
+                onOpenAlbum={openAlbumFromDashboard}
+                onAddPerson={canEdit ? () => setGlobalModal("addPerson") : undefined}
+                onCreateAlbum={canEdit ? () => setGlobalModal("createAlbum") : undefined}
+                userName={userName}
+                familyName={familyName}
+                familySince={familySince}
+                people={people}
+                relationships={relationships}
+                albums={albums}
+              />
+            )}
+            {view === VIEWS.TREE && (
+              <FamilyTreeView
+                familyName={familyName}
+                familySlug={familySlug}
+                people={people}
+                relationships={relationships}
+                canEdit={canEdit}
+                mePersonId={mePersonId}
+                addPersonAction={addPersonAction}
+                linkPersonAction={linkPersonAction}
+                editPersonAction={editPersonAction}
+                deletePersonAction={deletePersonAction}
+                uploadPersonPhotoAction={uploadPersonPhotoAction}
+              />
+            )}
+            {view === VIEWS.ALBUMS && (
+              <AlbumsView
+                albums={albums}
+                activeAlbumId={activeAlbumId}
+                openAlbumId={openAlbumId}
+                setOpenAlbumId={setOpenAlbumId}
+                familySlug={familySlug}
+                canEdit={canEdit}
+                createAlbumAction={createAlbumAction}
+                deleteAlbumAction={deleteAlbumAction}
+                addAlbumPageAction={addAlbumPageAction}
+                deleteAlbumPageAction={deleteAlbumPageAction}
+                changePageLayoutAction={changePageLayoutAction}
+                uploadElementPhotoAction={uploadElementPhotoAction}
+                updateElementTextAction={updateElementTextAction}
+              />
+            )}
+          </main>
+        </div>
       </div>
+      <MobileBottomNav current={view} onNavigate={navigate} />
 
       {globalModal === "addPerson" && (
         <AddPersonModal
