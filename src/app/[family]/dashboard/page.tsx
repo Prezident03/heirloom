@@ -77,7 +77,7 @@ export default async function FamilyDashboardPage({
       activeAlbumId={activeAlbumId ?? null}
       canEdit={membership.role !== "viewer"}
       mePersonId={mePerson?.id ?? null}
-      initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : "dashboard"}
+      initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : view === "people" ? "people" : "dashboard"}
       onLogout={logoutAction}
       addPersonAction={addPersonAction}
       linkPersonAction={linkPersonAction}
