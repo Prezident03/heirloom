@@ -11,7 +11,6 @@ import {
   updatePerson,
   updatePersonPhoto,
   deletePerson,
-  type RelationshipType,
 } from "@/lib/people";
 import {
   createAlbum,
@@ -137,11 +136,13 @@ export async function addPersonAction(_prevState: ActionState, formData: FormDat
   const relationType = String(formData.get("relationType") || "none");
   const relatedPersonId = String(formData.get("relatedPersonId") || "");
 
-  if (relatedPersonId && (relationType === "child_of" || relationType === "spouse_of")) {
-    const type: RelationshipType = relationType === "child_of" ? "parent" : "spouse";
-    if (type === "parent") {
-      // relatedPerson is the parent, new person is the child
+  if (relatedPersonId && (relationType === "child_of" || relationType === "spouse_of" || relationType === "parent_of")) {
+    if (relationType === "child_of") {
+      // relatedPerson — yangi odamning ota-onasi
       await createRelationship(family.id, relatedPersonId, person.id, "parent");
+    } else if (relationType === "parent_of") {
+      // yangi odam — relatedPerson'ning ota-onasi (masalan, "Ota"/"Ona" qo'shilganda)
+      await createRelationship(family.id, person.id, relatedPersonId, "parent");
     } else {
       await createRelationship(family.id, person.id, relatedPersonId, "spouse");
     }

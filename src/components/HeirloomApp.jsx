@@ -59,6 +59,10 @@ function GlobalStyle() {
       .fm-link:hover { color: ${TOKENS.gold}; }
       .fm-album-card { transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer; }
       .fm-album-card:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(30,38,33,0.14); }
+      .fm-relation-option { transition: background 0.15s ease, border-color 0.15s ease; }
+      .fm-relation-option:hover { background: ${TOKENS.parchment}; border-color: ${TOKENS.gold}; }
+      .fm-person-grid-card { transition: opacity 0.15s ease; }
+      .fm-person-grid-card:hover { opacity: 0.8; }
       .fm-person { display: flex; align-items: center; gap: 10px; background: ${TOKENS.card}; border-radius: 30px; padding: 5px 16px 5px 5px; cursor: pointer; box-shadow: 0 2px 6px rgba(30,38,33,0.07); transition: transform 0.18s ease, box-shadow 0.18s ease; max-width: 210px; }
       .fm-person:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(30,38,33,0.15); }
       .fm-couple { display: flex; align-items: center; gap: 8px; }
@@ -854,9 +858,28 @@ function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction, onEr
 
 /* ---------------- Add Person modal ---------------- */
 
+// Mockupdagi "Kimni qo'shmoqchisiz?" menyusi — har bir tugma tanlanganda
+// relationType, tegishli savol matni va jinsni oldindan belgilaydi.
+const RELATION_OPTIONS = [
+  { key: "father", emoji: "👨", label: "Ota", relationType: "parent_of", gender: "male", question: "Kimning otasi bo'ladi?" },
+  { key: "mother", emoji: "👩", label: "Ona", relationType: "parent_of", gender: "female", question: "Kimning onasi bo'ladi?" },
+  { key: "son", emoji: "👦", label: "O'g'il", relationType: "child_of", gender: "male", question: "Kimning o'g'li bo'ladi?" },
+  { key: "daughter", emoji: "👧", label: "Qiz", relationType: "child_of", gender: "female", question: "Kimning qizi bo'ladi?" },
+  { key: "spouse", emoji: "💍", label: "Turmush o'rtog'i", relationType: "spouse_of", gender: "", question: "Kimning turmush o'rtog'i bo'ladi?" },
+  { key: "other", emoji: "👤", label: "Boshqa / Aloqasiz", relationType: "none", gender: "", question: "" },
+];
+
 function AddPersonModal({ familySlug, people, addPersonAction, onClose }) {
   const [state, formAction, pending] = useActionState(addPersonAction, undefined);
-  const [relationType, setRelationType] = useState("none");
+  // Odam allaqachon mavjud bo'lsa, avval "kimni qo'shmoqchisiz" menyusini
+  // ko'rsatamiz; aks holda (birinchi odam) to'g'ridan-to'g'ri forma.
+  const [step, setStep] = useState(people.length > 0 ? "pick" : "form");
+  const [chosen, setChosen] = useState(/** @type {typeof RELATION_OPTIONS[number] | null} */ (null));
+
+  const selectRelation = (opt) => {
+    setChosen(opt);
+    setStep("form");
+  };
 
   return (
     <div
@@ -869,61 +892,85 @@ function AddPersonModal({ familySlug, people, addPersonAction, onClose }) {
         style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflow: "auto", background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Yangi odam qo'shish</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {step === "form" && people.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setStep("pick")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4, display: "flex" }}
+                title="Orqaga"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>
+              {step === "pick" ? "Kimni qo'shmoqchisiz?" : chosen ? `Yangi odam — ${chosen.label}` : "Yangi odam qo'shish"}
+            </h2>
+          </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
         </div>
 
-        <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input type="hidden" name="familySlug" value={familySlug} />
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <input name="firstName" placeholder="Ism" required className="fm-modal-input" style={inputStyle} />
-            <input name="lastName" placeholder="Familiya" className="fm-modal-input" style={inputStyle} />
+        {step === "pick" ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+            {RELATION_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => selectRelation(opt)}
+                className="fm-relation-option"
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 500, color: TOKENS.ink, textAlign: "left" }}
+              >
+                <span style={{ fontSize: 19, lineHeight: 1 }}>{opt.emoji}</span> {opt.label}
+              </button>
+            ))}
           </div>
+        ) : (
+          <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input type="hidden" name="familySlug" value={familySlug} />
+            <input type="hidden" name="relationType" value={chosen ? chosen.relationType : "none"} />
 
-          <select name="gender" defaultValue="" style={inputStyle}>
-            <option value="">Jinsi (ixtiyoriy)</option>
-            <option value="female">Ayol</option>
-            <option value="male">Erkak</option>
-            <option value="other">Boshqa</option>
-          </select>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <input name="birthDate" placeholder="Tug'ilgan yil (masalan, 1980)" style={inputStyle} />
-            <input name="deathDate" placeholder="Vafot yili (agar bo'lsa)" style={inputStyle} />
-          </div>
-
-          <textarea name="biography" placeholder="Qisqacha hikoya yoki biografiya (ixtiyoriy)" rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
-
-          {people.length > 0 && (
-            <>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, marginTop: 4 }}>Oila daraxtiga qanday bog'lanadi?</div>
-              <select name="relationType" value={relationType} onChange={(e) => setRelationType(e.target.value)} style={inputStyle}>
-                <option value="none">Hozircha bog'lamayman</option>
-                <option value="child_of">...ning farzandi</option>
-                <option value="spouse_of">...ning turmush o'rtog'i</option>
-              </select>
-              {relationType !== "none" && (
+            {chosen && chosen.relationType !== "none" && (
+              <>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{chosen.question}</div>
                 <select name="relatedPersonId" defaultValue="" required style={inputStyle}>
                   <option value="" disabled>Odamni tanlang</option>
                   {people.map((p) => (
                     <option key={p.id} value={p.id}>{personLabel(p)}</option>
                   ))}
                 </select>
-              )}
-            </>
-          )}
+              </>
+            )}
 
-          {state?.error && (
-            <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-              {state.error}
+            <div style={{ display: "flex", gap: 10 }}>
+              <input name="firstName" placeholder="Ism" required className="fm-modal-input" style={inputStyle} />
+              <input name="lastName" placeholder="Familiya" className="fm-modal-input" style={inputStyle} />
             </div>
-          )}
 
-          <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-            {pending ? "Saqlanmoqda..." : "Qo'shish"}
-          </button>
-        </form>
+            <select name="gender" defaultValue={chosen?.gender || ""} style={inputStyle}>
+              <option value="">Jinsi (ixtiyoriy)</option>
+              <option value="female">Ayol</option>
+              <option value="male">Erkak</option>
+              <option value="other">Boshqa</option>
+            </select>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <input name="birthDate" placeholder="Tug'ilgan yil (masalan, 1980)" style={inputStyle} />
+              <input name="deathDate" placeholder="Vafot yili (agar bo'lsa)" style={inputStyle} />
+            </div>
+
+            <textarea name="biography" placeholder="Qisqacha hikoya yoki biografiya (ixtiyoriy)" rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+
+            {state?.error && (
+              <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
+                {state.error}
+              </div>
+            )}
+
+            <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+              {pending ? "Saqlanmoqda..." : "Qo'shish"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
