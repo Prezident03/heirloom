@@ -38,6 +38,12 @@ import {
   getElementsForPages,
   type LayoutId,
 } from "@/lib/albums";
+import {
+  createTimelineEvent,
+  updateTimelineEvent,
+  updateTimelineEventPhoto,
+  deleteTimelineEvent,
+} from "@/lib/timeline";
 import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
@@ -584,6 +590,81 @@ export async function uploadElementPhotoAction(_prevState: ActionState, formData
   }
 
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+/* ---------------- Timeline (Vaqt chizig'i) ---------------- */
+
+export async function createTimelineEventAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const title = String(formData.get("title") || "").trim();
+  if (!title) return { error: "Voqea nomini kiriting." };
+
+  await createTimelineEvent(check.family.id, check.session.id, {
+    title,
+    description: String(formData.get("description") || ""),
+    eventDate: String(formData.get("eventDate") || ""),
+    location: String(formData.get("location") || ""),
+    personId: String(formData.get("personId") || ""),
+  });
+
+  redirect(`/${familySlug}/dashboard?view=timeline`);
+}
+
+export async function updateTimelineEventAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const eventId = String(formData.get("eventId") || "").trim();
+  const title = String(formData.get("title") || "").trim();
+  if (!title) return { error: "Voqea nomini kiriting." };
+
+  await updateTimelineEvent(eventId, check.family.id, {
+    title,
+    description: String(formData.get("description") || ""),
+    eventDate: String(formData.get("eventDate") || ""),
+    location: String(formData.get("location") || ""),
+    personId: String(formData.get("personId") || ""),
+  });
+
+  redirect(`/${familySlug}/dashboard?view=timeline`);
+}
+
+export async function deleteTimelineEventAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const eventId = String(formData.get("eventId") || "").trim();
+  await deleteTimelineEvent(eventId, check.family.id);
+  redirect(`/${familySlug}/dashboard?view=timeline`);
+}
+
+export async function uploadTimelineEventPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const eventId = String(formData.get("eventId") || "").trim();
+  const file = formData.get("photo") as File | null;
+  if (!file || file.size === 0) return { error: "Rasm tanlanmadi." };
+  if (!file.type.startsWith("image/")) return { error: "Faqat rasm fayllari qabul qilinadi." };
+  if (file.size > 8 * 1024 * 1024) return { error: "Rasm hajmi 8MB dan oshmasligi kerak." };
+
+  try {
+    const blob = await put(`timeline/${eventId}-${Date.now()}`, file, {
+      access: "public",
+      addRandomSuffix: true,
+    });
+    await updateTimelineEventPhoto(eventId, check.family.id, blob.url);
+  } catch {
+    return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
+  }
+
+  redirect(`/${familySlug}/dashboard?view=timeline`);
 }
 
 /**

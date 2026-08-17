@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { getFamilyBySlug, getMembership, getMembersForFamily, getActiveInvitesForFamily } from "@/lib/family";
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib/albums";
+import { getTimelineEventsForFamily } from "@/lib/timeline";
 import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
@@ -27,6 +28,10 @@ import {
   updateElementTextAction,
   uploadElementPhotoAction,
   bulkUploadPhotosAction,
+  createTimelineEventAction,
+  updateTimelineEventAction,
+  deleteTimelineEventAction,
+  uploadTimelineEventPhotoAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -47,12 +52,13 @@ export default async function FamilyDashboardPage({
   const membership = await getMembership(family.id, session.id);
   if (!membership) notFound();
 
-  const [people, relationships, albums, members, invites] = await Promise.all([
+  const [people, relationships, albums, members, invites, timelineEvents] = await Promise.all([
     getPeopleForFamily(family.id),
     getRelationshipsForFamily(family.id),
     getAlbumsForFamily(family.id),
     getMembersForFamily(family.id),
     getActiveInvitesForFamily(family.id),
+    getTimelineEventsForFamily(family.id),
   ]);
 
   // Har bir albom uchun sahifa va elementlarni yig'amiz (nested struktura,
@@ -85,12 +91,13 @@ export default async function FamilyDashboardPage({
       albums={albumsWithPages}
       members={members}
       invites={invites}
+      timelineEvents={timelineEvents}
       activeAlbumId={activeAlbumId ?? null}
       canEdit={membership.role !== "viewer"}
       isOwner={membership.role === "owner"}
       canInvite={membership.role === "owner" || membership.role === "editor"}
       mePersonId={mePerson?.id ?? null}
-      initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : view === "people" ? "people" : view === "settings" ? "settings" : "dashboard"}
+      initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : view === "people" ? "people" : view === "settings" ? "settings" : view === "timeline" ? "timeline" : "dashboard"}
       onLogout={logoutAction}
       updateFamilyNameAction={updateFamilyNameAction}
       updateMemberRoleAction={updateMemberRoleAction}
@@ -111,6 +118,10 @@ export default async function FamilyDashboardPage({
       updateElementTextAction={updateElementTextAction}
       uploadElementPhotoAction={uploadElementPhotoAction}
       bulkUploadPhotosAction={bulkUploadPhotosAction}
+      createTimelineEventAction={createTimelineEventAction}
+      updateTimelineEventAction={updateTimelineEventAction}
+      deleteTimelineEventAction={deleteTimelineEventAction}
+      uploadTimelineEventPhotoAction={uploadTimelineEventPhotoAction}
     />
   );
 }

@@ -145,6 +145,9 @@ export async function updatePersonPhoto(personId: string, familyId: string, phot
 export async function deletePerson(personId: string, familyId: string): Promise<void> {
   await ensureSchema();
   await sql`DELETE FROM relationships WHERE family_id = ${familyId} AND (person_a_id = ${personId} OR person_b_id = ${personId})`;
+  // timeline_events.person_id — odamga ixtiyoriy bog'lanish (FK). O'chirishdan
+  // oldin bog'lanishni bo'shatamiz, shunda voqeaning o'zi saqlanib qoladi.
+  await sql`UPDATE timeline_events SET person_id = NULL WHERE family_id = ${familyId} AND person_id = ${personId}`;
   await sql`DELETE FROM people WHERE id = ${personId} AND family_id = ${familyId}`;
 }
 
