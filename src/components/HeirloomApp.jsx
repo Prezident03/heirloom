@@ -1818,12 +1818,16 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
 
 /* ---------------- Page canvas (real elementlar bilan) ---------------- */
 
-function PhotoSlot({ element, familySlug, albumId, uploadElementPhotoAction, canEdit, style }) {
+function PhotoSlot({ element, familySlug, albumId, uploadElementPhotoAction, canEdit, style, onDragStart, isDragging }) {
   const [state, formAction, pending] = useActionState(uploadElementPhotoAction, undefined);
   const inputRef = useRef(null);
 
   return (
-    <div style={{ ...style, position: "absolute" }}>
+    <div
+      style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s" }}
+      draggable={canEdit}
+      onDragStart={onDragStart}
+    >
       <div
         style={{
           width: "100%", height: "100%", borderRadius: 3, position: "relative", overflow: "hidden",
@@ -1833,6 +1837,7 @@ function PhotoSlot({ element, familySlug, albumId, uploadElementPhotoAction, can
           boxShadow: element.photo_url ? "0 3px 10px rgba(0,0,0,0.12)" : "none",
           border: element.photo_url ? "none" : `1.5px dashed ${TOKENS.parchmentDeep}`,
           display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: canEdit ? "grab" : "default",
         }}
       >
         {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
@@ -1857,6 +1862,16 @@ function PhotoSlot({ element, familySlug, albumId, uploadElementPhotoAction, can
                 position: "absolute", inset: 0, width: "100%", height: "100%", background: "rgba(30,38,33,0.0)",
                 border: "none", cursor: pending ? "default" : "pointer",
               }}
+            >
+              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
+            </button>
+          </form>
+        )}
+      </div>
+      {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{state.error}</div>}
+    </div>
+  );
+}
               title="Rasm yuklash"
             >
               {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
@@ -1899,23 +1914,63 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
 }
 
 function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction }) {
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dropIndex, setDropIndex] = useState(null);
+
+  const handleDragStart = (index) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e, dropIdx) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== dropIdx && canEdit) {
+      const newElements = [...page.elements];
+      [newElements[draggedIndex], newElements[dropIdx]] = [newElements[dropIdx], newElements[draggedIndex]];
+      setDropIndex(null);
+      setDraggedIndex(null);
+    }
+  };
+
   return (
-    <div style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)" }}>
+    <div
+      style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)" }}
+      onDragOver={handleDragOver}
+    >
       {layout.slots.map((slot, i) => {
         const element = page.elements[i];
         if (!element) return null;
         const style = { left: `${slot.x}%`, top: `${slot.y}%`, width: `${slot.w}%`, height: `${slot.h}%` };
         if (slot.type === "photo") {
           return (
-            <PhotoSlot
+            <div
               key={element.id}
-              element={element}
-              familySlug={familySlug}
-              albumId={albumId}
-              uploadElementPhotoAction={uploadElementPhotoAction}
-              canEdit={canEdit}
-              style={style}
-            />
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, i)}
+              onDragLeave={() => setDropIndex(null)}
+              onDragEnter={() => setDropIndex(i)}
+              style={{
+                ...style,
+                position: "absolute",
+                border: dropIndex === i ? `2px solid ${TOKENS.gold}` : "none",
+                transition: "border 0.2s",
+              }}
+            >
+              <PhotoSlot
+                element={element}
+                familySlug={familySlug}
+                albumId={albumId}
+                uploadElementPhotoAction={uploadElementPhotoAction}
+                canEdit={canEdit}
+                style={{ width: "100%", height: "100%", position: "relative" }}
+                onDragStart={() => handleDragStart(i)}
+                isDragging={draggedIndex === i}
+              />
+            </div>
           );
         }
         return (
