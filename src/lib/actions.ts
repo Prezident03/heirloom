@@ -54,7 +54,7 @@ import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
 
-async function verifyFamilyAccess(formData: FormData, minRole: "editor" | "owner" = "member") {
+async function verifyFamilyAccess(formData: FormData, minRole: "editor" | "owner" | "member" | "viewer" = "member") {
   const session = await getSession();
   if (!session) return { error: "Avtorizatsiya kerak." };
 
