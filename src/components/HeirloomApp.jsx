@@ -609,8 +609,21 @@ function PersonDetailPanel({
   setConfirmDelete,
   deletePersonAction,
 }) {
+<<<<<<< HEAD
+  const [activeTab, setActiveTab] = useState("about");
+
+  const tabs = [
+    { id: "about", label: "Ma'lumot" },
+    { id: "timeline", label: "Vaqt chizig'i" },
+    { id: "photos", label: "Rasmlar" },
+  ];
+
+  return (
+    <div className="fm-panel-enter" style={{ width: "min(320px, 100%)", flex: "1 1 320px", flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto", maxHeight: "100%" }}>
+=======
   return (
     <div className="fm-panel-enter" style={{ width: "min(300px, 100%)", flex: "1 1 300px", flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto", maxHeight: "100%" }}>
+>>>>>>> 36961ec62f1b0f41d01a4e42d7cd62425763b1db
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4 }}><X size={18} /></button>
       </div>
@@ -655,6 +668,60 @@ function PersonDetailPanel({
         ) : null}
       </div>
 
+<<<<<<< HEAD
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, marginTop: 12, borderBottom: `1px solid ${TOKENS.parchmentDeep}` }}>
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              fontSize: 11.5,
+              fontWeight: 600,
+              padding: "8px 12px",
+              borderRadius: "8px 8px 0 0",
+              background: activeTab === tab.id ? TOKENS.ink : "transparent",
+              color: activeTab === tab.id ? TOKENS.parchment : TOKENS.ink60,
+              border: "none",
+              cursor: "pointer",
+              borderBottom: activeTab === tab.id ? "none" : `2px solid transparent`,
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "about" && (
+        <div>
+          <div style={{ fontSize: 12.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 14 }}>
+            {selected.biography || "Bu odam haqida hali biografiya qo'shilmagan."}
+          </div>
+          {selected.raw?.birth_place && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: TOKENS.ink60, marginBottom: 8 }}>
+              <MapPinned size={14} style={{ marginTop: 2, flexShrink: 0 }} />
+              <div>Tug'ilgan joy: {selected.raw.birth_place}</div>
+            </div>
+          )}
+          {selected.raw?.gender && (
+            <div style={{ fontSize: 12, color: TOKENS.ink60 }}>
+              Jinsi: {selected.raw.gender === "male" ? "Erkak" : selected.raw.gender === "female" ? "Ayol" : "Boshqa"}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "timeline" && (
+        <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
+          Bu odam bilan bog'langan voqealar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+        </div>
+      )}
+
+      {activeTab === "photos" && (
+        <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
+          Bu odam bilan bog'langan rasmlar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+        </div>
+      )}
+=======
       <div style={{ display: "flex", gap: 8, marginBottom: 20, marginTop: 12 }}>
         {["Vaqt chizig'i", "Rasmlar", "Hikoyalar"].map((tab, i) => (
           <div key={tab} style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 10px", borderRadius: 20, background: i === 0 ? TOKENS.ink : "transparent", color: i === 0 ? TOKENS.parchment : TOKENS.ink60, border: i === 0 ? "none" : `1px solid ${TOKENS.parchmentDeep}`, cursor: "pointer" }}>{tab}</div>
@@ -664,6 +731,7 @@ function PersonDetailPanel({
         {selected.biography || "Bu odam haqida hali biografiya qo'shilmagan. Uning hayoti haqidagi voqealar, rasmlar va hikoyalarni shu yerga qo'shishingiz mumkin."}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: TOKENS.ink40 }}><MapPinned size={12} /> Joylashuv qo'shilmagan</div>
+>>>>>>> 36961ec62f1b0f41d01a4e42d7cd62425763b1db
 
       {canEdit && (
         <>
