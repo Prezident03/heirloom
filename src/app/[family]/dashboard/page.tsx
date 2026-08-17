@@ -6,6 +6,7 @@ import { getFamilyBySlug, getMembership, getMembersForFamily, getActiveInvitesFo
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib/albums";
 import { getTimelineEventsForFamily } from "@/lib/timeline";
+import { getMemoriesForFamily } from "@/lib/memories";
 import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
@@ -32,6 +33,10 @@ import {
   updateTimelineEventAction,
   deleteTimelineEventAction,
   uploadTimelineEventPhotoAction,
+  createMemoryAction,
+  updateMemoryAction,
+  updateMemoryPhotoAction,
+  deleteMemoryAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -52,13 +57,14 @@ export default async function FamilyDashboardPage({
   const membership = await getMembership(family.id, session.id);
   if (!membership) notFound();
 
-  const [people, relationships, albums, members, invites, timelineEvents] = await Promise.all([
+  const [people, relationships, albums, members, invites, timelineEvents, memories] = await Promise.all([
     getPeopleForFamily(family.id),
     getRelationshipsForFamily(family.id),
     getAlbumsForFamily(family.id),
     getMembersForFamily(family.id),
     getActiveInvitesForFamily(family.id),
     getTimelineEventsForFamily(family.id),
+    getMemoriesForFamily(family.id),
   ]);
 
   // Har bir albom uchun sahifa va elementlarni yig'amiz (nested struktura,
@@ -92,6 +98,7 @@ export default async function FamilyDashboardPage({
       members={members}
       invites={invites}
       timelineEvents={timelineEvents}
+      memories={memories}
       activeAlbumId={activeAlbumId ?? null}
       canEdit={membership.role !== "viewer"}
       isOwner={membership.role === "owner"}
@@ -122,6 +129,10 @@ export default async function FamilyDashboardPage({
       updateTimelineEventAction={updateTimelineEventAction}
       deleteTimelineEventAction={deleteTimelineEventAction}
       uploadTimelineEventPhotoAction={uploadTimelineEventPhotoAction}
+      createMemoryAction={createMemoryAction}
+      updateMemoryAction={updateMemoryAction}
+      updateMemoryPhotoAction={updateMemoryPhotoAction}
+      deleteMemoryAction={deleteMemoryAction}
     />
   );
 }

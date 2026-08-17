@@ -44,6 +44,12 @@ import {
   updateTimelineEventPhoto,
   deleteTimelineEvent,
 } from "@/lib/timeline";
+import {
+  createMemory,
+  updateMemory,
+  updateMemoryPhoto,
+  deleteMemory,
+} from "@/lib/memories";
 import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
@@ -729,4 +735,103 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
   }
 
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function createMemoryAction(formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess("editor");
+  if (check.error) return check;
+
+  const title = String(formData.get("title") || "").trim();
+  const description = String(formData.get("description") || "").trim() || null;
+  const memoryDate = String(formData.get("memoryDate") || "").trim() || null;
+  const location = String(formData.get("location") || "").trim() || null;
+  const personId = String(formData.get("personId") || "").trim() || null;
+  const photoFile = formData.get("photo") as File | null;
+
+  if (!title) return { error: "Xotira nomini kiriting." };
+
+  try {
+    let photoUrl: string | null = null;
+    if (photoFile && photoFile.size > 0) {
+      const blob = await put(`memories/${check.family.id}/${crypto.randomUUID()}-${Date.now()}`, photoFile, {
+        access: "public",
+        addRandomSuffix: true,
+      });
+      photoUrl = blob.url;
+    }
+
+    await createMemory(
+      check.family.id,
+      title,
+      description,
+      memoryDate,
+      photoUrl,
+      location,
+      personId || null,
+      check.session.id
+    );
+
+    return { ok: true };
+  } catch (e) {
+    return { error: "Xotira yaratishda xato: " + String(e) };
+  }
+}
+
+export async function updateMemoryAction(formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess("editor");
+  if (check.error) return check;
+
+  const memoryId = String(formData.get("memoryId") || "").trim();
+  const title = String(formData.get("title") || "").trim();
+  const description = String(formData.get("description") || "").trim() || null;
+  const memoryDate = String(formData.get("memoryDate") || "").trim() || null;
+  const location = String(formData.get("location") || "").trim() || null;
+  const personId = String(formData.get("personId") || "").trim() || null;
+
+  if (!memoryId || !title) return { error: "Xotira ID va nomi kerak." };
+
+  try {
+    await updateMemory(memoryId, title, description, memoryDate, location, personId || null);
+    return { ok: true };
+  } catch (e) {
+    return { error: "Xotira yangilashda xato: " + String(e) };
+  }
+}
+
+export async function updateMemoryPhotoAction(formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess("editor");
+  if (check.error) return check;
+
+  const memoryId = String(formData.get("memoryId") || "").trim();
+  const photoFile = formData.get("photo") as File | null;
+
+  if (!memoryId || !photoFile || photoFile.size === 0) {
+    return { error: "Xotira ID va rasm kerak." };
+  }
+
+  try {
+    const blob = await put(`memories/${check.family.id}/${memoryId}-${Date.now()}`, photoFile, {
+      access: "public",
+      addRandomSuffix: true,
+    });
+    await updateMemoryPhoto(memoryId, blob.url);
+    return { ok: true };
+  } catch (e) {
+    return { error: "Rasm yuklashda xato: " + String(e) };
+  }
+}
+
+export async function deleteMemoryAction(formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess("editor");
+  if (check.error) return check;
+
+  const memoryId = String(formData.get("memoryId") || "").trim();
+  if (!memoryId) return { error: "Xotira ID kerak." };
+
+  try {
+    await deleteMemory(memoryId);
+    return { ok: true };
+  } catch (e) {
+    return { error: "Xotira o'chirishda xato: " + String(e) };
+  }
 }
