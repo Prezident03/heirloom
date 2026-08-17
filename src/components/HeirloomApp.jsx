@@ -609,7 +609,6 @@ function PersonDetailPanel({
   setConfirmDelete,
   deletePersonAction,
 }) {
-<<<<<<< HEAD
   const [activeTab, setActiveTab] = useState("about");
 
   const tabs = [
@@ -664,7 +663,6 @@ function PersonDetailPanel({
         ) : null}
       </div>
 
-<<<<<<< HEAD
       <div style={{ display: "flex", gap: 6, marginBottom: 16, marginTop: 12, borderBottom: `1px solid ${TOKENS.parchmentDeep}` }}>
         {tabs.map((tab) => (
           <button
@@ -717,17 +715,6 @@ function PersonDetailPanel({
           Bu odam bilan bog'langan rasmlar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
         </div>
       )}
-=======
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, marginTop: 12 }}>
-        {["Vaqt chizig'i", "Rasmlar", "Hikoyalar"].map((tab, i) => (
-          <div key={tab} style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 10px", borderRadius: 20, background: i === 0 ? TOKENS.ink : "transparent", color: i === 0 ? TOKENS.parchment : TOKENS.ink60, border: i === 0 ? "none" : `1px solid ${TOKENS.parchmentDeep}`, cursor: "pointer" }}>{tab}</div>
-        ))}
-      </div>
-      <div style={{ fontSize: 12.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 20 }}>
-        {selected.biography || "Bu odam haqida hali biografiya qo'shilmagan. Uning hayoti haqidagi voqealar, rasmlar va hikoyalarni shu yerga qo'shishingiz mumkin."}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: TOKENS.ink40 }}><MapPinned size={12} /> Joylashuv qo'shilmagan</div>
->>>>>>> 36961ec62f1b0f41d01a4e42d7cd62425763b1db
 
       {canEdit && (
         <>
