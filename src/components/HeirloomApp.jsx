@@ -3241,7 +3241,7 @@ export default function HeirloomApp({
   );
 }
 
-function MemoriesView({ memories, people, canEdit, createMemoryAction, deleteMemoryAction }) {
+function MemoriesView({ memories, people, canEdit, createMemoryAction, updateMemoryAction, updateMemoryPhotoAction, deleteMemoryAction }) {
   const [showForm, setShowForm] = useState(false);
   const [formState, formAction] = useActionState(createMemoryAction, undefined);
   const [selectedMemory, setSelectedMemory] = useState(null);
