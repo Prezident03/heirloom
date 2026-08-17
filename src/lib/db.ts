@@ -127,6 +127,20 @@ export async function ensureSchema(): Promise<void> {
         text_content TEXT
       )
     `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS family_invites (
+        id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL REFERENCES families(id),
+        code TEXT UNIQUE NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('editor','member','viewer')),
+        created_by TEXT NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL,
+        revoked_at TEXT,
+        used_by TEXT REFERENCES users(id),
+        used_at TEXT
+      )
+    `;
   })();
 
   return _schemaReady;

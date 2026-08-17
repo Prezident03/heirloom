@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback, useActionState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Home, BookImage, TreePine, Search, Plus, X,
   ChevronRight, ChevronLeft, ChevronDown, Calendar, MapPinned, LayoutGrid, Settings, LogOut, Camera, UserPlus, Users,
@@ -1823,7 +1824,75 @@ function SettingsCard({ title, children }) {
   );
 }
 
-function SettingsView({ familyName, familySince, familySlug, members, isOwner, userEmail, updateFamilyNameAction }) {
+function InviteLinkRow({ invite, familySlug, revokeInviteAction }) {
+  const [copied, setCopied] = useState(false);
+  const [revokeState, revokeFormAction, revokePending] = useActionState(revokeInviteAction, undefined);
+  const url = typeof window !== "undefined" ? `${window.location.origin}/invite/${invite.code}` : `/invite/${invite.code}`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // clipboard ruxsati bo'lmasa jim o'tkazib yuboramiz
+    }
+  };
+
+  if (revokeState?.ok) return null;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: `1px solid ${TOKENS.parchmentDeep}`, flexWrap: "wrap" }}>
+      <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+        <div style={{ fontSize: 12.5, fontFamily: "monospace", color: TOKENS.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</div>
+        <div style={{ fontSize: 11, color: TOKENS.ink40, marginTop: 2 }}>Rol: {ROLE_LABELS[invite.role] || invite.role}</div>
+      </div>
+      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+        <button type="button" onClick={copy} style={{ background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: TOKENS.ink }}>
+          {copied ? "Nusxalandi ✓" : "Nusxalash"}
+        </button>
+        <form action={revokeFormAction}>
+          <input type="hidden" name="familySlug" value={familySlug} />
+          <input type="hidden" name="inviteId" value={invite.id} />
+          <button type="submit" disabled={revokePending} style={{ background: "transparent", border: `1px solid ${TOKENS.danger}`, color: TOKENS.danger, borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 600, cursor: revokePending ? "default" : "pointer", opacity: revokePending ? 0.6 : 1 }}>
+            Bekor qilish
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CreateInviteForm({ familySlug, createInviteAction, onCreated }) {
+  const [state, formAction, pending] = useActionState(createInviteAction, undefined);
+  const [role, setRole] = useState("member");
+  const lastCode = useRef(null);
+
+  useEffect(() => {
+    if (state?.ok && state.inviteCode && state.inviteCode !== lastCode.current) {
+      lastCode.current = state.inviteCode;
+      onCreated?.();
+    }
+  }, [state, onCreated]);
+
+  return (
+    <form action={formAction} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+      <input type="hidden" name="familySlug" value={familySlug} />
+      <select name="role" value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle, flex: "0 0 auto", width: "auto" }}>
+        <option value="member">A'zo</option>
+        <option value="editor">Muharrir</option>
+        <option value="viewer">Kuzatuvchi</option>
+      </select>
+      <button type="submit" disabled={pending} style={{ background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "11px 18px", fontSize: 13, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+        {pending ? "Yaratilmoqda..." : "Taklif havolasi yaratish"}
+      </button>
+      {state?.error && <div style={{ width: "100%", fontSize: 12, color: TOKENS.danger }}>{state.error}</div>}
+    </form>
+  );
+}
+
+function SettingsView({ familyName, familySince, familySlug, members, invites, isOwner, canInvite, userEmail, updateFamilyNameAction, createInviteAction, revokeInviteAction }) {
+  const router = useRouter();
   return (
     <div className="fm-fade" style={{ padding: "28px clamp(16px, 5vw, 48px) 60px", maxWidth: 720, margin: "0 auto" }}>
       <div style={{ marginBottom: 26 }}>
@@ -1861,9 +1930,27 @@ function SettingsView({ familyName, familySince, familySlug, members, isOwner, u
           ))}
         </div>
         <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 14 }}>
-          Yangi a'zoni taklif qilish va rollarni o'zgartirish hozircha ishlab chiqilmoqda.
+          Rollarni o'zgartirish hozircha ishlab chiqilmoqda — hozircha faqat taklif qilinganda rol belgilanadi.
         </div>
       </SettingsCard>
+
+      {canInvite && (
+        <SettingsCard title="Oilaga taklif qilish">
+          <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginBottom: 14, lineHeight: 1.6 }}>
+            Havola yarating va oila a'zosiga yuboring. Havola bir marta ishlatiladi — u orqali qo'shilgan odam tanlangan rol bilan kiradi.
+          </div>
+          <CreateInviteForm familySlug={familySlug} createInviteAction={createInviteAction} onCreated={() => router.refresh()} />
+
+          {invites.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Faol havolalar</div>
+              {invites.map((inv) => (
+                <InviteLinkRow key={inv.id} invite={inv} familySlug={familySlug} revokeInviteAction={revokeInviteAction} />
+              ))}
+            </div>
+          )}
+        </SettingsCard>
+      )}
     </div>
   );
 }
@@ -1881,13 +1968,17 @@ function SettingsView({ familyName, familySince, familySlug, members, isOwner, u
  *   relationships?: any[],
  *   albums?: any[],
  *   members?: any[],
+ *   invites?: any[],
  *   activeAlbumId?: string | null,
  *   canEdit?: boolean,
  *   isOwner?: boolean,
+ *   canInvite?: boolean,
  *   mePersonId?: string | null,
  *   initialView?: string,
  *   onLogout?: any,
  *   updateFamilyNameAction?: any,
+ *   createInviteAction?: any,
+ *   revokeInviteAction?: any,
  *   addPersonAction?: any,
  *   linkPersonAction?: any,
  *   editPersonAction?: any,
@@ -1913,13 +2004,17 @@ export default function HeirloomApp({
   relationships = /** @type {any[]} */ ([]),
   albums = /** @type {any[]} */ ([]),
   members = /** @type {any[]} */ ([]),
+  invites = /** @type {any[]} */ ([]),
   activeAlbumId = null,
   canEdit = true,
   isOwner = false,
+  canInvite = false,
   mePersonId = null,
   initialView = "dashboard",
   onLogout,
   updateFamilyNameAction,
+  createInviteAction,
+  revokeInviteAction,
   addPersonAction,
   linkPersonAction,
   editPersonAction,
@@ -2031,9 +2126,13 @@ export default function HeirloomApp({
                 familySince={familySince}
                 familySlug={familySlug}
                 members={members}
+                invites={invites}
                 isOwner={isOwner}
+                canInvite={canInvite}
                 userEmail={userEmail}
                 updateFamilyNameAction={updateFamilyNameAction}
+                createInviteAction={createInviteAction}
+                revokeInviteAction={revokeInviteAction}
               />
             )}
           </main>

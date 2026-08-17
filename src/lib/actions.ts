@@ -4,7 +4,16 @@ import { redirect } from "next/navigation";
 import { findUserByEmail, createUser } from "@/lib/user";
 import { verifyPassword } from "@/lib/password";
 import { createSession, destroySession, getSession } from "@/lib/session";
-import { createFamily, getFamiliesForUser, getFamilyBySlug, getMembership, updateFamilyName } from "@/lib/family";
+import {
+  createFamily,
+  getFamiliesForUser,
+  getFamilyBySlug,
+  getMembership,
+  updateFamilyName,
+  createInvite,
+  revokeInvite,
+  acceptInvite,
+} from "@/lib/family";
 import {
   createPerson,
   createRelationship,
@@ -27,12 +36,13 @@ import {
 } from "@/lib/albums";
 import { put } from "@vercel/blob";
 
-export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string } | undefined;
+export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
 
 export async function registerAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
+  const inviteCode = String(formData.get("inviteCode") || "").trim();
 
   if (!name || !email || !password) {
     return { error: "Barcha maydonlarni to'ldiring." };
@@ -46,12 +56,19 @@ export async function registerAction(_prevState: ActionState, formData: FormData
 
   const user = await createUser(email, password, name);
   await createSession(user.id);
+
+  if (inviteCode) {
+    const result = await acceptInvite(inviteCode, user.id);
+    if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+  }
+
   redirect("/onboarding");
 }
 
 export async function loginAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
+  const inviteCode = String(formData.get("inviteCode") || "").trim();
 
   const user = await findUserByEmail(email);
   if (!user) {
@@ -63,6 +80,11 @@ export async function loginAction(_prevState: ActionState, formData: FormData): 
   }
 
   await createSession(user.id);
+
+  if (inviteCode) {
+    const result = await acceptInvite(inviteCode, user.id);
+    if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+  }
 
   const families = await getFamiliesForUser(user.id);
   if (families.length === 0) {
@@ -121,6 +143,67 @@ export async function updateFamilyNameAction(_prevState: ActionState, formData: 
 
   await updateFamilyName(family.id, name);
   return { ok: true };
+}
+
+export async function createInviteAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || (membership.role !== "owner" && membership.role !== "editor")) {
+    return { error: "Sizda taklif havolasi yaratish huquqi yo'q." };
+  }
+
+  const roleRaw = String(formData.get("role") || "member");
+  const role = roleRaw === "editor" || roleRaw === "viewer" ? roleRaw : "member";
+
+  const invite = await createInvite(family.id, role, session.id);
+  return { ok: true, inviteCode: invite.code };
+}
+
+export async function revokeInviteAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const inviteId = String(formData.get("inviteId") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || (membership.role !== "owner" && membership.role !== "editor")) {
+    return { error: "Sizda bu huquq yo'q." };
+  }
+
+  await revokeInvite(inviteId, family.id);
+  return { ok: true };
+}
+
+export async function acceptInviteAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const code = String(formData.get("code") || "").trim();
+  const result = await acceptInvite(code, session.id);
+  if ("error" in result) return { error: result.error };
+
+  redirect(`/${result.family.slug}/dashboard`);
+}
+
+// Oddiy <form action={...}> (useActionState'siz) uchun — invite sahifasida ishlatiladi.
+export async function acceptInviteFormAction(formData: FormData): Promise<void> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const code = String(formData.get("code") || "").trim();
+  const result = await acceptInvite(code, session.id);
+  if ("error" in result) redirect(`/invite/${code}`);
+
+  redirect(`/${result.family.slug}/dashboard`);
 }
 
 export async function addPersonAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {

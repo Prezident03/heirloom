@@ -13,6 +13,7 @@ export default function AuthForm({
   title,
   subtitle,
   footer,
+  hiddenFields = [],
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   fields: Field[];
@@ -20,6 +21,7 @@ export default function AuthForm({
   title: string;
   subtitle: string;
   footer: React.ReactNode;
+  hiddenFields?: { name: string; value: string }[];
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
 
@@ -87,6 +89,9 @@ export default function AuthForm({
         <p style={{ fontSize: 13, color: TOKENS.ink60, margin: "0 0 24px" }}>{subtitle}</p>
 
         <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {hiddenFields.map((f) => (
+            <input key={f.name} type="hidden" name={f.name} value={f.value} />
+          ))}
           {fields.map((f) => (
             <div key={f.name}>
               <label style={{ fontSize: 12, fontWeight: 600, color: TOKENS.ink60, marginBottom: 6, display: "block" }}>{f.label}</label>

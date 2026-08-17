@@ -2,13 +2,15 @@ export const dynamic = "force-dynamic";
 
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { getFamilyBySlug, getMembership, getMembersForFamily } from "@/lib/family";
+import { getFamilyBySlug, getMembership, getMembersForFamily, getActiveInvitesForFamily } from "@/lib/family";
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib/albums";
 import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
   updateFamilyNameAction,
+  createInviteAction,
+  revokeInviteAction,
   addPersonAction,
   linkPersonAction,
   editPersonAction,
@@ -42,11 +44,12 @@ export default async function FamilyDashboardPage({
   const membership = await getMembership(family.id, session.id);
   if (!membership) notFound();
 
-  const [people, relationships, albums, members] = await Promise.all([
+  const [people, relationships, albums, members, invites] = await Promise.all([
     getPeopleForFamily(family.id),
     getRelationshipsForFamily(family.id),
     getAlbumsForFamily(family.id),
     getMembersForFamily(family.id),
+    getActiveInvitesForFamily(family.id),
   ]);
 
   // Har bir albom uchun sahifa va elementlarni yig'amiz (nested struktura,
@@ -78,13 +81,17 @@ export default async function FamilyDashboardPage({
       relationships={relationships}
       albums={albumsWithPages}
       members={members}
+      invites={invites}
       activeAlbumId={activeAlbumId ?? null}
       canEdit={membership.role !== "viewer"}
       isOwner={membership.role === "owner"}
+      canInvite={membership.role === "owner" || membership.role === "editor"}
       mePersonId={mePerson?.id ?? null}
       initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : view === "people" ? "people" : view === "settings" ? "settings" : "dashboard"}
       onLogout={logoutAction}
       updateFamilyNameAction={updateFamilyNameAction}
+      createInviteAction={createInviteAction}
+      revokeInviteAction={revokeInviteAction}
       addPersonAction={addPersonAction}
       linkPersonAction={linkPersonAction}
       editPersonAction={editPersonAction}
