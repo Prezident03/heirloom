@@ -9,6 +9,8 @@ import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
   updateFamilyNameAction,
+  updateMemberRoleAction,
+  removeMemberAction,
   createInviteAction,
   revokeInviteAction,
   addPersonAction,
@@ -91,6 +93,8 @@ export default async function FamilyDashboardPage({
       initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : view === "people" ? "people" : view === "settings" ? "settings" : "dashboard"}
       onLogout={logoutAction}
       updateFamilyNameAction={updateFamilyNameAction}
+      updateMemberRoleAction={updateMemberRoleAction}
+      removeMemberAction={removeMemberAction}
       createInviteAction={createInviteAction}
       revokeInviteAction={revokeInviteAction}
       addPersonAction={addPersonAction}

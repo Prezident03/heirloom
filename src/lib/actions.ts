@@ -10,6 +10,8 @@ import {
   getFamilyBySlug,
   getMembership,
   updateFamilyName,
+  updateMemberRole,
+  removeMember,
   createInvite,
   revokeInvite,
   acceptInvite,
@@ -144,6 +146,60 @@ export async function updateFamilyNameAction(_prevState: ActionState, formData: 
   if (!name) return { error: "Oila nomini kiriting." };
 
   await updateFamilyName(family.id, name);
+  return { ok: true };
+}
+
+/**
+ * Faqat oila egasi (owner) boshqa a'zoning rolini o'zgartira oladi.
+ * Owner'ning o'zi bu yerdan o'zgartirilmaydi (backend darajasida ham himoyalangan).
+ */
+export async function updateMemberRoleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role !== "owner") {
+    return { error: "Faqat oila egasi a'zolarning rolini o'zgartira oladi." };
+  }
+
+  const targetUserId = String(formData.get("userId") || "").trim();
+  if (!targetUserId) return { error: "A'zo topilmadi." };
+  if (targetUserId === session.id) return { error: "O'zingizning rolingizni bu yerdan o'zgartira olmaysiz." };
+
+  const roleRaw = String(formData.get("role") || "");
+  const role = roleRaw === "editor" || roleRaw === "member" || roleRaw === "viewer" ? roleRaw : null;
+  if (!role) return { error: "Noto'g'ri rol." };
+
+  await updateMemberRole(family.id, targetUserId, role);
+  return { ok: true };
+}
+
+/**
+ * Faqat oila egasi a'zoni oiladan chiqarib yuborishi mumkin. Owner o'zini
+ * chiqarib yubora olmaydi (backend darajasida ham himoyalangan).
+ */
+export async function removeMemberAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role !== "owner") {
+    return { error: "Faqat oila egasi a'zoni chiqarib yubora oladi." };
+  }
+
+  const targetUserId = String(formData.get("userId") || "").trim();
+  if (!targetUserId) return { error: "A'zo topilmadi." };
+  if (targetUserId === session.id) return { error: "O'zingizni oiladan chiqarib yubora olmaysiz." };
+
+  await removeMember(family.id, targetUserId);
   return { ok: true };
 }
 

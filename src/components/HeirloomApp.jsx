@@ -702,6 +702,7 @@ function FamilyTreeView({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragState = useRef(null);
+  const touchState = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -761,6 +762,66 @@ function FamilyTreeView({
     dragState.current = null;
     setIsDragging(false);
   }, []);
+
+  // --- Mobil: bitta barmoq bilan pan, ikki barmoq bilan pinch-zoom ---
+  const touchDist = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  const touchMid = (touches, rect) => ({
+    x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+    y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top,
+  });
+
+  const onTouchStart = useCallback((e) => {
+    // Odam kartochkasi bosilganda pan/zoom boshlanmasin — tap odatdagidek ishlasin.
+    if (e.target.closest && e.target.closest("[data-tree-node]")) return;
+    const touches = e.touches;
+    if (touches.length === 1) {
+      touchState.current = { mode: "pan", startX: touches[0].clientX, startY: touches[0].clientY, panX: pan.x, panY: pan.y };
+      setIsDragging(true);
+    } else if (touches.length === 2) {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      touchState.current = {
+        mode: "pinch",
+        startDist: touchDist(touches),
+        startZoom: zoom,
+        mid: rect ? touchMid(touches, rect) : { x: 0, y: 0 },
+        panX: pan.x,
+        panY: pan.y,
+      };
+    }
+  }, [pan, zoom]);
+
+  const onTouchMove = useCallback((e) => {
+    if (!touchState.current) return;
+    e.preventDefault();
+    const touches = e.touches;
+    const state = touchState.current;
+    if (state.mode === "pan" && touches.length === 1) {
+      const dx = touches[0].clientX - state.startX;
+      const dy = touches[0].clientY - state.startY;
+      setPan({ x: state.panX + dx, y: state.panY + dy });
+    } else if (state.mode === "pinch" && touches.length === 2) {
+      const newZoom = clampZoom(state.startZoom * (touchDist(touches) / state.startDist));
+      setZoom(newZoom);
+      setPan({
+        x: state.mid.x - (newZoom / state.startZoom) * (state.mid.x - state.panX),
+        y: state.mid.y - (newZoom / state.startZoom) * (state.mid.y - state.panY),
+      });
+    }
+  }, []);
+
+  const onTouchEnd = useCallback((e) => {
+    if (e.touches.length === 0) {
+      touchState.current = null;
+      setIsDragging(false);
+    } else if (e.touches.length === 1) {
+      // Ikki barmoqdan bittasi ko'tarilsa — sakrashsiz, qolgan barmoq bilan pan davom etadi.
+      touchState.current = { mode: "pan", startX: e.touches[0].clientX, startY: e.touches[0].clientY, panX: pan.x, panY: pan.y };
+    }
+  }, [pan]);
 
   const centerOnPerson = useCallback((personId, targetZoom) => {
     const node = personRefs.current[personId];
@@ -870,7 +931,7 @@ function FamilyTreeView({
       <>
         <EmptyFamilyTree familyName={familyName} canEdit={canEdit} onAddPerson={() => setShowAddModal(true)} />
         {showAddModal && (
-          <AddPersonModal familySlug={familySlug} people={people} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
+          <AddPersonModal familySlug={familySlug} people={people} relationships={relationships} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
         )}
       </>
     );
@@ -938,12 +999,16 @@ function FamilyTreeView({
         <div
           ref={viewportRef}
           className={`fm-tree-viewport ${isDragging ? "dragging" : ""}`}
-          style={{ flex: 1, position: "relative", overflow: "hidden", borderRadius: 14, border: `1px solid ${TOKENS.parchmentDeep}`, minHeight: 420 }}
+          style={{ flex: 1, position: "relative", overflow: "hidden", borderRadius: 14, border: `1px solid ${TOKENS.parchmentDeep}`, minHeight: 420, touchAction: "none" }}
           onWheel={onWheel}
           onMouseDown={onPointerDown}
           onMouseMove={onPointerMove}
           onMouseUp={endDrag}
           onMouseLeave={endDrag}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
         >
           <div
             style={{
@@ -1007,7 +1072,7 @@ function FamilyTreeView({
       )}
 
       {showAddModal && (
-        <AddPersonModal familySlug={familySlug} people={people} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
+        <AddPersonModal familySlug={familySlug} people={people} relationships={relationships} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
       )}
 
       {showLinkModal && selected && (
@@ -1078,26 +1143,59 @@ function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction, onEr
 
 // Mockupdagi "Kimni qo'shmoqchisiz?" menyusi — har bir tugma tanlanganda
 // relationType, tegishli savol matni va jinsni oldindan belgilaydi.
+// "grandparent_of" — front-end'ga xos maxsus tur: submit paytida avtomatik
+// "parent_of" + tegishli oraliq ota-ona ID'siga aylantiriladi (backend'da
+// alohida grandparent tushunchasi yo'q, shunga hojat ham yo'q).
 const RELATION_OPTIONS = [
   { key: "father", emoji: "👨", label: "Ota", relationType: "parent_of", gender: "male", question: "Kimning otasi bo'ladi?" },
   { key: "mother", emoji: "👩", label: "Ona", relationType: "parent_of", gender: "female", question: "Kimning onasi bo'ladi?" },
   { key: "son", emoji: "👦", label: "O'g'il", relationType: "child_of", gender: "male", question: "Kimning o'g'li bo'ladi?" },
   { key: "daughter", emoji: "👧", label: "Qiz", relationType: "child_of", gender: "female", question: "Kimning qizi bo'ladi?" },
   { key: "spouse", emoji: "💍", label: "Turmush o'rtog'i", relationType: "spouse_of", gender: "", question: "Kimning turmush o'rtog'i bo'ladi?" },
+  { key: "grandfather", emoji: "👴", label: "Bobo", relationType: "grandparent_of", gender: "male", question: "Kimning bobosi bo'ladi?" },
+  { key: "grandmother", emoji: "👵", label: "Buvi", relationType: "grandparent_of", gender: "female", question: "Kimning buvisi bo'ladi?" },
   { key: "other", emoji: "👤", label: "Boshqa / Aloqasiz", relationType: "none", gender: "", question: "" },
 ];
 
-function AddPersonModal({ familySlug, people, addPersonAction, onClose }) {
+/** relatedPersonId'ning (nevarasi) hozirgi ota-onalarini qaytaradi — bobo/buvini
+ * shu ota-onalardan biriga "parent_of" sifatida ulash uchun ishlatiladi. */
+function getParentsOf(personId, people, relationships) {
+  return relationships
+    .filter((r) => r.type === "parent" && r.person_b_id === personId)
+    .map((r) => people.find((p) => p.id === r.person_a_id))
+    .filter(Boolean);
+}
+
+function AddPersonModal({ familySlug, people, relationships = [], addPersonAction, onClose }) {
   const [state, formAction, pending] = useActionState(addPersonAction, undefined);
   // Odam allaqachon mavjud bo'lsa, avval "kimni qo'shmoqchisiz" menyusini
   // ko'rsatamiz; aks holda (birinchi odam) to'g'ridan-to'g'ri forma.
   const [step, setStep] = useState(people.length > 0 ? "pick" : "form");
   const [chosen, setChosen] = useState(/** @type {typeof RELATION_OPTIONS[number] | null} */ (null));
+  // Bobo/Buvi oqimi uchun: avval nevarasi tanlanadi, keyin (agar ikki
+  // ota-onasi bo'lsa) qaysi tomondan ekani tanlanadi.
+  const [grandchildId, setGrandchildId] = useState("");
+  const [throughParentId, setThroughParentId] = useState("");
 
   const selectRelation = (opt) => {
     setChosen(opt);
+    setGrandchildId("");
+    setThroughParentId("");
     setStep("form");
   };
+
+  const isGrandparent = chosen?.relationType === "grandparent_of";
+  const grandchildParents = isGrandparent && grandchildId ? getParentsOf(grandchildId, people, relationships) : [];
+
+  // Bitta ota-ona bo'lsa, avtomatik shu orqali ulanadi; ikkitasi bo'lsa —
+  // foydalanuvchi tanlaydi; sizni yo'q bo'lsa — submit bloklanadi (pastda).
+  const effectiveThroughParentId =
+    grandchildParents.length === 1 ? grandchildParents[0].id : throughParentId;
+
+  // Backend'ga yuboriladigan haqiqiy qiymatlar: bobo/buvi uchun bu doim
+  // standart "parent_of" + oraliq ota-onaning ID'si.
+  const submitRelationType = isGrandparent ? (effectiveThroughParentId ? "parent_of" : "") : (chosen ? chosen.relationType : "none");
+  const submitRelatedPersonId = isGrandparent ? effectiveThroughParentId : undefined;
 
   return (
     <div
@@ -1145,18 +1243,55 @@ function AddPersonModal({ familySlug, people, addPersonAction, onClose }) {
         ) : (
           <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input type="hidden" name="familySlug" value={familySlug} />
-            <input type="hidden" name="relationType" value={chosen ? chosen.relationType : "none"} />
+            <input type="hidden" name="relationType" value={submitRelationType} />
+            {submitRelatedPersonId !== undefined && <input type="hidden" name="relatedPersonId" value={submitRelatedPersonId} />}
 
-            {chosen && chosen.relationType !== "none" && (
+            {isGrandparent ? (
               <>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{chosen.question}</div>
-                <select name="relatedPersonId" defaultValue="" required style={inputStyle}>
+                <select value={grandchildId} onChange={(e) => { setGrandchildId(e.target.value); setThroughParentId(""); }} required style={inputStyle}>
                   <option value="" disabled>Odamni tanlang</option>
                   {people.map((p) => (
                     <option key={p.id} value={p.id}>{personLabel(p)}</option>
                   ))}
                 </select>
+
+                {grandchildId && grandchildParents.length === 0 && (
+                  <div style={{ fontSize: 12, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6, lineHeight: 1.5 }}>
+                    Bu odamning hali ota-onasi daraxtga qo'shilmagan. Avval otasini yoki onasini qo'shing, keyin bobo/buvini shu orqali qo'sha olasiz.
+                  </div>
+                )}
+
+                {grandchildId && grandchildParents.length === 1 && (
+                  <div style={{ fontSize: 12, color: TOKENS.ink60 }}>
+                    {personLabel(grandchildParents[0])} orqali qo'shiladi.
+                  </div>
+                )}
+
+                {grandchildId && grandchildParents.length >= 2 && (
+                  <>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>Qaysi tomondan?</div>
+                    <select value={throughParentId} onChange={(e) => setThroughParentId(e.target.value)} required style={inputStyle}>
+                      <option value="" disabled>Ota-onani tanlang</option>
+                      {grandchildParents.map((p) => (
+                        <option key={p.id} value={p.id}>{personLabel(p)} tomonidan</option>
+                      ))}
+                    </select>
+                  </>
+                )}
               </>
+            ) : (
+              chosen && chosen.relationType !== "none" && (
+                <>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{chosen.question}</div>
+                  <select name="relatedPersonId" defaultValue="" required style={inputStyle}>
+                    <option value="" disabled>Odamni tanlang</option>
+                    {people.map((p) => (
+                      <option key={p.id} value={p.id}>{personLabel(p)}</option>
+                    ))}
+                  </select>
+                </>
+              )
             )}
 
             <div style={{ display: "flex", gap: 10 }}>
@@ -1184,7 +1319,11 @@ function AddPersonModal({ familySlug, people, addPersonAction, onClose }) {
               </div>
             )}
 
-            <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
+            <button
+              type="submit"
+              disabled={pending || (isGrandparent && !effectiveThroughParentId)}
+              style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending || (isGrandparent && !effectiveThroughParentId) ? 0.6 : 1 }}
+            >
               {pending ? "Saqlanmoqda..." : "Qo'shish"}
             </button>
           </form>
@@ -1982,7 +2121,7 @@ function PeopleView({
       <>
         <EmptyFamilyTree familyName={familyName} canEdit={canEdit} onAddPerson={() => setShowAddModal(true)} />
         {showAddModal && (
-          <AddPersonModal familySlug={familySlug} people={people} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
+          <AddPersonModal familySlug={familySlug} people={people} relationships={relationships} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
         )}
       </>
     );
@@ -2046,7 +2185,7 @@ function PeopleView({
       )}
 
       {showAddModal && (
-        <AddPersonModal familySlug={familySlug} people={people} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
+        <AddPersonModal familySlug={familySlug} people={people} relationships={relationships} addPersonAction={addPersonAction} onClose={() => setShowAddModal(false)} />
       )}
 
       {showLinkModal && selected && (
@@ -2189,7 +2328,74 @@ function CreateInviteForm({ familySlug, createInviteAction, onCreated }) {
   );
 }
 
-function SettingsView({ familyName, familySince, familySlug, members, invites, isOwner, canInvite, userEmail, updateFamilyNameAction, createInviteAction, revokeInviteAction }) {
+function MemberRow({ member: m, familySlug, userEmail, isOwner, updateMemberRoleAction, removeMemberAction }) {
+  const isMe = m.email === userEmail;
+  const canManage = isOwner && !isMe && m.role !== "owner";
+
+  const [roleState, roleFormAction, rolePending] = useActionState(updateMemberRoleAction, undefined);
+  const [removeState, removeFormAction, removePending] = useActionState(removeMemberAction, undefined);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [role, setRole] = useState(m.role === "owner" ? "member" : m.role);
+
+  if (removeState?.ok) return null;
+
+  return (
+    <div style={{ padding: "10px 0", borderBottom: `1px solid ${TOKENS.parchmentDeep}` }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 500, color: TOKENS.ink, display: "flex", alignItems: "center", gap: 6 }}>
+            {m.name}
+            {isMe && <span style={{ fontSize: 11, color: TOKENS.ink40, fontWeight: 400 }}>(siz)</span>}
+          </div>
+          <div style={{ fontSize: 12, color: TOKENS.ink60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>
+        </div>
+
+        {canManage ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <form action={roleFormAction} onChange={(e) => e.currentTarget.requestSubmit()}>
+              <input type="hidden" name="familySlug" value={familySlug} />
+              <input type="hidden" name="userId" value={m.user_id} />
+              <select
+                name="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                disabled={rolePending}
+                style={{ fontSize: 12, fontWeight: 600, padding: "5px 8px", borderRadius: 7, border: `1px solid ${TOKENS.parchmentDeep}`, background: TOKENS.parchment, color: TOKENS.ink, cursor: rolePending ? "default" : "pointer" }}
+              >
+                <option value="editor">{ROLE_LABELS.editor}</option>
+                <option value="member">{ROLE_LABELS.member}</option>
+                <option value="viewer">{ROLE_LABELS.viewer}</option>
+              </select>
+            </form>
+            {!confirmRemove ? (
+              <button type="button" onClick={() => setConfirmRemove(true)} style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.danger, background: "transparent", border: `1px solid ${TOKENS.danger}`, borderRadius: 7, padding: "6px 10px", cursor: "pointer" }}>
+                Chiqarish
+              </button>
+            ) : (
+              <form action={removeFormAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input type="hidden" name="familySlug" value={familySlug} />
+                <input type="hidden" name="userId" value={m.user_id} />
+                <span style={{ fontSize: 11, color: TOKENS.danger }}>Rostdan?</span>
+                <button type="submit" disabled={removePending} style={{ fontSize: 11.5, fontWeight: 600, color: "#fff", background: TOKENS.danger, border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
+                  Ha
+                </button>
+                <button type="button" onClick={() => setConfirmRemove(false)} style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
+                  Yo'q
+                </button>
+              </form>
+            )}
+          </div>
+        ) : (
+          <RoleBadge role={m.role} />
+        )}
+      </div>
+      {roleState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 4 }}>{roleState.error}</div>}
+      {removeState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 4 }}>{removeState.error}</div>}
+    </div>
+  );
+}
+
+function SettingsView({ familyName, familySince, familySlug, members, invites, isOwner, canInvite, userEmail, updateFamilyNameAction, updateMemberRoleAction, removeMemberAction, createInviteAction, revokeInviteAction }) {
   const router = useRouter();
   return (
     <div className="fm-fade" style={{ padding: "28px clamp(16px, 5vw, 48px) 60px", maxWidth: 720, margin: "0 auto" }}>
@@ -2215,21 +2421,22 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
       <SettingsCard title={`Oila a'zolari (${members.length})`}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {members.map((m) => (
-            <div key={m.user_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${TOKENS.parchmentDeep}` }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 500, color: TOKENS.ink, display: "flex", alignItems: "center", gap: 6 }}>
-                  {m.name}
-                  {m.email === userEmail && <span style={{ fontSize: 11, color: TOKENS.ink40, fontWeight: 400 }}>(siz)</span>}
-                </div>
-                <div style={{ fontSize: 12, color: TOKENS.ink60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>
-              </div>
-              <RoleBadge role={m.role} />
-            </div>
+            <MemberRow
+              key={m.user_id}
+              member={m}
+              familySlug={familySlug}
+              userEmail={userEmail}
+              isOwner={isOwner}
+              updateMemberRoleAction={updateMemberRoleAction}
+              removeMemberAction={removeMemberAction}
+            />
           ))}
         </div>
-        <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 14 }}>
-          Rollarni o'zgartirish hozircha ishlab chiqilmoqda — hozircha faqat taklif qilinganda rol belgilanadi.
-        </div>
+        {!isOwner && (
+          <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 14 }}>
+            A'zolarning rolini faqat oila egasi o'zgartira oladi.
+          </div>
+        )}
       </SettingsCard>
 
       {canInvite && (
@@ -2275,6 +2482,8 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  *   initialView?: string,
  *   onLogout?: any,
  *   updateFamilyNameAction?: any,
+ *   updateMemberRoleAction?: any,
+ *   removeMemberAction?: any,
  *   createInviteAction?: any,
  *   revokeInviteAction?: any,
  *   addPersonAction?: any,
@@ -2312,6 +2521,8 @@ export default function HeirloomApp({
   initialView = "dashboard",
   onLogout,
   updateFamilyNameAction,
+  updateMemberRoleAction,
+  removeMemberAction,
   createInviteAction,
   revokeInviteAction,
   addPersonAction,
@@ -2432,6 +2643,8 @@ export default function HeirloomApp({
                 canInvite={canInvite}
                 userEmail={userEmail}
                 updateFamilyNameAction={updateFamilyNameAction}
+                updateMemberRoleAction={updateMemberRoleAction}
+                removeMemberAction={removeMemberAction}
                 createInviteAction={createInviteAction}
                 revokeInviteAction={revokeInviteAction}
               />
@@ -2445,6 +2658,7 @@ export default function HeirloomApp({
         <AddPersonModal
           familySlug={familySlug}
           people={people}
+          relationships={relationships}
           addPersonAction={addPersonAction}
           onClose={() => setGlobalModal(null)}
         />

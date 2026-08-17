@@ -106,6 +106,24 @@ export async function updateFamilyName(familyId: string, name: string): Promise<
   await sql`UPDATE families SET name = ${name} WHERE id = ${familyId}`;
 }
 
+export async function updateMemberRole(familyId: string, userId: string, role: "editor" | "member" | "viewer"): Promise<void> {
+  await ensureSchema();
+  // Owner roli shu yerdan o'zgartirilmaydi — oila egasi har doim 'owner' bo'lib qoladi.
+  await sql`
+    UPDATE family_memberships SET role = ${role}
+    WHERE family_id = ${familyId} AND user_id = ${userId} AND role != 'owner'
+  `;
+}
+
+export async function removeMember(familyId: string, userId: string): Promise<void> {
+  await ensureSchema();
+  // Owner shu yo'l bilan chiqarib yuborilmaydi.
+  await sql`
+    DELETE FROM family_memberships
+    WHERE family_id = ${familyId} AND user_id = ${userId} AND role != 'owner'
+  `;
+}
+
 export type FamilyInvite = {
   id: string;
   family_id: string;
