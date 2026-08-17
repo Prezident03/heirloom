@@ -2991,6 +2991,7 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  *   members?: any[],
  *   invites?: any[],
  *   timelineEvents?: any[],
+ *   memories?: any[],
  *   activeAlbumId?: string | null,
  *   canEdit?: boolean,
  *   isOwner?: boolean,
@@ -3021,6 +3022,10 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  *   updateTimelineEventAction?: any,
  *   deleteTimelineEventAction?: any,
  *   uploadTimelineEventPhotoAction?: any,
+ *   createMemoryAction?: any,
+ *   updateMemoryAction?: any,
+ *   updateMemoryPhotoAction?: any,
+ *   deleteMemoryAction?: any,
  * }} props
  */
 export default function HeirloomApp({
@@ -3035,6 +3040,7 @@ export default function HeirloomApp({
   members = /** @type {any[]} */ ([]),
   invites = /** @type {any[]} */ ([]),
   timelineEvents = /** @type {any[]} */ ([]),
+  memories = /** @type {any[]} */ ([]),
   activeAlbumId = null,
   canEdit = true,
   isOwner = false,
@@ -3065,6 +3071,10 @@ export default function HeirloomApp({
   updateTimelineEventAction,
   deleteTimelineEventAction,
   uploadTimelineEventPhotoAction,
+  createMemoryAction,
+  updateMemoryAction,
+  updateMemoryPhotoAction,
+  deleteMemoryAction,
 }) {
   const [view, setView] = useState(
     initialView === "tree" ? VIEWS.TREE

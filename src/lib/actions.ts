@@ -54,6 +54,28 @@ import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
 
+async function verifyFamilyAccess(formData: FormData, minRole: "editor" | "owner" = "member") {
+  const session = await getSession();
+  if (!session) return { error: "Avtorizatsiya kerak." };
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  if (!familySlug) return { error: "Oila topilmadi." };
+
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  const roleHierarchy = { viewer: 0, member: 1, editor: 2, owner: 3 };
+  const minRoleLevel = roleHierarchy[minRole as keyof typeof roleHierarchy] || 0;
+  const userRoleLevel = membership ? roleHierarchy[membership.role as keyof typeof roleHierarchy] || 0 : -1;
+
+  if (!membership || userRoleLevel < minRoleLevel) {
+    return { error: "Sizda bu operatsiya uchun ruxsat yo'q." };
+  }
+
+  return { ok: true, session, family, membership };
+}
+
 export async function registerAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim();
@@ -738,8 +760,8 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
 }
 
 export async function createMemoryAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess("editor");
-  if (check.error) return check;
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
 
   const title = String(formData.get("title") || "").trim();
   const description = String(formData.get("description") || "").trim() || null;
@@ -778,8 +800,8 @@ export async function createMemoryAction(formData: FormData): Promise<ActionStat
 }
 
 export async function updateMemoryAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess("editor");
-  if (check.error) return check;
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
 
   const memoryId = String(formData.get("memoryId") || "").trim();
   const title = String(formData.get("title") || "").trim();
@@ -799,8 +821,8 @@ export async function updateMemoryAction(formData: FormData): Promise<ActionStat
 }
 
 export async function updateMemoryPhotoAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess("editor");
-  if (check.error) return check;
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
 
   const memoryId = String(formData.get("memoryId") || "").trim();
   const photoFile = formData.get("photo") as File | null;
@@ -822,8 +844,8 @@ export async function updateMemoryPhotoAction(formData: FormData): Promise<Actio
 }
 
 export async function deleteMemoryAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess("editor");
-  if (check.error) return check;
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
 
   const memoryId = String(formData.get("memoryId") || "").trim();
   if (!memoryId) return { error: "Xotira ID kerak." };
