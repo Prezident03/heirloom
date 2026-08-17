@@ -66,6 +66,22 @@ function GlobalStyle() {
       .fm-person-grid-card { transition: opacity 0.15s ease; }
       .fm-person-grid-card:hover { opacity: 0.8; }
       .fm-person { display: flex; align-items: center; gap: 10px; background: ${TOKENS.card}; border-radius: 30px; padding: 5px 16px 5px 5px; cursor: pointer; box-shadow: 0 2px 6px rgba(30,38,33,0.07); transition: transform 0.18s ease, box-shadow 0.18s ease; max-width: 210px; }
+      .fm-person.fm-person-highlight { animation: fm-highlight-pulse 1.4s ease-out 1; }
+      @keyframes fm-highlight-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(184,134,59,0.55); }
+        70% { box-shadow: 0 0 0 12px rgba(184,134,59,0); }
+        100% { box-shadow: 0 2px 6px rgba(30,38,33,0.07); }
+      }
+      .fm-tree-viewport {
+        background-image: radial-gradient(circle, ${TOKENS.parchmentDeep} 1px, transparent 1px);
+        background-size: 22px 22px;
+        cursor: grab;
+      }
+      .fm-tree-viewport.dragging { cursor: grabbing; }
+      .fm-tree-zoom-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: ${TOKENS.card}; border: 1px solid ${TOKENS.parchmentDeep}; border-radius: 7px; cursor: pointer; color: ${TOKENS.ink}; font-size: 14px; font-weight: 600; user-select: none; }
+      .fm-tree-zoom-btn:hover { background: ${TOKENS.parchment}; }
+      .fm-tree-toolbar-btn { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; background: ${TOKENS.card}; border: 1px solid ${TOKENS.parchmentDeep}; border-radius: 8px; cursor: pointer; color: ${TOKENS.ink}; font-size: 12.5px; font-weight: 600; }
+      .fm-tree-toolbar-btn:hover { background: ${TOKENS.parchment}; }
       .fm-person:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(30,38,33,0.15); }
       .fm-couple { display: flex; align-items: center; gap: 8px; }
       .fm-couple-link { width: 14px; height: 1.5px; background: ${TOKENS.goldSoft}; flex-shrink: 0; }
@@ -496,9 +512,9 @@ function buildFamilyGenerations(people, relationships) {
   return gens;
 }
 
-function PersonNode({ person, onSelect, nodeRef, isMe }) {
+function PersonNode({ person, onSelect, nodeRef, isMe, highlighted }) {
   return (
-    <div ref={nodeRef} onClick={() => onSelect(person)} className="fm-person" style={{ border: isMe ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}` }}>
+    <div ref={nodeRef} data-tree-node="1" onClick={() => onSelect(person)} className={`fm-person ${highlighted ? "fm-person-highlight" : ""}`} style={{ border: isMe ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}` }}>
       <div
         style={{
           width: 44,
@@ -677,6 +693,120 @@ function FamilyTreeView({
   const [photoError, setPhotoError] = useState(null);
   const containerRef = useRef(null);
   const unitRefs = useRef({});
+  const personRefs = useRef({});
+
+  // --- Zoom / pan (Family Tree Canvas) ---
+  const viewportRef = useRef(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragState = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [query, setQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [highlightId, setHighlightId] = useState(null);
+
+  const clampZoom = (z) => Math.min(2, Math.max(0.4, z));
+
+  const zoomBy = useCallback((factor) => {
+    setZoom((z) => clampZoom(Math.round(z * factor * 100) / 100));
+  }, []);
+
+  const resetView = useCallback(() => {
+    if (mePersonId && personRefs.current[mePersonId]) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      centerOnPerson(mePersonId, 1);
+    } else {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mePersonId]);
+
+  // Sichqoncha g'ildiragi bilan zoom qilish, kursor ostidagi nuqta joyida qoladi.
+  const onWheel = useCallback((e) => {
+    e.preventDefault();
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const rect = viewport.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    setZoom((z) => {
+      const newZoom = clampZoom(z * (e.deltaY > 0 ? 0.9 : 1.1));
+      setPan((p) => ({
+        x: cx - (newZoom / z) * (cx - p.x),
+        y: cy - (newZoom / z) * (cy - p.y),
+      }));
+      return newZoom;
+    });
+  }, []);
+
+  const onPointerDown = useCallback((e) => {
+    // Odam kartochkasi bosilganda pan boshlanmasin.
+    if (e.target.closest && e.target.closest("[data-tree-node]")) return;
+    dragState.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y };
+    setIsDragging(true);
+  }, [pan]);
+
+  const onPointerMove = useCallback((e) => {
+    if (!dragState.current) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    setPan({ x: dragState.current.panX + dx, y: dragState.current.panY + dy });
+  }, []);
+
+  const endDrag = useCallback(() => {
+    dragState.current = null;
+    setIsDragging(false);
+  }, []);
+
+  const centerOnPerson = useCallback((personId, targetZoom) => {
+    const node = personRefs.current[personId];
+    const viewport = viewportRef.current;
+    if (!node || !viewport) return;
+    // Ikki karra requestAnimationFrame — zoom o'zgargan bo'lsa, layout
+    // yangilanishini kutib, keyin aniq markazlashtiramiz.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const nodeRect = node.getBoundingClientRect();
+        const vRect = viewport.getBoundingClientRect();
+        const nodeCenterX = nodeRect.left + nodeRect.width / 2 - vRect.left;
+        const nodeCenterY = nodeRect.top + nodeRect.height / 2 - vRect.top;
+        const dx = vRect.width / 2 - nodeCenterX;
+        const dy = vRect.height / 2 - nodeCenterY;
+        setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+      });
+    });
+    setHighlightId(personId);
+    setTimeout(() => setHighlightId((h) => (h === personId ? null : h)), 1500);
+    if (typeof targetZoom === "number") setZoom(clampZoom(targetZoom));
+  }, []);
+
+  const searchMatches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return people
+      .map((p) => ({ id: p.id, name: personLabel(p) }))
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [people, query]);
+
+  const goToPerson = (personId) => {
+    const person = people.find((p) => p.id === personId);
+    if (!person) return;
+    setSelected({
+      id: person.id,
+      name: personLabel(person),
+      years: personYears(person),
+      biography: person.biography,
+      photoUrl: person.profile_photo_url,
+      gender: person.gender,
+      raw: person,
+    });
+    centerOnPerson(personId, 1);
+    setQuery("");
+    setSearchFocused(false);
+  };
 
   const relationToMe = useMemo(() => {
     if (!selected || !mePersonId) return null;
@@ -702,16 +832,20 @@ function FamilyTreeView({
         if (!parentEl || !childEl) return;
         const pRect = parentEl.getBoundingClientRect();
         const cRect2 = childEl.getBoundingClientRect();
-        const x1 = pRect.left + pRect.width / 2 - cRect.left;
-        const y1 = pRect.bottom - cRect.top;
-        const x2 = cRect2.left + cRect2.width / 2 - cRect.left;
-        const y2 = cRect2.top - cRect.top;
+        // getBoundingClientRect transform (zoom) qo'llangandan keyingi ekran
+        // piksellarini qaytaradi — SVG konteyner ham xuddi shu transformga
+        // ega bo'lgani uchun, path koordinatalarini "zoom"ga bo'lib,
+        // transformdan oldingi (local) fazoga qaytarish kerak.
+        const x1 = (pRect.left + pRect.width / 2 - cRect.left) / zoom;
+        const y1 = (pRect.bottom - cRect.top) / zoom;
+        const x2 = (cRect2.left + cRect2.width / 2 - cRect.left) / zoom;
+        const y2 = (cRect2.top - cRect.top) / zoom;
         const ym = y1 + (y2 - y1) / 2;
         newPaths.push(`M ${x1} ${y1} L ${x1} ${ym} L ${x2} ${ym} L ${x2} ${y2}`);
       });
     });
     setPaths(newPaths);
-  }, [generations]);
+  }, [generations, zoom]);
 
   useLayoutEffect(() => {
     measure();
@@ -719,6 +853,15 @@ function FamilyTreeView({
     const t = setTimeout(measure, 200);
     return () => { window.removeEventListener("resize", measure); clearTimeout(t); };
   }, [measure]);
+
+  // Birinchi ochilganda "men" tugunini markazga keltiramiz (agar bo'lsa).
+  useEffect(() => {
+    if (mePersonId && personRefs.current[mePersonId]) {
+      const t = setTimeout(() => centerOnPerson(mePersonId), 260);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generations.length > 0]);
 
   if (people.length === 0) {
     return (
@@ -736,8 +879,8 @@ function FamilyTreeView({
 
   return (
     <div className="fm-fade" style={{ display: "flex", height: "100%", flexWrap: "wrap" }}>
-      <div style={{ flex: 1, padding: "36px 20px 60px", overflow: "auto" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", maxWidth: 900, margin: "0 auto 30px" }}>
+      <div style={{ flex: 1, padding: "24px 20px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Avlodlar</div>
             <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>{familyName}</h1>
@@ -750,27 +893,95 @@ function FamilyTreeView({
           )}
         </div>
 
-        <div ref={containerRef} style={{ position: "relative", maxWidth: 900, margin: "0 auto" }}>
-          <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
-            {paths.map((d, i) => <path key={i} d={d} stroke={TOKENS.parchmentDeep} strokeWidth="2" fill="none" />)}
-          </svg>
-          {generations.map((gen) => (
-            <div key={gen.genLabel} style={{ marginBottom: 56, position: "relative" }}>
-              <div style={{ fontSize: 10.5, letterSpacing: "0.12em", color: TOKENS.ink40, textTransform: "uppercase", textAlign: "center", marginBottom: 18 }}>{gen.genLabel}</div>
-              <div style={{ display: "flex", justifyContent: "center", gap: 48, flexWrap: "wrap" }}>
-                {gen.units.map((unit) => (
-                  <div key={unit.id} ref={(el) => (unitRefs.current[unit.id] = el)} className="fm-couple">
-                    {unit.people.map((person, i) => (
-                      <React.Fragment key={person.id}>
-                        {i > 0 && <div className="fm-couple-link" />}
-                        <PersonNode person={person} onSelect={setSelected} isMe={person.id === mePersonId} />
-                      </React.Fragment>
-                    ))}
+        {/* Canvas boshqaruvi: zoom, markazga qaytarish, qidiruv */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button type="button" className="fm-tree-zoom-btn" onClick={() => zoomBy(0.9)} title="Kichiklashtirish">−</button>
+            <div style={{ width: 46, textAlign: "center", fontSize: 12, fontWeight: 600, color: TOKENS.ink60 }}>{Math.round(zoom * 100)}%</div>
+            <button type="button" className="fm-tree-zoom-btn" onClick={() => zoomBy(1.1)} title="Kattalashtirish">+</button>
+          </div>
+          <button type="button" className="fm-tree-toolbar-btn" onClick={resetView} title="Markazga qaytarish">
+            ⛶ Markazga
+          </button>
+          <div style={{ position: "relative", flex: "0 1 220px", minWidth: 160 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "0 10px", height: 32 }}>
+              <Search size={13} color={TOKENS.ink40} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
+                placeholder="Odamni qidirish..."
+                style={{ border: "none", outline: "none", background: "transparent", fontSize: 12.5, width: "100%", color: TOKENS.ink, fontFamily: "Inter, sans-serif" }}
+              />
+            </div>
+            {searchFocused && searchMatches.length > 0 && (
+              <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, boxShadow: "0 10px 24px rgba(30,38,33,0.14)", zIndex: 10, overflow: "hidden" }}>
+                {searchMatches.map((m) => (
+                  <div
+                    key={m.id}
+                    onMouseDown={() => goToPerson(m.id)}
+                    style={{ padding: "9px 12px", fontSize: 12.5, cursor: "pointer", color: TOKENS.ink }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = TOKENS.parchment)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    {m.name}
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+
+        <div
+          ref={viewportRef}
+          className={`fm-tree-viewport ${isDragging ? "dragging" : ""}`}
+          style={{ flex: 1, position: "relative", overflow: "hidden", borderRadius: 14, border: `1px solid ${TOKENS.parchmentDeep}`, minHeight: 420 }}
+          onWheel={onWheel}
+          onMouseDown={onPointerDown}
+          onMouseMove={onPointerMove}
+          onMouseUp={endDrag}
+          onMouseLeave={endDrag}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: "0 0",
+              padding: "40px 60px 60px",
+            }}
+          >
+            <div ref={containerRef} style={{ position: "relative", width: 900 }}>
+              <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}>
+                {paths.map((d, i) => <path key={i} d={d} stroke={TOKENS.parchmentDeep} strokeWidth="2" fill="none" />)}
+              </svg>
+              {generations.map((gen) => (
+                <div key={gen.genLabel} style={{ marginBottom: 56, position: "relative" }}>
+                  <div style={{ fontSize: 10.5, letterSpacing: "0.12em", color: TOKENS.ink40, textTransform: "uppercase", textAlign: "center", marginBottom: 18 }}>{gen.genLabel}</div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 48, flexWrap: "wrap" }}>
+                    {gen.units.map((unit) => (
+                      <div key={unit.id} ref={(el) => (unitRefs.current[unit.id] = el)} className="fm-couple">
+                        {unit.people.map((person, i) => (
+                          <React.Fragment key={person.id}>
+                            {i > 0 && <div className="fm-couple-link" />}
+                            <PersonNode
+                              person={person}
+                              onSelect={setSelected}
+                              isMe={person.id === mePersonId}
+                              highlighted={person.id === highlightId}
+                              nodeRef={(el) => (personRefs.current[person.id] = el)}
+                            />
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
