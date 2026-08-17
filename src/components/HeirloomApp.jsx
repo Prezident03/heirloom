@@ -3180,6 +3180,7 @@ export default function HeirloomApp({
                 canEdit={canEdit}
                 createMemoryAction={createMemoryAction}
                 updateMemoryAction={updateMemoryAction}
+                updateMemoryPhotoAction={updateMemoryPhotoAction}
                 deleteMemoryAction={deleteMemoryAction}
               />
             )}
