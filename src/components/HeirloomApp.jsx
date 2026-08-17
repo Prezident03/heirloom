@@ -3241,6 +3241,69 @@ export default function HeirloomApp({
   );
 }
 
+function MemoriesView({ memories, people, canEdit, createMemoryAction, deleteMemoryAction }) {
+  const [showForm, setShowForm] = useState(false);
+  const [formState, formAction] = useActionState(createMemoryAction, undefined);
+  const [selectedMemory, setSelectedMemory] = useState(null);
+
+  const memoriesByDate = useMemo(() => {
+    const sorted = [...memories].sort((a, b) => {
+      if (!a.memory_date && !b.memory_date) return new Date(b.created_at) - new Date(a.created_at);
+      if (!a.memory_date) return 1;
+      if (!b.memory_date) return -1;
+      return new Date(b.memory_date) - new Date(a.memory_date);
+    });
+    return sorted;
+  }, [memories]);
+
+  return (
+    <div style={{ display: "flex", height: "100%", gap: 20, padding: "20px 24px" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: TOKENS.ink, margin: 0 }}>Xotiralar</h1>
+          {canEdit && <button onClick={() => setShowForm(!showForm)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}><Plus size={16} /> Yangi</button>}
+        </div>
+        {showForm && canEdit && (
+          <form action={formAction} style={{ background: TOKENS.card, padding: 16, borderRadius: 12, gap: 12, display: "flex", flexDirection: "column" }}>
+            <input type="text" name="title" placeholder="Nomi" required style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <textarea name="description" placeholder="Tavsif" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13, minHeight: 60, fontFamily: "inherit" }} />
+            <input type="date" name="memoryDate" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <input type="file" name="photo" accept="image/*" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <button type="submit" style={{ padding: "10px 16px", borderRadius: 6, background: TOKENS.teal, color: TOKENS.parchment, border: "none", cursor: "pointer", fontWeight: 600 }}>Saqlash</button>
+          </form>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12, flex: 1, overflowY: "auto" }}>
+          {memoriesByDate.length === 0 ? (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", color: TOKENS.ink60, padding: "40px" }}>Xotiralar qo'shilmagan</div>
+          ) : (
+            memoriesByDate.map(m => (
+              <div key={m.id} onClick={() => setSelectedMemory(m)} style={{ background: TOKENS.card, borderRadius: 8, overflow: "hidden", cursor: "pointer", boxShadow: `0 2px 8px rgba(30,38,33,0.08)` }}>
+                {m.photo_url && <img src={m.photo_url} alt="" style={{ width: "100%", height: 120, objectFit: "cover" }} />}
+                <div style={{ padding: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: TOKENS.ink }}>{m.title}</div>
+                  {m.memory_date && <div style={{ fontSize: 10, color: TOKENS.teal }}>📅 {new Date(m.memory_date).toLocaleDateString()}</div>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      {selectedMemory && (
+        <div style={{ width: 300, background: TOKENS.card, borderRadius: 8, padding: 14, display: "flex", flexDirection: "column", gap: 12, maxHeight: "100%", overflowY: "auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: TOKENS.ink, margin: 0 }}>{selectedMemory.title}</h2>
+            <button onClick={() => setSelectedMemory(null)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={16} /></button>
+          </div>
+          {selectedMemory.photo_url && <img src={selectedMemory.photo_url} alt="" style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 6 }} />}
+          {selectedMemory.memory_date && <div style={{ fontSize: 12, color: TOKENS.teal }}>📅 {new Date(selectedMemory.memory_date).toLocaleDateString()}</div>}
+          {selectedMemory.description && <div style={{ fontSize: 12, color: TOKENS.ink60, lineHeight: 1.5 }}>{selectedMemory.description}</div>}
+          {canEdit && <button onClick={() => { deleteMemoryAction(new FormData()); setSelectedMemory(null); }} style={{ padding: "8px 12px", borderRadius: 6, background: TOKENS.danger, color: TOKENS.parchment, border: "none", cursor: "pointer", fontSize: 12 }}>O'chirish</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MemoriesView({ memories, people, canEdit, createMemoryAction, updateMemoryAction, deleteMemoryAction }) {
   const [showForm, setShowForm] = useState(false);
   const [formState, formAction] = useActionState(createMemoryAction, undefined);
@@ -6570,6 +6633,69 @@ export default function HeirloomApp({
           createTimelineEventAction={createTimelineEventAction}
           onClose={() => setGlobalModal(null)}
         />
+      )}
+    </div>
+  );
+}
+
+function MemoriesView({ memories, people, canEdit, createMemoryAction, deleteMemoryAction }) {
+  const [showForm, setShowForm] = useState(false);
+  const [formState, formAction] = useActionState(createMemoryAction, undefined);
+  const [selectedMemory, setSelectedMemory] = useState(null);
+
+  const memoriesByDate = useMemo(() => {
+    const sorted = [...memories].sort((a, b) => {
+      if (!a.memory_date && !b.memory_date) return new Date(b.created_at) - new Date(a.created_at);
+      if (!a.memory_date) return 1;
+      if (!b.memory_date) return -1;
+      return new Date(b.memory_date) - new Date(a.memory_date);
+    });
+    return sorted;
+  }, [memories]);
+
+  return (
+    <div style={{ display: "flex", height: "100%", gap: 20, padding: "20px 24px" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: TOKENS.ink, margin: 0 }}>Xotiralar</h1>
+          {canEdit && <button onClick={() => setShowForm(!showForm)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}><Plus size={16} /> Yangi</button>}
+        </div>
+        {showForm && canEdit && (
+          <form action={formAction} style={{ background: TOKENS.card, padding: 16, borderRadius: 12, gap: 12, display: "flex", flexDirection: "column" }}>
+            <input type="text" name="title" placeholder="Nomi" required style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <textarea name="description" placeholder="Tavsif" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13, minHeight: 60, fontFamily: "inherit" }} />
+            <input type="date" name="memoryDate" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <input type="file" name="photo" accept="image/*" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <button type="submit" style={{ padding: "10px 16px", borderRadius: 6, background: TOKENS.teal, color: TOKENS.parchment, border: "none", cursor: "pointer", fontWeight: 600 }}>Saqlash</button>
+          </form>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12, flex: 1, overflowY: "auto" }}>
+          {memoriesByDate.length === 0 ? (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", color: TOKENS.ink60, padding: "40px" }}>Xotiralar qo'shilmagan</div>
+          ) : (
+            memoriesByDate.map(m => (
+              <div key={m.id} onClick={() => setSelectedMemory(m)} style={{ background: TOKENS.card, borderRadius: 8, overflow: "hidden", cursor: "pointer", boxShadow: `0 2px 8px rgba(30,38,33,0.08)` }}>
+                {m.photo_url && <img src={m.photo_url} alt="" style={{ width: "100%", height: 120, objectFit: "cover" }} />}
+                <div style={{ padding: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: TOKENS.ink }}>{m.title}</div>
+                  {m.memory_date && <div style={{ fontSize: 10, color: TOKENS.teal }}>📅 {new Date(m.memory_date).toLocaleDateString()}</div>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      {selectedMemory && (
+        <div style={{ width: 300, background: TOKENS.card, borderRadius: 8, padding: 14, display: "flex", flexDirection: "column", gap: 12, maxHeight: "100%", overflowY: "auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: TOKENS.ink, margin: 0 }}>{selectedMemory.title}</h2>
+            <button onClick={() => setSelectedMemory(null)} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={16} /></button>
+          </div>
+          {selectedMemory.photo_url && <img src={selectedMemory.photo_url} alt="" style={{ width: "100%", height: 150, objectFit: "cover", borderRadius: 6 }} />}
+          {selectedMemory.memory_date && <div style={{ fontSize: 12, color: TOKENS.teal }}>📅 {new Date(selectedMemory.memory_date).toLocaleDateString()}</div>}
+          {selectedMemory.description && <div style={{ fontSize: 12, color: TOKENS.ink60, lineHeight: 1.5 }}>{selectedMemory.description}</div>}
+          {canEdit && <button onClick={() => { deleteMemoryAction(new FormData()); setSelectedMemory(null); }} style={{ padding: "8px 12px", borderRadius: 6, background: TOKENS.danger, color: TOKENS.parchment, border: "none", cursor: "pointer", fontSize: 12 }}>O'chirish</button>}
+        </div>
       )}
     </div>
   );
