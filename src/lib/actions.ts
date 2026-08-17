@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { findUserByEmail, createUser } from "@/lib/user";
 import { verifyPassword } from "@/lib/password";
 import { createSession, destroySession, getSession } from "@/lib/session";
-import { createFamily, getFamiliesForUser, getFamilyBySlug, getMembership } from "@/lib/family";
+import { createFamily, getFamiliesForUser, getFamilyBySlug, getMembership, updateFamilyName } from "@/lib/family";
 import {
   createPerson,
   createRelationship,
@@ -101,6 +101,26 @@ export async function createFamilyAction(_prevState: ActionState, formData: Form
 export async function logoutAction() {
   await destroySession();
   redirect("/login");
+}
+
+export async function updateFamilyNameAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const family = await getFamilyBySlug(familySlug);
+  if (!family) return { error: "Oila topilmadi." };
+
+  const membership = await getMembership(family.id, session.id);
+  if (!membership || membership.role !== "owner") {
+    return { error: "Faqat oila egasi nomini o'zgartira oladi." };
+  }
+
+  const name = String(formData.get("name") || "").trim();
+  if (!name) return { error: "Oila nomini kiriting." };
+
+  await updateFamilyName(family.id, name);
+  return { ok: true };
 }
 
 export async function addPersonAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {

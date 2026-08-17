@@ -80,3 +80,28 @@ export async function getMembership(familyId: string, userId: string): Promise<M
   `) as Membership[];
   return rows[0] ?? null;
 }
+
+export type FamilyMember = {
+  user_id: string;
+  name: string;
+  email: string;
+  role: "owner" | "editor" | "member" | "viewer";
+  joined_at: string;
+};
+
+export async function getMembersForFamily(familyId: string): Promise<FamilyMember[]> {
+  await ensureSchema();
+  const rows = (await sql`
+    SELECT u.id AS user_id, u.name, u.email, m.role, m.joined_at
+    FROM family_memberships m
+    JOIN users u ON u.id = m.user_id
+    WHERE m.family_id = ${familyId}
+    ORDER BY (m.role = 'owner') DESC, m.joined_at ASC
+  `) as FamilyMember[];
+  return rows;
+}
+
+export async function updateFamilyName(familyId: string, name: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE families SET name = ${name} WHERE id = ${familyId}`;
+}

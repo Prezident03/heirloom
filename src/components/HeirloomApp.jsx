@@ -13,6 +13,7 @@ const VIEWS = {
   ALBUMS: "albums",
   TREE: "tree",
   PEOPLE: "people",
+  SETTINGS: "settings",
 };
 
 // Faqat haqiqatan ishlaydigan bo'limlar sidebar'da ko'rsatiladi. Timeline,
@@ -130,7 +131,10 @@ function Sidebar({ current, onNavigate, onLogout }) {
         ))}
       </nav>
       <div style={{ marginTop: "auto", paddingTop: 20, borderTop: "1px solid rgba(242,237,226,0.1)" }}>
-        <div className="fm-nav-item">
+        <div
+          className={`fm-nav-item ${current === VIEWS.SETTINGS ? "active" : ""}`}
+          onClick={() => onNavigate(VIEWS.SETTINGS)}
+        >
           <Settings size={16} /> Sozlamalar
         </div>
         <div className="fm-nav-item" onClick={onLogout}>
@@ -1768,22 +1772,122 @@ function PeopleView({
   );
 }
 
+/* ---------------- Settings (Sozlamalar) ---------------- */
+
+const ROLE_LABELS = {
+  owner: "Egasi",
+  editor: "Muharrir",
+  member: "A'zo",
+  viewer: "Kuzatuvchi",
+};
+
+function RoleBadge({ role }) {
+  const isOwner = role === "owner";
+  return (
+    <span
+      style={{
+        fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 20,
+        background: isOwner ? "rgba(184,134,59,0.16)" : TOKENS.parchment,
+        color: isOwner ? TOKENS.gold : TOKENS.ink60,
+        border: isOwner ? "none" : `1px solid ${TOKENS.parchmentDeep}`,
+      }}
+    >
+      {ROLE_LABELS[role] || role}
+    </span>
+  );
+}
+
+function FamilyNameForm({ familySlug, familyName, updateFamilyNameAction }) {
+  const [state, formAction, pending] = useActionState(updateFamilyNameAction, undefined);
+  return (
+    <form action={formAction} style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+      <input type="hidden" name="familySlug" value={familySlug} />
+      <div style={{ flex: "1 1 220px", minWidth: 180 }}>
+        <input name="name" defaultValue={familyName} required style={inputStyle} />
+        {state?.error && <div style={{ fontSize: 12, color: TOKENS.danger, marginTop: 6 }}>{state.error}</div>}
+        {state?.ok && <div style={{ fontSize: 12, color: TOKENS.teal, marginTop: 6 }}>Saqlandi. O'zgarish sahifani yangilaganda hamma joyda ko'rinadi.</div>}
+      </div>
+      <button type="submit" disabled={pending} style={{ background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "11px 20px", fontSize: 13, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1, flexShrink: 0 }}>
+        {pending ? "Saqlanmoqda..." : "Saqlash"}
+      </button>
+    </form>
+  );
+}
+
+function SettingsCard({ title, children }) {
+  return (
+    <div style={{ background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 14, padding: "22px 24px", marginBottom: 20 }}>
+      <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 17, fontWeight: 500, margin: "0 0 16px" }}>{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function SettingsView({ familyName, familySince, familySlug, members, isOwner, userEmail, updateFamilyNameAction }) {
+  return (
+    <div className="fm-fade" style={{ padding: "28px clamp(16px, 5vw, 48px) 60px", maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ marginBottom: 26 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Boshqaruv</div>
+        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>Sozlamalar</h1>
+      </div>
+
+      <SettingsCard title="Oila ma'lumotlari">
+        {isOwner ? (
+          <FamilyNameForm familySlug={familySlug} familyName={familyName} updateFamilyNameAction={updateFamilyNameAction} />
+        ) : (
+          <div style={{ fontSize: 14, color: TOKENS.ink }}>{familyName}</div>
+        )}
+        <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 12 }}>
+          {familySince ? `${familySince}-yildan buyon` : ""} · manzil: <span style={{ fontFamily: "monospace" }}>/{familySlug}</span>
+        </div>
+        {!isOwner && (
+          <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 8 }}>Oila nomini faqat egasi o'zgartira oladi.</div>
+        )}
+      </SettingsCard>
+
+      <SettingsCard title={`Oila a'zolari (${members.length})`}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {members.map((m) => (
+            <div key={m.user_id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${TOKENS.parchmentDeep}` }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 500, color: TOKENS.ink, display: "flex", alignItems: "center", gap: 6 }}>
+                  {m.name}
+                  {m.email === userEmail && <span style={{ fontSize: 11, color: TOKENS.ink40, fontWeight: 400 }}>(siz)</span>}
+                </div>
+                <div style={{ fontSize: 12, color: TOKENS.ink60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>
+              </div>
+              <RoleBadge role={m.role} />
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 14 }}>
+          Yangi a'zoni taklif qilish va rollarni o'zgartirish hozircha ishlab chiqilmoqda.
+        </div>
+      </SettingsCard>
+    </div>
+  );
+}
+
 /* ---------------- Root app ---------------- */
 
 /**
  * @param {{
  *   userName?: string,
+ *   userEmail?: string,
  *   familyName?: string,
  *   familySince?: number | null,
  *   familySlug?: string,
  *   people?: any[],
  *   relationships?: any[],
  *   albums?: any[],
+ *   members?: any[],
  *   activeAlbumId?: string | null,
  *   canEdit?: boolean,
+ *   isOwner?: boolean,
  *   mePersonId?: string | null,
  *   initialView?: string,
  *   onLogout?: any,
+ *   updateFamilyNameAction?: any,
  *   addPersonAction?: any,
  *   linkPersonAction?: any,
  *   editPersonAction?: any,
@@ -1801,17 +1905,21 @@ function PeopleView({
  */
 export default function HeirloomApp({
   userName = "Foydalanuvchi",
+  userEmail = "",
   familyName = "Mening oilam",
   familySince = null,
   familySlug = "",
   people = /** @type {any[]} */ ([]),
   relationships = /** @type {any[]} */ ([]),
   albums = /** @type {any[]} */ ([]),
+  members = /** @type {any[]} */ ([]),
   activeAlbumId = null,
   canEdit = true,
+  isOwner = false,
   mePersonId = null,
   initialView = "dashboard",
   onLogout,
+  updateFamilyNameAction,
   addPersonAction,
   linkPersonAction,
   editPersonAction,
@@ -1827,7 +1935,11 @@ export default function HeirloomApp({
   uploadElementPhotoAction,
 }) {
   const [view, setView] = useState(
-    initialView === "tree" ? VIEWS.TREE : initialView === "albums" ? VIEWS.ALBUMS : initialView === "people" ? VIEWS.PEOPLE : VIEWS.DASHBOARD
+    initialView === "tree" ? VIEWS.TREE
+      : initialView === "albums" ? VIEWS.ALBUMS
+      : initialView === "people" ? VIEWS.PEOPLE
+      : initialView === "settings" ? VIEWS.SETTINGS
+      : VIEWS.DASHBOARD
   );
   const [openAlbumId, setOpenAlbumId] = useState(null);
   // Dashboard'dagi "+ Yangi" menyusi qaysi view'da bo'lishidan qat'i nazar
@@ -1911,6 +2023,17 @@ export default function HeirloomApp({
                 editPersonAction={editPersonAction}
                 deletePersonAction={deletePersonAction}
                 uploadPersonPhotoAction={uploadPersonPhotoAction}
+              />
+            )}
+            {view === VIEWS.SETTINGS && (
+              <SettingsView
+                familyName={familyName}
+                familySince={familySince}
+                familySlug={familySlug}
+                members={members}
+                isOwner={isOwner}
+                userEmail={userEmail}
+                updateFamilyNameAction={updateFamilyNameAction}
               />
             )}
           </main>
