@@ -620,10 +620,6 @@ function PersonDetailPanel({
 
   return (
     <div className="fm-panel-enter" style={{ width: "min(320px, 100%)", flex: "1 1 320px", flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto", maxHeight: "100%" }}>
-=======
-  return (
-    <div className="fm-panel-enter" style={{ width: "min(300px, 100%)", flex: "1 1 300px", flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto", maxHeight: "100%" }}>
->>>>>>> 36961ec62f1b0f41d01a4e42d7cd62425763b1db
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4 }}><X size={18} /></button>
       </div>
