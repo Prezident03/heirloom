@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client";
 
 import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback, useActionState } from "react";
