@@ -24,6 +24,7 @@ import {
   updatePageMetaAction,
   updateElementTextAction,
   uploadElementPhotoAction,
+  bulkUploadPhotosAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -105,6 +106,7 @@ export default async function FamilyDashboardPage({
       updatePageMetaAction={updatePageMetaAction}
       updateElementTextAction={updateElementTextAction}
       uploadElementPhotoAction={uploadElementPhotoAction}
+      bulkUploadPhotosAction={bulkUploadPhotosAction}
     />
   );
 }

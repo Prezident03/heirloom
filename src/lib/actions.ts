@@ -32,6 +32,8 @@ import {
   deleteAlbum,
   setAlbumCover,
   getAlbumById,
+  getPagesForAlbum,
+  getElementsForPages,
   type LayoutId,
 } from "@/lib/albums";
 import { put } from "@vercel/blob";
@@ -523,6 +525,70 @@ export async function uploadElementPhotoAction(_prevState: ActionState, formData
     }
   } catch {
     return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
+  }
+
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+/**
+ * "+ Yangi" menyusidagi "Rasmlar yuklash" oqimi. Bir yoki bir nechta rasmni,
+ * mavjud albomga (yoki tezkor ravishda yaratilgan yangi albomga) tezda
+ * qo'shadi — har bir rasm uchun avtomatik "bitta katta" (l1) sahifa ochiladi,
+ * to'liq scrapbook-editorni ochmasdan. Foydalanuvchi keyinroq shu sahifalarni
+ * albom ichida oddiy tahrirlash bilan davom ettirishi mumkin.
+ */
+export async function bulkUploadPhotosAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const files = (formData.getAll("photos") as File[]).filter((f) => f && f.size > 0);
+  if (files.length === 0) return { error: "Kamida bitta rasm tanlang." };
+  for (const file of files) {
+    if (!file.type.startsWith("image/")) return { error: "Faqat rasm fayllari qabul qilinadi." };
+    if (file.size > 8 * 1024 * 1024) return { error: "Har bir rasm 8MB dan oshmasligi kerak." };
+  }
+
+  let albumId = String(formData.get("albumId") || "").trim();
+  const newAlbumTitle = String(formData.get("newAlbumTitle") || "").trim();
+  let reuseFirstPageId: string | null = null;
+
+  if (!albumId) {
+    if (!newAlbumTitle) return { error: "Albom tanlang yoki yangi albom nomini kiriting." };
+    const newAlbum = await createAlbum(check.family.id, check.session.id, { title: newAlbumTitle });
+    albumId = newAlbum.id;
+    // createAlbum ichida avtomatik yaratilgan bo'sh birinchi sahifadan
+    // birinchi yuklangan rasm uchun foydalanamiz — ortiqcha bo'sh sahifa qolmasin.
+    const pages = await getPagesForAlbum(albumId);
+    reuseFirstPageId = pages[0]?.id ?? null;
+  }
+
+  const album = await getAlbumById(albumId, check.family.id);
+  if (!album) return { error: "Albom topilmadi." };
+
+  let isFirstUpload = true;
+  for (const file of files) {
+    const pageId = reuseFirstPageId && isFirstUpload ? reuseFirstPageId : (await createAlbumPage(albumId, "l1")).id;
+    isFirstUpload = false;
+
+    const elements = await getElementsForPages([pageId]);
+    const photoEl = elements.find((e) => e.type === "photo");
+    if (!photoEl) continue;
+
+    try {
+      const blob = await put(`albums/${albumId}/${photoEl.id}-${Date.now()}`, file, {
+        access: "public",
+        addRandomSuffix: true,
+      });
+      await updateElementPhoto(photoEl.id, blob.url);
+
+      const currentAlbum = await getAlbumById(albumId, check.family.id);
+      if (currentAlbum && !currentAlbum.cover_url) {
+        await setAlbumCover(albumId, blob.url);
+      }
+    } catch {
+      return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
+    }
   }
 
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
