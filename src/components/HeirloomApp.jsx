@@ -3352,12 +3352,6 @@ function MemoriesView({ memories, people, canEdit, createMemoryAction, updateMem
     </div>
   );
 }
-  Home, BookImage, TreePine, Search, Plus, X,
-  ChevronRight, ChevronLeft, ChevronDown, Calendar, MapPinned, LayoutGrid, Settings, LogOut, Camera, UserPlus, Users,
-  ImagePlus, History, CalendarPlus, Link2, Trash2,
-} from "lucide-react";
-import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
-import { relationLabelBetween } from "@/lib/relationshipLabels";
 
 const VIEWS = {
   DASHBOARD: "dashboard",
