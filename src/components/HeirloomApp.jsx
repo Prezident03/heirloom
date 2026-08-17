@@ -3353,15 +3353,6 @@ function MemoriesView({ memories, people, canEdit, createMemoryAction, updateMem
     </div>
   );
 }
-    </div>
-  );
-}
-=======
-"use client";
-
-import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback, useActionState } from "react";
-import { useRouter } from "next/navigation";
-import {
   Home, BookImage, TreePine, Search, Plus, X,
   ChevronRight, ChevronLeft, ChevronDown, Calendar, MapPinned, LayoutGrid, Settings, LogOut, Camera, UserPlus, Users,
   ImagePlus, History, CalendarPlus, Link2, Trash2,
