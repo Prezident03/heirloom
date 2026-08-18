@@ -29,6 +29,7 @@ const NAV_CONFIG = [
   { id: VIEWS.PEOPLE, icon: Users, label: "Odamlar" },
   { id: VIEWS.TIMELINE, icon: History, label: "Vaqt chizig'i" },
   { id: VIEWS.MEMORIES, icon: BookImage, label: "Xotiralar" },
+  { id: VIEWS.STORIES, icon: BookImage, label: "Hikoyalar" },
 ];
 
 /* ---------------- shared bits ---------------- */
@@ -3283,6 +3284,15 @@ export default function HeirloomApp({
                 updateMemoryAction={updateMemoryAction}
                 updateMemoryPhotoAction={updateMemoryPhotoAction}
                 deleteMemoryAction={deleteMemoryAction}
+              />
+            )}
+            {view === VIEWS.STORIES && (
+              <StoriesView
+                stories={stories}
+                people={people}
+                canEdit={canEdit}
+                createStoryAction={createStoryAction}
+                deleteStoryAction={deleteStoryAction}
               />
             )}
             {view === VIEWS.SETTINGS && (
