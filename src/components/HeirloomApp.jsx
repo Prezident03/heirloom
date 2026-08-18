@@ -3132,6 +3132,7 @@ export default function HeirloomApp({
   invites = /** @type {any[]} */ ([]),
   timelineEvents = /** @type {any[]} */ ([]),
   memories = /** @type {any[]} */ ([]),
+  stories = /** @type {any[]} */ ([]),
   activeAlbumId = null,
   canEdit = true,
   isOwner = false,
@@ -3167,6 +3168,10 @@ export default function HeirloomApp({
   updateMemoryAction,
   updateMemoryPhotoAction,
   deleteMemoryAction,
+  createStoryAction,
+  updateStoryAction,
+  updateStoryPhotoAction,
+  deleteStoryAction,
 }) {
   const [view, setView] = useState(
     initialView === "tree" ? VIEWS.TREE
@@ -3292,6 +3297,8 @@ export default function HeirloomApp({
                 people={people}
                 canEdit={canEdit}
                 createStoryAction={createStoryAction}
+                updateStoryAction={updateStoryAction}
+                updateStoryPhotoAction={updateStoryPhotoAction}
                 deleteStoryAction={deleteStoryAction}
               />
             )}
