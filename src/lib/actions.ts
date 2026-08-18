@@ -36,6 +36,10 @@ import {
   getAlbumById,
   getPagesForAlbum,
   getElementsForPages,
+  deleteElement,
+  reorderPageElements,
+  moveElementUp,
+  moveElementDown,
   type LayoutId,
 } from "@/lib/albums";
 import {
@@ -855,5 +859,82 @@ export async function deleteMemoryAction(formData: FormData): Promise<ActionStat
     return { ok: true };
   } catch (e) {
     return { error: "Xotira o'chirishda xato: " + String(e) };
+  }
+}
+
+/* ============ Album Editor — Element Management ============ */
+
+export async function deleteElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const albumId = String(formData.get("albumId") || "").trim();
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+
+  try {
+    await deleteElement(elementId, pageId);
+    return { ok: true };
+  } catch {
+    return { error: "Element o'chirishda xato yuz berdi." };
+  }
+}
+
+export async function reorderElementsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const pageId = String(formData.get("pageId") || "").trim();
+  const albumId = String(formData.get("albumId") || "").trim();
+  const elementIdsRaw = String(formData.get("elementIds") || "");
+
+  if (!pageId || !elementIdsRaw) return { error: "Page ID va element IDlari kerak." };
+
+  try {
+    const elementIds = elementIdsRaw.split(",").filter(Boolean);
+    await reorderPageElements(pageId, elementIds);
+    return { ok: true };
+  } catch {
+    return { error: "Elementlarni qayta tartiblashda xato yuz berdi." };
+  }
+}
+
+export async function moveElementUpAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+
+  try {
+    await moveElementUp(elementId, pageId);
+    return { ok: true };
+  } catch {
+    return { error: "Element ko'chirishda xato yuz berdi." };
+  }
+}
+
+export async function moveElementDownAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+
+  try {
+    await moveElementDown(elementId, pageId);
+    return { ok: true };
+  } catch {
+    return { error: "Element ko'chirishda xato yuz berdi." };
   }
 }

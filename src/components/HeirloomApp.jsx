@@ -1818,8 +1818,9 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
 
 /* ---------------- Page canvas (real elementlar bilan) ---------------- */
 
-function PhotoSlot({ element, familySlug, albumId, uploadElementPhotoAction, canEdit, style, onDragStart, isDragging }) {
+function PhotoSlot({ element, familySlug, albumId, pageId, uploadElementPhotoAction, deleteElementAction, canEdit, style, onDragStart, isDragging }) {
   const [state, formAction, pending] = useActionState(uploadElementPhotoAction, undefined);
+  const [deleteState, deleteFormAction, deletePending] = useActionState(deleteElementAction, undefined);
   const inputRef = useRef(null);
 
   return (
@@ -1842,44 +1843,56 @@ function PhotoSlot({ element, familySlug, albumId, uploadElementPhotoAction, can
       >
         {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
         {canEdit && (
-          <form action={formAction} style={{ position: "absolute", inset: 0 }}>
-            <input type="hidden" name="familySlug" value={familySlug} />
-            <input type="hidden" name="albumId" value={albumId} />
-            <input type="hidden" name="elementId" value={element.id} />
-            <input
-              ref={inputRef}
-              type="file"
-              name="photo"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={(e) => { if (e.target.files?.length) e.target.form.requestSubmit(); }}
-            />
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={pending}
-              style={{
-                position: "absolute", inset: 0, width: "100%", height: "100%", background: "rgba(30,38,33,0.0)",
-                border: "none", cursor: pending ? "default" : "pointer",
-              }}
-            >
-              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
-            </button>
-          </form>
+          <>
+            <form action={formAction} style={{ position: "absolute", inset: 0 }}>
+              <input type="hidden" name="familySlug" value={familySlug} />
+              <input type="hidden" name="albumId" value={albumId} />
+              <input type="hidden" name="elementId" value={element.id} />
+              <input
+                ref={inputRef}
+                type="file"
+                name="photo"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => { if (e.target.files?.length) e.target.form.requestSubmit(); }}
+              />
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={pending}
+                style={{
+                  position: "absolute", inset: 0, width: "100%", height: "100%", background: "rgba(30,38,33,0.0)",
+                  border: "none", cursor: pending ? "default" : "pointer",
+                }}
+              >
+                {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
+              </button>
+            </form>
+            {element.photo_url && (
+              <form action={deleteFormAction} style={{ position: "absolute", top: 4, right: 4 }}>
+                <input type="hidden" name="familySlug" value={familySlug} />
+                <input type="hidden" name="albumId" value={albumId} />
+                <input type="hidden" name="pageId" value={pageId} />
+                <input type="hidden" name="elementId" value={element.id} />
+                <button
+                  type="submit"
+                  disabled={deletePending}
+                  title="O'chirish"
+                  style={{
+                    width: 24, height: 24, borderRadius: "50%", background: "rgba(30,38,33,0.8)",
+                    border: "none", color: "#fff", cursor: deletePending ? "default" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", opacity: deletePending ? 0.6 : 1,
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </form>
+            )}
+          </>
         )}
       </div>
       {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{state.error}</div>}
-    </div>
-  );
-}
-              title="Rasm yuklash"
-            >
-              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
-            </button>
-          </form>
-        )}
-      </div>
-      {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{state.error}</div>}
+      {deleteState?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{deleteState.error}</div>}
     </div>
   );
 }
@@ -1913,7 +1926,7 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
   );
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction }) {
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction, deleteElementAction }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
 
@@ -1964,7 +1977,9 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
                 element={element}
                 familySlug={familySlug}
                 albumId={albumId}
+                pageId={page.id}
                 uploadElementPhotoAction={uploadElementPhotoAction}
+                deleteElementAction={deleteElementAction}
                 canEdit={canEdit}
                 style={{ width: "100%", height: "100%", position: "relative" }}
                 onDragStart={() => handleDragStart(i)}
@@ -2003,6 +2018,7 @@ function AlbumEditor({
   changePageLayoutAction,
   uploadElementPhotoAction,
   updateElementTextAction,
+  deleteElementAction,
   deleteAlbumAction,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
@@ -2094,6 +2110,7 @@ function AlbumEditor({
               canEdit={canEdit}
               uploadElementPhotoAction={uploadElementPhotoAction}
               updateElementTextAction={updateElementTextAction}
+              deleteElementAction={deleteElementAction}
             />
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 20 }}>
@@ -2158,6 +2175,7 @@ function AlbumsView({
   changePageLayoutAction,
   uploadElementPhotoAction,
   updateElementTextAction,
+  deleteElementAction,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
   const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
@@ -2175,6 +2193,7 @@ function AlbumsView({
           changePageLayoutAction={changePageLayoutAction}
           uploadElementPhotoAction={uploadElementPhotoAction}
           updateElementTextAction={updateElementTextAction}
+          deleteElementAction={deleteElementAction}
           deleteAlbumAction={deleteAlbumAction}
         />
       ) : (
@@ -3083,6 +3102,60 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  *   deleteMemoryAction?: any,
  * }} props
  */
+/**
+ * @typedef {Object} HeirloomAppProps
+ * @property {string} [userName]
+ * @property {string} [userEmail]
+ * @property {string} [familyName]
+ * @property {number | null} [familySince]
+ * @property {string} [familySlug]
+ * @property {any[]} [people]
+ * @property {any[]} [relationships]
+ * @property {any[]} [albums]
+ * @property {any[]} [members]
+ * @property {any[]} [invites]
+ * @property {any[]} [timelineEvents]
+ * @property {any[]} [memories]
+ * @property {string | null} [activeAlbumId]
+ * @property {boolean} [canEdit]
+ * @property {boolean} [isOwner]
+ * @property {boolean} [canInvite]
+ * @property {string | null} [mePersonId]
+ * @property {string} [initialView]
+ * @property {Function} [onLogout]
+ * @property {Function} [updateFamilyNameAction]
+ * @property {Function} [updateMemberRoleAction]
+ * @property {Function} [removeMemberAction]
+ * @property {Function} [createInviteAction]
+ * @property {Function} [revokeInviteAction]
+ * @property {Function} [addPersonAction]
+ * @property {Function} [linkPersonAction]
+ * @property {Function} [editPersonAction]
+ * @property {Function} [deletePersonAction]
+ * @property {Function} [uploadPersonPhotoAction]
+ * @property {Function} [createAlbumAction]
+ * @property {Function} [deleteAlbumAction]
+ * @property {Function} [addAlbumPageAction]
+ * @property {Function} [deleteAlbumPageAction]
+ * @property {Function} [changePageLayoutAction]
+ * @property {Function} [updatePageMetaAction]
+ * @property {Function} [updateElementTextAction]
+ * @property {Function} [uploadElementPhotoAction]
+ * @property {Function} [deleteElementAction]
+ * @property {Function} [bulkUploadPhotosAction]
+ * @property {Function} [createTimelineEventAction]
+ * @property {Function} [updateTimelineEventAction]
+ * @property {Function} [deleteTimelineEventAction]
+ * @property {Function} [uploadTimelineEventPhotoAction]
+ * @property {Function} [createMemoryAction]
+ * @property {Function} [updateMemoryAction]
+ * @property {Function} [updateMemoryPhotoAction]
+ * @property {Function} [deleteMemoryAction]
+ */
+
+/**
+ * @param {HeirloomAppProps} props
+ */
 export default function HeirloomApp({
   userName = "Foydalanuvchi",
   userEmail = "",
@@ -3121,6 +3194,7 @@ export default function HeirloomApp({
   updatePageMetaAction,
   updateElementTextAction,
   uploadElementPhotoAction,
+  deleteElementAction,
   bulkUploadPhotosAction,
   createTimelineEventAction,
   updateTimelineEventAction,

@@ -159,3 +159,39 @@ export async function deletePage(pageId: string): Promise<void> {
   await sql`DELETE FROM page_elements WHERE page_id = ${pageId}`;
   await sql`DELETE FROM album_pages WHERE id = ${pageId}`;
 }
+
+export async function deleteElement(elementId: string, pageId: string): Promise<void> {
+  await ensureSchema();
+  await sql`DELETE FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`;
+}
+
+export async function reorderPageElements(pageId: string, elementIds: string[]): Promise<void> {
+  await ensureSchema();
+  for (let i = 0; i < elementIds.length; i++) {
+    await sql`UPDATE page_elements SET slot_index = ${i} WHERE id = ${elementIds[i]} AND page_id = ${pageId}`;
+  }
+}
+
+export async function moveElementUp(elementId: string, pageId: string): Promise<void> {
+  await ensureSchema();
+  const element = (await sql`SELECT slot_index FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`) as { slot_index: number }[];
+  if (!element[0] || element[0].slot_index === 0) return;
+  const currentIndex = element[0].slot_index;
+  const prevElement = (await sql`SELECT id FROM page_elements WHERE page_id = ${pageId} AND slot_index = ${currentIndex - 1}`) as { id: string }[];
+  if (prevElement[0]) {
+    await sql`UPDATE page_elements SET slot_index = ${currentIndex} WHERE id = ${prevElement[0].id}`;
+    await sql`UPDATE page_elements SET slot_index = ${currentIndex - 1} WHERE id = ${elementId}`;
+  }
+}
+
+export async function moveElementDown(elementId: string, pageId: string): Promise<void> {
+  await ensureSchema();
+  const element = (await sql`SELECT slot_index FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`) as { slot_index: number }[];
+  if (!element[0]) return;
+  const currentIndex = element[0].slot_index;
+  const nextElement = (await sql`SELECT id FROM page_elements WHERE page_id = ${pageId} AND slot_index = ${currentIndex + 1}`) as { id: string }[];
+  if (nextElement[0]) {
+    await sql`UPDATE page_elements SET slot_index = ${currentIndex} WHERE id = ${nextElement[0].id}`;
+    await sql`UPDATE page_elements SET slot_index = ${currentIndex + 1} WHERE id = ${elementId}`;
+  }
+}

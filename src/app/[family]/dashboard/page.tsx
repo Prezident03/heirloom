@@ -28,6 +28,7 @@ import {
   updatePageMetaAction,
   updateElementTextAction,
   uploadElementPhotoAction,
+  deleteElementAction,
   bulkUploadPhotosAction,
   createTimelineEventAction,
   updateTimelineEventAction,
@@ -124,6 +125,7 @@ export default async function FamilyDashboardPage({
       updatePageMetaAction={updatePageMetaAction}
       updateElementTextAction={updateElementTextAction}
       uploadElementPhotoAction={uploadElementPhotoAction}
+      deleteElementAction={deleteElementAction}
       bulkUploadPhotosAction={bulkUploadPhotosAction}
       createTimelineEventAction={createTimelineEventAction}
       updateTimelineEventAction={updateTimelineEventAction}
