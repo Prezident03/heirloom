@@ -1052,16 +1052,11 @@ function FamilyTreeView({
           )}
         </div>
 
-        {/* Canvas boshqaruvi: zoom, markazga qaytarish, qidiruv */}
+        {/* Canvas boshqaruvi: D3 zoom'dan foydalanish (mouse wheel, drag) */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <button type="button" className="fm-tree-zoom-btn" onClick={() => zoomBy(0.9)} title="Kichiklashtirish">−</button>
-            <div style={{ width: 46, textAlign: "center", fontSize: 12, fontWeight: 600, color: TOKENS.ink60 }}>{Math.round(zoom * 100)}%</div>
-            <button type="button" className="fm-tree-zoom-btn" onClick={() => zoomBy(1.1)} title="Kattalashtirish">+</button>
+          <div style={{ fontSize: 12, color: TOKENS.ink60, fontWeight: 500 }}>
+            💡 Mouse wheel - zoom | Drag - pan
           </div>
-          <button type="button" className="fm-tree-toolbar-btn" onClick={resetView} title="Markazga qaytarish">
-            ⛶ Markazga
-          </button>
           <div style={{ position: "relative", flex: "0 1 220px", minWidth: 160 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "0 10px", height: 32 }}>
               <Search size={13} color={TOKENS.ink40} />
@@ -1092,59 +1087,19 @@ function FamilyTreeView({
           </div>
         </div>
 
-        <div
-          ref={viewportRef}
-          className={`fm-tree-viewport ${isDragging ? "dragging" : ""}`}
-          style={{ flex: 1, position: "relative", overflow: "hidden", borderRadius: 14, border: `1px solid ${TOKENS.parchmentDeep}`, minHeight: 420, touchAction: "none" }}
-          onWheel={onWheel}
-          onMouseDown={onPointerDown}
-          onMouseMove={onPointerMove}
-          onMouseUp={endDrag}
-          onMouseLeave={endDrag}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={onTouchEnd}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: "0 0",
-              padding: "40px 60px 60px",
-            }}
-          >
-            <div ref={containerRef} style={{ position: "relative", width: 900 }}>
-              <svg style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "visible" }}>
-                {paths.map((d, i) => <path key={i} d={d} stroke={TOKENS.parchmentDeep} strokeWidth="2" fill="none" />)}
-              </svg>
-              {generations.map((gen) => (
-                <div key={gen.genLabel} style={{ marginBottom: 56, position: "relative" }}>
-                  <div style={{ fontSize: 10.5, letterSpacing: "0.12em", color: TOKENS.ink40, textTransform: "uppercase", textAlign: "center", marginBottom: 18 }}>{gen.genLabel}</div>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 48, flexWrap: "wrap" }}>
-                    {gen.units.map((unit) => (
-                      <div key={unit.id} ref={(el) => (unitRefs.current[unit.id] = el)} className="fm-couple">
-                        {unit.people.map((person, i) => (
-                          <React.Fragment key={person.id}>
-                            {i > 0 && <div className="fm-couple-link" />}
-                            <PersonNode
-                              person={person}
-                              onSelect={setSelected}
-                              isMe={person.id === mePersonId}
-                              highlighted={person.id === highlightId}
-                              nodeRef={(el) => (personRefs.current[person.id] = el)}
-                            />
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div style={{ flex: 1, minHeight: 420, position: "relative" }}>
+          <TreeVisualization
+            people={people}
+            relationships={relationships}
+            onSelectPerson={setSelected}
+            mePersonId={mePersonId}
+            width={1200}
+            height={600}
+            zoom={zoom}
+            pan={pan}
+            onZoom={setZoom}
+            onPan={setPan}
+          />
         </div>
       </div>
 
