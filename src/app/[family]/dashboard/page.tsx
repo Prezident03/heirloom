@@ -7,6 +7,7 @@ import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib/albums";
 import { getTimelineEventsForFamily } from "@/lib/timeline";
 import { getMemoriesForFamily } from "@/lib/memories";
+import { getStoriesForFamily } from "@/lib/stories";
 import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
@@ -38,6 +39,10 @@ import {
   updateMemoryAction,
   updateMemoryPhotoAction,
   deleteMemoryAction,
+  createStoryAction,
+  updateStoryAction,
+  updateStoryPhotoAction,
+  deleteStoryAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -58,7 +63,7 @@ export default async function FamilyDashboardPage({
   const membership = await getMembership(family.id, session.id);
   if (!membership) notFound();
 
-  const [people, relationships, albums, members, invites, timelineEvents, memories] = await Promise.all([
+  const [people, relationships, albums, members, invites, timelineEvents, memories, stories] = await Promise.all([
     getPeopleForFamily(family.id),
     getRelationshipsForFamily(family.id),
     getAlbumsForFamily(family.id),
@@ -66,6 +71,7 @@ export default async function FamilyDashboardPage({
     getActiveInvitesForFamily(family.id),
     getTimelineEventsForFamily(family.id),
     getMemoriesForFamily(family.id),
+    getStoriesForFamily(family.id),
   ]);
 
   // Har bir albom uchun sahifa va elementlarni yig'amiz (nested struktura,
@@ -100,6 +106,7 @@ export default async function FamilyDashboardPage({
       invites={invites}
       timelineEvents={timelineEvents}
       memories={memories}
+      stories={stories}
       activeAlbumId={activeAlbumId ?? null}
       canEdit={membership.role !== "viewer"}
       isOwner={membership.role === "owner"}
@@ -135,6 +142,10 @@ export default async function FamilyDashboardPage({
       updateMemoryAction={updateMemoryAction}
       updateMemoryPhotoAction={updateMemoryPhotoAction}
       deleteMemoryAction={deleteMemoryAction}
+      createStoryAction={createStoryAction}
+      updateStoryAction={updateStoryAction}
+      updateStoryPhotoAction={updateStoryPhotoAction}
+      deleteStoryAction={deleteStoryAction}
     />
   );
 }

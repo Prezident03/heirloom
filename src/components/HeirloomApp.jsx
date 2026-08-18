@@ -17,6 +17,7 @@ const VIEWS = {
   PEOPLE: "people",
   TIMELINE: "timeline",
   MEMORIES: "memories",
+  STORIES: "stories",
   SETTINGS: "settings",
 };
 
@@ -3116,6 +3117,7 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  * @property {any[]} [invites]
  * @property {any[]} [timelineEvents]
  * @property {any[]} [memories]
+ * @property {any[]} [stories]
  * @property {string | null} [activeAlbumId]
  * @property {boolean} [canEdit]
  * @property {boolean} [isOwner]
@@ -3151,6 +3153,10 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  * @property {Function} [updateMemoryAction]
  * @property {Function} [updateMemoryPhotoAction]
  * @property {Function} [deleteMemoryAction]
+ * @property {Function} [createStoryAction]
+ * @property {Function} [updateStoryAction]
+ * @property {Function} [updateStoryPhotoAction]
+ * @property {Function} [deleteStoryAction]
  */
 
 /**
@@ -3445,3 +3451,36 @@ function MemoriesView({ memories, people, canEdit, createMemoryAction, updateMem
 }
 
 
+
+function StoriesView({ stories, people, canEdit, createStoryAction, deleteStoryAction }) {
+  const [showForm, setShowForm] = useState(false);
+
+  return (
+    <div style={{ padding: "20px 24px", height: "100%", overflow: "auto" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600, color: TOKENS.ink, margin: 0 }}>Hikoyalar</h1>
+        {canEdit && <button onClick={() => setShowForm(!showForm)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}><Plus size={16} /> Yangi</button>}
+      </div>
+      
+      {stories.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px", color: TOKENS.ink60 }}>
+          <BookImage size={32} style={{ marginBottom: 16, opacity: 0.5 }} />
+          <div style={{ fontSize: 14, fontWeight: 500 }}>Hali hikoya yo'q</div>
+          <div style={{ fontSize: 12, marginTop: 8 }}>Familiyangizning tarixi va hikoyalarini yozing</div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+          {stories.map((s) => (
+            <div key={s.id} style={{ background: TOKENS.card, borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 8px rgba(30,38,33,0.08)" }}>
+              {s.photo_url && <img src={s.photo_url} style={{ width: "100%", height: 140, objectFit: "cover" }} />}
+              <div style={{ padding: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0", color: TOKENS.ink }}>{s.title}</h3>
+                <p style={{ fontSize: 12, color: TOKENS.ink60, margin: 0, lineHeight: 1.5 }}>{s.content.substring(0, 100)}...</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
