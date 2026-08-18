@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 import { relationLabelBetween } from "@/lib/relationshipLabels";
+import { TreeVisualization } from "./TreeVisualization";
 
 const VIEWS = {
   DASHBOARD: "dashboard",

@@ -55,6 +55,7 @@ import {
   deleteMemory,
 } from "@/lib/memories";
 import { createStory, updateStory, deleteStory, updateStoryPhoto } from "@/lib/stories";
+import { createPlace, updatePlace, deletePlace } from "@/lib/places";
 import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
@@ -1042,5 +1043,70 @@ export async function deleteStoryAction(_prevState: ActionState, formData: FormD
     return { ok: true };
   } catch (e) {
     return { error: "Hikoya o'chirishda xato: " + String(e) };
+  }
+}
+
+/* ============ Places (Joylar) ============ */
+
+export async function createPlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
+
+  const name = String(formData.get("name") || "").trim();
+  if (!name) return { error: "Joy nomi kerak." };
+
+  const latitude = formData.get("latitude") ? parseFloat(String(formData.get("latitude"))) : undefined;
+  const longitude = formData.get("longitude") ? parseFloat(String(formData.get("longitude"))) : undefined;
+
+  try {
+    await createPlace(check.family.id, check.session.id, {
+      name,
+      description: String(formData.get("description") || "").trim() || undefined,
+      latitude,
+      longitude,
+      address: String(formData.get("address") || "").trim() || undefined,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { error: "Joy qo'shishda xato: " + String(e) };
+  }
+}
+
+export async function updatePlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
+
+  const placeId = String(formData.get("placeId") || "").trim();
+  if (!placeId) return { error: "Joy ID kerak." };
+
+  const latitude = formData.get("latitude") ? parseFloat(String(formData.get("latitude"))) : undefined;
+  const longitude = formData.get("longitude") ? parseFloat(String(formData.get("longitude"))) : undefined;
+
+  try {
+    await updatePlace(placeId, check.family.id, {
+      name: String(formData.get("name") || "").trim() || undefined,
+      description: String(formData.get("description") || "").trim() || undefined,
+      latitude,
+      longitude,
+      address: String(formData.get("address") || "").trim() || undefined,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { error: "Joy yangilashda xato: " + String(e) };
+  }
+}
+
+export async function deletePlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
+
+  const placeId = String(formData.get("placeId") || "").trim();
+  if (!placeId) return { error: "Joy ID kerak." };
+
+  try {
+    await deletePlace(placeId, check.family.id);
+    return { ok: true };
+  } catch (e) {
+    return { error: "Joy o'chirishda xato: " + String(e) };
   }
 }

@@ -159,6 +159,20 @@ export async function ensureSchema(): Promise<void> {
     `;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS places (
+        id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL REFERENCES families(id),
+        name TEXT NOT NULL,
+        description TEXT,
+        latitude REAL,
+        longitude REAL,
+        address TEXT,
+        created_by TEXT NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL
+      )
+    `;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS stories (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
