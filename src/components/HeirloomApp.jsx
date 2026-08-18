@@ -2283,7 +2283,7 @@ function PeopleView({
         {filtered.length === 0 ? (
           <div style={{ padding: "60px 0", textAlign: "center", color: TOKENS.ink40, fontSize: 13 }}>Hech kim topilmadi.</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))", gap: "26px 18px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "24px", padding: "0 12px" }}>
             {filtered.map((p) => (
               <PersonGridCard key={p.id} person={p} isMe={p.id === mePersonId} onSelect={() => setSelectedId(p.id)} />
             ))}
