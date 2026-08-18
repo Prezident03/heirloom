@@ -54,6 +54,7 @@ import {
   updateMemoryPhoto,
   deleteMemory,
 } from "@/lib/memories";
+import { createStory, updateStory, deleteStory, updateStoryPhoto } from "@/lib/stories";
 import { put } from "@vercel/blob";
 
 export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
@@ -936,5 +937,110 @@ export async function moveElementDownAction(_prevState: ActionState, formData: F
     return { ok: true };
   } catch {
     return { error: "Element ko'chirishda xato yuz berdi." };
+  }
+}
+
+/* ============ Stories (Hikoyalar) ============ */
+
+export async function createStoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
+
+  const title = String(formData.get("title") || "").trim();
+  const content = String(formData.get("content") || "").trim();
+  const personId = String(formData.get("personId") || "").trim() || undefined;
+  const location = String(formData.get("location") || "").trim() || undefined;
+  const storyDate = String(formData.get("storyDate") || "").trim() || undefined;
+  const photoFile = formData.get("photo") as File | null;
+
+  if (!title || !content) return { error: "Hikoya nomi va mazmuni kerak." };
+
+  try {
+    let photoUrl: string | null = null;
+    if (photoFile && photoFile.size > 0) {
+      const blob = await put(`stories/${check.family.id}/${crypto.randomUUID()}-${Date.now()}`, photoFile, {
+        access: "public",
+        addRandomSuffix: true,
+      });
+      photoUrl = blob.url;
+    }
+
+    await createStory(check.family.id, check.session.id, {
+      title,
+      content,
+      personId,
+      location,
+      storyDate,
+      photoUrl: photoUrl || undefined,
+    });
+
+    return { ok: true };
+  } catch (e) {
+    return { error: "Hikoya yaratishda xato: " + String(e) };
+  }
+}
+
+export async function updateStoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
+
+  const storyId = String(formData.get("storyId") || "").trim();
+  const title = String(formData.get("title") || "").trim() || undefined;
+  const content = String(formData.get("content") || "").trim() || undefined;
+  const personId = String(formData.get("personId") || "").trim() || undefined;
+  const location = String(formData.get("location") || "").trim() || undefined;
+  const storyDate = String(formData.get("storyDate") || "").trim() || undefined;
+
+  if (!storyId) return { error: "Hikoya ID kerak." };
+
+  try {
+    await updateStory(storyId, check.family.id, {
+      title,
+      content,
+      personId,
+      location,
+      storyDate,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { error: "Hikoya yangilashda xato: " + String(e) };
+  }
+}
+
+export async function updateStoryPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
+
+  const storyId = String(formData.get("storyId") || "").trim();
+  const photoFile = formData.get("photo") as File | null;
+
+  if (!storyId || !photoFile || photoFile.size === 0) {
+    return { error: "Hikoya ID va rasm kerak." };
+  }
+
+  try {
+    const blob = await put(`stories/${check.family.id}/${storyId}-${Date.now()}`, photoFile, {
+      access: "public",
+      addRandomSuffix: true,
+    });
+    await updateStoryPhoto(storyId, blob.url);
+    return { ok: true };
+  } catch (e) {
+    return { error: "Rasm yuklashda xato: " + String(e) };
+  }
+}
+
+export async function deleteStoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "editor");
+  if (!check.ok) return { error: check.error };
+
+  const storyId = String(formData.get("storyId") || "").trim();
+  if (!storyId) return { error: "Hikoya ID kerak." };
+
+  try {
+    await deleteStory(storyId, check.family.id);
+    return { ok: true };
+  } catch (e) {
+    return { error: "Hikoya o'chirishda xato: " + String(e) };
   }
 }
