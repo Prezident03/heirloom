@@ -12,8 +12,15 @@ export default async function RegisterPage({
   searchParams: Promise<{ invite?: string }>;
 }) {
   const { invite } = await searchParams;
-  const session = await getSession();
-  if (session) redirect("/onboarding");
+  let session = null;
+  try {
+    session = await getSession();
+  } catch {}
+  if (session) {
+    try {
+      redirect("/onboarding");
+    } catch {}
+  }
 
   return (
     <AuthForm

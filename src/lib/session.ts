@@ -29,26 +29,38 @@ export async function createSession(userId: string) {
 }
 
 export async function getSession(): Promise<SessionUser | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE)?.value;
+    if (!token) return null;
 
-  await ensureSchema();
+    await ensureSchema();
 
-  const rows = (await sql`
-    SELECT u.id, u.email, u.name, s.expires_at
-    FROM sessions s JOIN users u ON u.id = s.user_id
-    WHERE s.token = ${token}
-  `) as { id: string; email: string; name: string; expires_at: string }[];
+    const rows = (await sql`
+      SELECT u.id, u.email, u.name, s.expires_at
+      FROM sessions s JOIN users u ON u.id = s.user_id
+      WHERE s.token = ${token}
+    `) as { id: string; email: string; name: string; expires_at: string }[];
 
-  const row = rows[0];
-  if (!row) return null;
-  if (new Date(row.expires_at) < new Date()) {
-    await sql`DELETE FROM sessions WHERE token = ${token}`;
+    const row = rows[0];
+    if (!row) {
+      cookieStore.delete(SESSION_COOKIE);
+      return null;
+    }
+    if (new Date(row.expires_at) < new Date()) {
+      await sql`DELETE FROM sessions WHERE token = ${token}`;
+      cookieStore.delete(SESSION_COOKIE);
+      return null;
+    }
+
+    return { id: row.id, email: row.email, name: row.name };
+  } catch (err) {
+    try {
+      const cookieStore = await cookies();
+      cookieStore.delete(SESSION_COOKIE);
+    } catch {}
     return null;
   }
-
-  return { id: row.id, email: row.email, name: row.name };
 }
 
 export async function destroySession() {

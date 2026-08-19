@@ -66,52 +66,85 @@ export default async function FamilyDashboardPage({
 }) {
   const { family: familySlug } = await params;
   const { view, album: activeAlbumId } = await searchParams;
-  const session = await getSession();
-  if (!session) redirect("/login");
 
-  const family = await getFamilyBySlug(familySlug);
-  if (!family) notFound();
+  let session = null;
+  try {
+    session = await getSession();
+  } catch {}
+  if (!session) {
+    try {
+      redirect("/login");
+    } catch {}
+  }
 
-  const membership = await getMembership(family.id, session.id);
-  if (!membership) notFound();
+  let family = null;
+  let membership = null;
+  let people: any[] = [];
+  let relationships: any[] = [];
+  let albums: any[] = [];
+  let members: any[] = [];
+  let invites: any[] = [];
+  let timelineEvents: any[] = [];
+  let memories: any[] = [];
+  let stories: any[] = [];
+  let places: any[] = [];
+  let albumsWithPages: any[] = [];
 
-  const [people, relationships, albums, members, invites, timelineEvents, memories, stories, places] = await Promise.all([
-    getPeopleForFamily(family.id),
-    getRelationshipsForFamily(family.id),
-    getAlbumsForFamily(family.id),
-    getMembersForFamily(family.id),
-    getActiveInvitesForFamily(family.id),
-    getTimelineEventsForFamily(family.id),
-    getMemoriesForFamily(family.id),
-    getStoriesForFamily(family.id),
-    getPlacesForFamily(family.id),
-  ]);
+  try {
+    family = await getFamilyBySlug(familySlug);
+    if (!family) notFound();
 
-  // Har bir albom uchun sahifa va elementlarni yig'amiz (nested struktura,
-  // shunda client komponentda alohida so'rov qilishning hojati yo'q).
-  const albumsWithPages = await Promise.all(
-    albums.map(async (album) => {
-      const pages = await getPagesForAlbum(album.id);
-      const elements = await getElementsForPages(pages.map((p) => p.id));
-      return {
-        ...album,
-        pages: pages.map((page) => ({
-          ...page,
-          elements: elements.filter((e) => e.page_id === page.id).sort((a, b) => a.slot_index - b.slot_index),
-        })),
-      };
-    })
-  );
+    membership = await getMembership(family!.id, session!.id);
+    if (!membership) notFound();
 
-  const mePerson = people.find((p) => p.linked_user_id === session.id) ?? null;
+    [people, relationships, albums, members, invites, timelineEvents, memories, stories, places] = await Promise.all([
+      getPeopleForFamily(family!.id),
+      getRelationshipsForFamily(family!.id),
+      getAlbumsForFamily(family!.id),
+      getMembersForFamily(family!.id),
+      getActiveInvitesForFamily(family!.id),
+      getTimelineEventsForFamily(family!.id),
+      getMemoriesForFamily(family!.id),
+      getStoriesForFamily(family!.id),
+      getPlacesForFamily(family!.id),
+    ]);
+
+    albumsWithPages = await Promise.all(
+      albums.map(async (album) => {
+        try {
+          const pages = await getPagesForAlbum(album.id);
+          const elements = await getElementsForPages(pages.map((p) => p.id));
+          return {
+            ...album,
+            pages: pages.map((page) => ({
+              ...page,
+              elements: elements.filter((e) => e.page_id === page.id).sort((a, b) => a.slot_index - b.slot_index),
+            })),
+          };
+        } catch {
+          return { ...album, pages: [] };
+        }
+      })
+    );
+  } catch (err) {
+    try {
+      const { destroySession } = await import("@/lib/session");
+      await destroySession();
+    } catch {}
+    try {
+      redirect("/login");
+    } catch {}
+  }
+
+  const mePerson = people.find((p) => p.linked_user_id === session!.id) ?? null;
 
   return (
     <HeirloomApp
-      userName={session.name.split(" ")[0]}
-      userEmail={session.email}
-      familyName={family.name}
-      familySince={new Date(family.created_at).getFullYear()}
-      familySlug={family.slug}
+      userName={session!.name.split(" ")[0]}
+      userEmail={session!.email}
+      familyName={family!.name}
+      familySince={new Date(family!.created_at).getFullYear()}
+      familySlug={family!.slug}
       people={people}
       relationships={relationships}
       albums={albumsWithPages}
@@ -122,9 +155,9 @@ export default async function FamilyDashboardPage({
       stories={stories}
       places={places}
       activeAlbumId={activeAlbumId ?? null}
-      canEdit={membership.role !== "viewer"}
-      isOwner={membership.role === "owner"}
-      canInvite={membership.role === "owner" || membership.role === "editor"}
+      canEdit={membership!.role !== "viewer"}
+      isOwner={membership!.role === "owner"}
+      canInvite={membership!.role === "owner" || membership!.role === "editor"}
       mePersonId={mePerson?.id ?? null}
       initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : view === "people" ? "people" : view === "settings" ? "settings" : view === "timeline" ? "timeline" : "dashboard"}
       onLogout={logoutAction}

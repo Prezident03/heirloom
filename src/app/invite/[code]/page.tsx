@@ -16,8 +16,15 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default async function InvitePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const session = await getSession();
-  const invite = await getInviteByCode(code);
+
+  let session = null;
+  let invite = null;
+  try {
+    session = await getSession();
+  } catch {}
+  try {
+    invite = await getInviteByCode(code);
+  } catch {}
 
   let familyName: string | null = null;
   let familySlug: string | null = null;
@@ -25,16 +32,20 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
   let statusMessage: string | null = null;
 
   if (invite) {
-    const rows = (await sql`SELECT name, slug FROM families WHERE id = ${invite.family_id}`) as { name: string; slug: string }[];
-    familyName = rows[0]?.name ?? null;
-    familySlug = rows[0]?.slug ?? null;
+    try {
+      const rows = (await sql`SELECT name, slug FROM families WHERE id = ${invite.family_id}`) as { name: string; slug: string }[];
+      familyName = rows[0]?.name ?? null;
+      familySlug = rows[0]?.slug ?? null;
+    } catch {}
 
     if (invite.revoked_at) statusMessage = "Bu taklif havolasi bekor qilingan.";
     else if (invite.used_at) statusMessage = "Bu taklif havolasi allaqachon ishlatilgan.";
 
     if (session) {
-      const membership = await getMembership(invite.family_id, session.id);
-      if (membership) alreadyMember = true;
+      try {
+        const membership = await getMembership(invite.family_id, session.id);
+        if (membership) alreadyMember = true;
+      } catch {}
     }
   }
 

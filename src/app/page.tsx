@@ -7,10 +7,20 @@ import { getFamiliesForUser } from "@/lib/family";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 
 export default async function Home() {
-  const session = await getSession();
+  let session = null;
+  try {
+    session = await getSession();
+  } catch {}
   if (session) {
-    const families = await getFamiliesForUser(session.id);
-    redirect(families.length > 0 ? `/${families[0].slug}/dashboard` : "/onboarding");
+    try {
+      const families = await getFamiliesForUser(session.id);
+      redirect(families.length > 0 ? `/${families[0].slug}/dashboard` : "/onboarding");
+    } catch {
+      try {
+        const { destroySession } = await import("@/lib/session");
+        await destroySession();
+      } catch {}
+    }
   }
 
   return (
