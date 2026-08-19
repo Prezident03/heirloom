@@ -12,20 +12,26 @@ export type SessionUser = {
 };
 
 export async function createSession(userId: string) {
-  await ensureSchema();
-  const token = randomUUID();
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    await ensureSchema();
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  await sql`INSERT INTO sessions (token, user_id, expires_at) VALUES (${token}, ${userId}, ${expiresAt})`;
+    await sql`INSERT INTO sessions (token, user_id, expires_at) VALUES (${token}, ${userId}, ${expiresAt})`;
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(expiresAt),
-  });
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(expiresAt),
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error("[createSession] error:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Session yaratishda xato" };
+  }
 }
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -64,11 +70,23 @@ export async function getSession(): Promise<SessionUser | null> {
 }
 
 export async function destroySession() {
-  await ensureSchema();
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
-  if (token) {
-    await sql`DELETE FROM sessions WHERE token = ${token}`;
+  try {
+    await ensureSchema();
+    const cookieStore = await cookies();
+    const token = cookieStore.get(SESSION_COOKIE)?.value;
+    if (token) {
+      try {
+        await sql`DELETE FROM sessions WHERE token = ${token}`;
+      } catch {}
+    }
+    cookieStore.delete(SESSION_COOKIE);
+    return { ok: true };
+  } catch (err) {
+    console.error("[destroySession] error:", err);
+    try {
+      const cookieStore = await cookies();
+      cookieStore.delete(SESSION_COOKIE);
+    } catch {}
+    return { ok: false };
   }
-  cookieStore.delete(SESSION_COOKIE);
 }

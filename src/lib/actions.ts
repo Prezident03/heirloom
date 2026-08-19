@@ -88,89 +88,120 @@ async function verifyFamilyAccess(formData: FormData, minRole: "editor" | "owner
 }
 
 export async function registerAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim();
-  const password = String(formData.get("password") || "");
-  const inviteCode = String(formData.get("inviteCode") || "").trim();
+  try {
+    const name = String(formData.get("name") || "").trim();
+    const email = String(formData.get("email") || "").trim();
+    const password = String(formData.get("password") || "");
+    const inviteCode = String(formData.get("inviteCode") || "").trim();
 
-  if (!name || !email || !password) {
-    return { error: "Barcha maydonlarni to'ldiring." };
-  }
-  if (password.length < 6) {
-    return { error: "Parol kamida 6 ta belgidan iborat bo'lishi kerak." };
-  }
-  if (await findUserByEmail(email)) {
-    return { error: "Bu email bilan foydalanuvchi allaqachon ro'yxatdan o'tgan." };
-  }
+    if (!name || !email || !password) {
+      return { error: "Barcha maydonlarni to'ldiring." };
+    }
+    if (password.length < 6) {
+      return { error: "Parol kamida 6 ta belgidan iborat bo'lishi kerak." };
+    }
+    if (await findUserByEmail(email)) {
+      return { error: "Bu email bilan foydalanuvchi allaqachon ro'yxatdan o'tgan." };
+    }
 
-  const user = await createUser(email, password, name);
-  await createSession(user.id);
+    const user = await createUser(email, password, name);
+    const sessionResult = await createSession(user.id);
+    if (!sessionResult.ok) {
+      return { error: "Session yaratishda xato. Qaytadan urinib ko'ring." };
+    }
 
-  if (inviteCode) {
-    const result = await acceptInvite(inviteCode, user.id);
-    if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+    if (inviteCode) {
+      try {
+        const result = await acceptInvite(inviteCode, user.id);
+        if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+      } catch (e) {
+        if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+        return { error: "Taklifni qabul qilishda xato. Qaytadan urinib ko'ring." };
+      }
+    }
+
+    redirect("/onboarding");
+  } catch (e) {
+    if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+    console.error("[registerAction] error:", e);
+    return { error: "Xatolik yuz berdi. Qaytadan urinib ko'ring." };
   }
-
-  redirect("/onboarding");
 }
 
 export async function loginAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const email = String(formData.get("email") || "").trim();
-  const password = String(formData.get("password") || "");
-  const inviteCode = String(formData.get("inviteCode") || "").trim();
+  try {
+    const email = String(formData.get("email") || "").trim();
+    const password = String(formData.get("password") || "");
+    const inviteCode = String(formData.get("inviteCode") || "").trim();
 
-  const user = await findUserByEmail(email);
-  if (!user) {
-    return { error: "Email yoki parol noto'g'ri." };
-  }
-  const valid = await verifyPassword(password, user.password_hash);
-  if (!valid) {
-    return { error: "Email yoki parol noto'g'ri." };
-  }
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return { error: "Email yoki parol noto'g'ri." };
+    }
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) {
+      return { error: "Email yoki parol noto'g'ri." };
+    }
 
-  await createSession(user.id);
+    const sessionResult = await createSession(user.id);
+    if (!sessionResult.ok) {
+      return { error: "Session yaratishda xato. Qaytadan urinib ko'ring." };
+    }
 
-  if (inviteCode) {
-    const result = await acceptInvite(inviteCode, user.id);
-    if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
-  }
+    if (inviteCode) {
+      try {
+        const result = await acceptInvite(inviteCode, user.id);
+        if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+      } catch (e) {
+        if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+        return { error: "Taklifni qabul qilishda xato." };
+      }
+    }
 
-  const families = await getFamiliesForUser(user.id);
-  if (families.length === 0) {
-    redirect("/onboarding");
+    const families = await getFamiliesForUser(user.id);
+    if (families.length === 0) {
+      redirect("/onboarding");
+    }
+    redirect(`/${families[0].slug}/dashboard`);
+  } catch (e) {
+    if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+    console.error("[loginAction] error:", e);
+    return { error: "Xatolik yuz berdi. Qaytadan urinib ko'ring." };
   }
-  redirect(`/${families[0].slug}/dashboard`);
 }
 
 export async function createFamilyAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  try {
+    const session = await getSession();
+    if (!session) redirect("/login");
 
-  const familyName = String(formData.get("familyName") || "").trim();
-  if (!familyName) {
-    return { error: "Oila nomini kiriting." };
+    const familyName = String(formData.get("familyName") || "").trim();
+    if (!familyName) {
+      return { error: "Oila nomini kiriting." };
+    }
+
+    const family = await createFamily(familyName, session.id);
+
+    const [firstName, ...rest] = session.name.trim().split(" ");
+    const mePerson = await createPerson(
+      family.id,
+      { firstName: firstName || session.name, lastName: rest.join(" ") || undefined },
+      session.id,
+      session.id
+    );
+
+    return { ok: true, familySlug: family.slug, mePersonId: mePerson.id };
+  } catch (e) {
+    if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+    console.error("[createFamilyAction] error:", e);
+    return { error: "Oila yaratishda xato. Qaytadan urinib ko'ring." };
   }
-
-  const family = await createFamily(familyName, session.id);
-
-  // Foydalanuvchining o'zini oila daraxtiga "Men" sifatida avtomatik qo'shamiz —
-  // shunda daraxt boshidanoq ankor nuqtaga ega bo'ladi va qarindoshlik
-  // nomlari (Otasi, Akasi va h.k.) shu nuqtadan hisoblanadi.
-  const [firstName, ...rest] = session.name.trim().split(" ");
-  const mePerson = await createPerson(
-    family.id,
-    { firstName: firstName || session.name, lastName: rest.join(" ") || undefined },
-    session.id,
-    session.id
-  );
-
-  // Onboarding wizard shu natijadan foydalanib, sahifani tark etmasdan
-  // keyingi qadamga (oila a'zosi qo'shish) o'tadi.
-  return { ok: true, familySlug: family.slug, mePersonId: mePerson.id };
 }
 
 export async function logoutAction() {
-  await destroySession();
+  try {
+    await destroySession();
+  } catch {}
   redirect("/login");
 }
 

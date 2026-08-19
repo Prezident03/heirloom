@@ -29,7 +29,15 @@ export async function ensureSchema(): Promise<void> {
   if (_schemaReady) return _schemaReady;
 
   _schemaReady = (async () => {
-    await sql`
+    const safe = async (fn: () => Promise<unknown>, label: string) => {
+      try {
+        await fn();
+      } catch (err) {
+        console.warn(`[ensureSchema] ${label} skipped:`, err instanceof Error ? err.message : err);
+      }
+    };
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -37,15 +45,17 @@ export async function ensureSchema(): Promise<void> {
         name TEXT NOT NULL,
         created_at TEXT NOT NULL
       )
-    `;
-    await sql`
+    `, "create users");
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS sessions (
         token TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id),
         expires_at TEXT NOT NULL
       )
-    `;
-    await sql`
+    `, "create sessions");
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS families (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -53,8 +63,9 @@ export async function ensureSchema(): Promise<void> {
         owner_id TEXT NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL
       )
-    `;
-    await sql`
+    `, "create families");
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS family_memberships (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -63,8 +74,9 @@ export async function ensureSchema(): Promise<void> {
         joined_at TEXT NOT NULL,
         UNIQUE(family_id, user_id)
       )
-    `;
-    await sql`
+    `, "create family_memberships");
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS people (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -78,8 +90,9 @@ export async function ensureSchema(): Promise<void> {
         created_by TEXT NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL
       )
-    `;
-    await sql`
+    `, "create people");
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS relationships (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -88,13 +101,11 @@ export async function ensureSchema(): Promise<void> {
         type TEXT NOT NULL CHECK (type IN ('parent','spouse')),
         created_at TEXT NOT NULL
       )
-    `;
+    `, "create relationships");
 
-    // Eski (allaqachon deploy qilingan) bazalarda ham ishlashi uchun
-    // yangi ustunlarni alohida, xavfsiz tarzda qo'shamiz.
-    await sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS profile_photo_url TEXT`;
+    await safe(() => sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS profile_photo_url TEXT`, "add profile_photo_url");
 
-    await sql`
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS albums (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -106,8 +117,9 @@ export async function ensureSchema(): Promise<void> {
         created_by TEXT NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL
       )
-    `;
-    await sql`
+    `, "create albums");
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS album_pages (
         id TEXT PRIMARY KEY,
         album_id TEXT NOT NULL REFERENCES albums(id),
@@ -116,8 +128,9 @@ export async function ensureSchema(): Promise<void> {
         date_label TEXT,
         location TEXT
       )
-    `;
-    await sql`
+    `, "create album_pages");
+
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS page_elements (
         id TEXT PRIMARY KEY,
         page_id TEXT NOT NULL REFERENCES album_pages(id),
@@ -126,26 +139,21 @@ export async function ensureSchema(): Promise<void> {
         photo_url TEXT,
         text_content TEXT
       )
-    `;
+    `, "create page_elements");
 
-    // Photo Gallery, Album Editor free-form va meta ma'lumotlar uchun kerakli
-    // yangi ustunlar — eski deploy'lar uchun ALTER TABLE IF NOT EXISTS bilan.
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS caption TEXT`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS location TEXT`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS created_at TEXT`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_x FLOAT`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_y FLOAT`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_w FLOAT`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_h FLOAT`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS rotation FLOAT DEFAULT 0`;
-    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS z_index INTEGER DEFAULT 0`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_page_elements_positioning
-               ON page_elements(page_id, z_index, position_x)`;
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS caption TEXT`, "add caption");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS location TEXT`, "add location");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS created_at TEXT`, "add created_at");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_x FLOAT`, "add position_x");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_y FLOAT`, "add position_y");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_w FLOAT`, "add position_w");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_h FLOAT`, "add position_h");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS rotation FLOAT DEFAULT 0`, "add rotation");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS z_index INTEGER DEFAULT 0`, "add z_index");
+    await safe(() => sql`CREATE INDEX IF NOT EXISTS idx_page_elements_positioning
+               ON page_elements(page_id, z_index, position_x)`, "create positioning index");
 
-    // Eski deploy'larda allaqachon yaratilgan page_elements qatorlari uchun
-    // bo'sh qolgan ustunlarni default qiymatlar bilan to'ldiramiz
-    // (slot_index bo'yicha taxminiy joylashuv + created_at avtomatik).
-    await sql`
+    await safe(() => sql`
       UPDATE page_elements
       SET
         created_at = COALESCE(created_at, (
@@ -168,9 +176,9 @@ export async function ensureSchema(): Promise<void> {
         rotation = COALESCE(rotation, 0),
         z_index = COALESCE(z_index, slot_index)
       WHERE position_x IS NULL OR created_at IS NULL
-    `;
+    `, "backfill page_elements defaults");
 
-    await sql`
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS timeline_events (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -183,9 +191,9 @@ export async function ensureSchema(): Promise<void> {
         created_by TEXT NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL
       )
-    `;
+    `, "create timeline_events");
 
-    await sql`
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS memories (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -198,9 +206,9 @@ export async function ensureSchema(): Promise<void> {
         created_by TEXT NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL
       )
-    `;
+    `, "create memories");
 
-    await sql`
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS places (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -212,9 +220,9 @@ export async function ensureSchema(): Promise<void> {
         created_by TEXT NOT NULL REFERENCES users(id),
         created_at TEXT NOT NULL
       )
-    `;
+    `, "create places");
 
-    await sql`
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS stories (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -228,9 +236,9 @@ export async function ensureSchema(): Promise<void> {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
-    `;
+    `, "create stories");
 
-    await sql`
+    await safe(() => sql`
       CREATE TABLE IF NOT EXISTS family_invites (
         id TEXT PRIMARY KEY,
         family_id TEXT NOT NULL REFERENCES families(id),
@@ -242,7 +250,7 @@ export async function ensureSchema(): Promise<void> {
         used_by TEXT REFERENCES users(id),
         used_at TEXT
       )
-    `;
+    `, "create family_invites");
   })();
 
   return _schemaReady;
