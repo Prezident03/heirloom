@@ -4,8 +4,8 @@ import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallba
 import { useRouter } from "next/navigation";
 import {
   Home, BookImage, TreePine, Search, Plus, X,
-  ChevronRight, ChevronLeft, ChevronDown, Calendar, MapPinned, LayoutGrid, Settings, LogOut, Camera, UserPlus, Users,
-  ImagePlus, History, CalendarPlus, Link2, Trash2,
+  ChevronRight, ChevronLeft, ChevronDown, ChevronUp, Calendar, MapPinned, LayoutGrid, Settings, LogOut, Camera, UserPlus, Users,
+  ImagePlus, History, CalendarPlus, Link2, Trash2, Copy,
 } from "lucide-react";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 import { relationLabelBetween } from "@/lib/relationshipLabels";
@@ -19,6 +19,7 @@ const VIEWS = {
   TIMELINE: "timeline",
   MEMORIES: "memories",
   STORIES: "stories",
+  PLACES: "places",
   SETTINGS: "settings",
 };
 
@@ -28,8 +29,9 @@ const NAV_CONFIG = [
   { id: VIEWS.TREE, icon: TreePine, label: "Oila daraxti" },
   { id: VIEWS.PEOPLE, icon: Users, label: "Odamlar" },
   { id: VIEWS.TIMELINE, icon: History, label: "Vaqt chizig'i" },
-  { id: VIEWS.MEMORIES, icon: BookImage, label: "Xotiralar" },
-  { id: VIEWS.STORIES, icon: BookImage, label: "Hikoyalar" },
+  { id: VIEWS.MEMORIES, icon: Camera, label: "Xotiralar" },
+  { id: VIEWS.STORIES, icon: Link2, label: "Hikoyalar" },
+  { id: VIEWS.PLACES, icon: MapPinned, label: "Joylar" },
 ];
 
 /* ---------------- shared bits ---------------- */
@@ -189,6 +191,9 @@ const MOBILE_NAV_ITEMS = [
   { id: VIEWS.TREE, icon: TreePine, label: "Oila" },
   { id: VIEWS.PEOPLE, icon: Users, label: "Odamlar" },
   { id: VIEWS.TIMELINE, icon: History, label: "Tarix" },
+  { id: VIEWS.MEMORIES, icon: Camera, label: "Xotiralar" },
+  { id: VIEWS.STORIES, icon: Link2, label: "Hikoyalar" },
+  { id: VIEWS.PLACES, icon: MapPinned, label: "Joylar" },
 ];
 
 function MobileBottomNav({ current, onNavigate }) {
@@ -1884,11 +1889,43 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
   );
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction, reorderElementsAction, deleteElementAction }) {
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
+  const [posState, posFormAction, posPending] = useActionState(updateElementPositionAction, undefined);
+  const [capState, capFormAction, capPending] = useActionState(updateElementCaptionAction, undefined);
+  const [placeState, placeFormAction, placePending] = useActionState(updateElementPlaceAction, undefined);
+  const [zState, zFormAction] = useActionState(changeZIndexAction, undefined);
+  const [dupState, dupFormAction, dupPending] = useActionState(duplicateElementAction, undefined);
+  const [delState, delFormAction, delPending] = useActionState(deleteElementAction, undefined);
+  const [mvUpState, mvUpFormAction] = useActionState(moveElementUpAction, undefined);
+  const [mvDnState, mvDnFormAction] = useActionState(moveElementDownAction, undefined);
+
   const reorderRef = useRef(null);
+  const posRef = useRef(null);
+  const capRef = useRef(null);
+  const placeRef = useRef(null);
+  const zRef = useRef(null);
+  const dupRef = useRef(null);
+  const delRef = useRef(null);
+  const mvUpRef = useRef(null);
+  const mvDnRef = useRef(null);
+
+  const [selectedId, setSelectedId] = useState(null);
+  const [captionDraft, setCaptionDraft] = useState("");
+  const [placeDraft, setPlaceDraft] = useState("");
+  const canvasRef = useRef(null);
+  const dragState = useRef(null);
+  const [, forceRender] = useState(0);
+
+  useEffect(() => {
+    const sel = page.elements?.find(e => e.id === selectedId);
+    setCaptionDraft(sel?.caption || "");
+    setPlaceDraft(sel?.location || "");
+  }, [selectedId, page.elements]);
+
+  const selected = page.elements?.find(e => e.id === selectedId) || null;
 
   const handleDragStart = (index) => {
     setDraggedIndex(index);
@@ -1918,8 +1955,6 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
     const nextElements = [...oldElements];
     [nextElements[draggedIndex], nextElements[dropIdx]] = [nextElements[dropIdx], nextElements[draggedIndex]];
 
-    // Visual: inline form orqali server action ni chaqirish —
-    // formData yaratib, useActionState hook'ini trigger qilamiz.
     if (reorderRef.current) {
       const f = reorderRef.current;
       f.elements.familySlug.value = familySlug;
@@ -1932,68 +1967,346 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
     setDropIndex(null);
   };
 
+  const submitPosition = (elId, x, y, w, h, zIndex, rotation) => {
+    const f = posRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.elementId.value = elId;
+    f.elements.positionX.value = String(x);
+    f.elements.positionY.value = String(y);
+    f.elements.positionW.value = String(w);
+    f.elements.positionH.value = String(h);
+    if (zIndex != null) f.elements.zIndex.value = String(zIndex); else f.elements.zIndex.value = "";
+    if (rotation != null) f.elements.rotation.value = String(rotation); else f.elements.rotation.value = "";
+    setTimeout(() => f.requestSubmit(), 0);
+  };
+
+  const onPointerDownElement = (e, el) => {
+    if (!canEdit) return;
+    e.stopPropagation();
+    setSelectedId(el.id);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width * 100;
+    const py = (e.clientY - rect.top) / rect.height * 100;
+    const ex = el.position_x ?? layout.slots[page.elements.indexOf(el)]?.x ?? 0;
+    const ey = el.position_y ?? layout.slots[page.elements.indexOf(el)]?.y ?? 0;
+    const ew = el.position_w ?? layout.slots[page.elements.indexOf(el)]?.w ?? 40;
+    const eh = el.position_h ?? layout.slots[page.elements.indexOf(el)]?.h ?? 40;
+    if (px >= ex && px <= ex + ew && py >= ey && py <= ey + eh) {
+      dragState.current = { id: el.id, offsetX: px - ex, offsetY: py - ey, startX: ex, startY: ey, lastX: ex, lastY: ey, moved: false };
+      canvas.setPointerCapture?.(e.pointerId);
+    }
+  };
+
+  const onPointerMoveCanvas = (e) => {
+    if (!dragState.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width * 100;
+    const py = (e.clientY - rect.top) / rect.height * 100;
+    const newX = Math.max(0, Math.min(100, px - dragState.current.offsetX));
+    const newY = Math.max(0, Math.min(100, py - dragState.current.offsetY));
+    dragState.current.lastX = newX;
+    dragState.current.lastY = newY;
+    dragState.current.moved = true;
+    forceRender(v => v + 1);
+  };
+
+  const onPointerUpCanvas = () => {
+    if (!dragState.current) return;
+    const { id, startX, startY, lastX, lastY, moved } = dragState.current;
+    dragState.current = null;
+    if (!moved) return;
+    const el = page.elements?.find(e => e.id === id);
+    if (!el) return;
+    const idx = page.elements.indexOf(el);
+    const w = el.position_w ?? layout.slots[idx]?.w ?? 40;
+    const h = el.position_h ?? layout.slots[idx]?.h ?? 40;
+    const z = el.z_index ?? idx;
+    const r = el.rotation ?? 0;
+    submitPosition(id, lastX, lastY, w, h, z, r);
+  };
+
+  const elements = page.elements || [];
+
+  const getElBox = (el, i) => {
+    const slot = layout.slots[i];
+    return {
+      x: el.position_x != null ? el.position_x : (slot?.x ?? 5),
+      y: el.position_y != null ? el.position_y : (slot?.y ?? 5),
+      w: el.position_w != null ? el.position_w : (slot?.w ?? 40),
+      h: el.position_h != null ? el.position_h : (slot?.h ?? 40),
+      r: el.rotation ?? 0,
+      z: el.z_index ?? i,
+    };
+  };
+
+  const saving = posPending || capPending || placePending || dupPending || delPending;
+
   return (
-    <div
-      style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)", opacity: reorderPending ? 0.7 : 1, transition: "opacity 0.2s" }}
-      onDragOver={handleDragOver}
-    >
-      <form ref={reorderRef} action={reorderFormAction} style={{ display: "none" }}>
-        <input type="hidden" name="familySlug" />
-        <input type="hidden" name="albumId" />
-        <input type="hidden" name="pageId" />
-        <input type="hidden" name="elementIds" />
-      </form>
-      {layout.slots.map((slot, i) => {
-        const element = page.elements[i];
-        if (!element) return null;
-        const style = { left: `${slot.x}%`, top: `${slot.y}%`, width: `${slot.w}%`, height: `${slot.h}%` };
-        if (slot.type === "photo") {
+    <div style={{ display: "flex", gap: 16 }}>
+      <div
+        ref={canvasRef}
+        onPointerMove={onPointerMoveCanvas}
+        onPointerUp={onPointerUpCanvas}
+        onPointerCancel={onPointerUpCanvas}
+        onClick={() => setSelectedId(null)}
+        style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)", opacity: saving ? 0.7 : 1, transition: "opacity 0.2s", touchAction: "none" }}
+        onDragOver={handleDragOver}
+      >
+        <form ref={reorderRef} action={reorderFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="albumId" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementIds" />
+        </form>
+        <form ref={posRef} action={posFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="positionX" />
+          <input type="hidden" name="positionY" />
+          <input type="hidden" name="positionW" />
+          <input type="hidden" name="positionH" />
+          <input type="hidden" name="zIndex" />
+          <input type="hidden" name="rotation" />
+        </form>
+        <form ref={capRef} action={capFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="caption" />
+        </form>
+        <form ref={placeRef} action={placeFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="location" />
+        </form>
+        <form ref={zRef} action={zFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="direction" />
+        </form>
+        <form ref={dupRef} action={dupFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="albumId" />
+        </form>
+        <form ref={delRef} action={delFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="albumId" />
+        </form>
+        <form ref={mvUpRef} action={mvUpFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+        </form>
+        <form ref={mvDnRef} action={mvDnFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+        </form>
+        {elements.map((el, i) => {
+          const live = dragState.current?.id === el.id;
+          const box = getElBox(el, i);
+          const x = live ? dragState.current.lastX : box.x;
+          const y = live ? dragState.current.lastY : box.y;
+          const style = {
+            left: `${x}%`,
+            top: `${y}%`,
+            width: `${box.w}%`,
+            height: `${box.h}%`,
+            transform: `rotate(${box.r}deg)`,
+            zIndex: box.z,
+            position: "absolute",
+            border: selectedId === el.id ? `2px solid ${TOKENS.gold}` : "1px solid transparent",
+            borderRadius: 4,
+            boxShadow: selectedId === el.id ? `0 0 0 3px ${TOKENS.gold}33` : "none",
+            transition: live ? "none" : "border 0.15s, box-shadow 0.15s",
+          };
+          const slot = layout.slots[i];
+          const isPhoto = el.type === "photo" || slot?.type === "photo";
           return (
             <div
-              key={element.id}
+              key={el.id}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, i)}
               onDragLeave={() => setDropIndex(null)}
               onDragEnter={() => setDropIndex(i)}
-              style={{
-                ...style,
-                position: "absolute",
-                border: dropIndex === i ? `2px solid ${TOKENS.gold}` : "none",
-                transition: "border 0.2s",
-              }}
+              onPointerDown={(e) => onPointerDownElement(e, el)}
+              style={style}
             >
-              <PhotoSlot
-                element={element}
-                familySlug={familySlug}
-                albumId={albumId}
-                pageId={page.id}
-                uploadElementPhotoAction={uploadElementPhotoAction}
-                deleteElementAction={deleteElementAction}
-                canEdit={canEdit}
-                style={{ width: "100%", height: "100%", position: "relative" }}
-                onDragStart={() => handleDragStart(i)}
-                isDragging={draggedIndex === i}
-              />
+              {isPhoto ? (
+                <PhotoSlot
+                  element={el}
+                  familySlug={familySlug}
+                  albumId={albumId}
+                  pageId={page.id}
+                  uploadElementPhotoAction={uploadElementPhotoAction}
+                  deleteElementAction={deleteElementAction}
+                  canEdit={canEdit}
+                  style={{ width: "100%", height: "100%", position: "relative" }}
+                  onDragStart={() => handleDragStart(i)}
+                  isDragging={draggedIndex === i}
+                />
+              ) : (
+                <TextSlot
+                  element={el}
+                  familySlug={familySlug}
+                  albumId={albumId}
+                  updateElementTextAction={updateElementTextAction}
+                  canEdit={canEdit}
+                  style={{ width: "100%", height: "100%" }}
+                />
+              )}
+              {el.caption && selectedId !== el.id && (
+                <div style={{ position: "absolute", bottom: 4, left: 4, right: 4, fontSize: 10, color: "#fff", background: "rgba(0,0,0,0.55)", padding: "2px 6px", borderRadius: 3, pointerEvents: "none" }}>
+                  {el.caption}
+                </div>
+              )}
             </div>
           );
-        }
-        return (
-          <TextSlot
-            key={element.id}
-            element={element}
-            familySlug={familySlug}
-            albumId={albumId}
-            updateElementTextAction={updateElementTextAction}
-            canEdit={canEdit}
-            style={style}
-          />
-        );
-      })}
-      {reorderState?.error && <div style={{ position: "absolute", top: 8, left: 8, right: 8, background: "#fff1f0", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 6, padding: "6px 10px", fontSize: 11.5, zIndex: 50 }}>{reorderState.error}</div>}
-      <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
-        {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
-        {page.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>}
+        })}
+        {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error].filter(Boolean).length > 0 && (
+          <div style={{ position: "absolute", top: 8, left: 8, right: 8, background: "#fff1f0", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 6, padding: "6px 10px", fontSize: 11.5, zIndex: 50 }}>
+            {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error].filter(Boolean)[0]}
+          </div>
+        )}
+        <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
+          {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
+          {page.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>}
+        </div>
       </div>
+
+      {selected && canEdit && (
+        <div style={{ width: 240, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.1em", color: TOKENS.gold, fontWeight: 700, textTransform: "uppercase", marginBottom: 10 }}>Element</div>
+            <div style={{ fontSize: 12, color: TOKENS.ink60, marginBottom: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+              <div>X: {getElBox(selected, elements.indexOf(selected)).x.toFixed(1)}%</div>
+              <div>Y: {getElBox(selected, elements.indexOf(selected)).y.toFixed(1)}%</div>
+              <div>W: {getElBox(selected, elements.indexOf(selected)).w.toFixed(1)}%</div>
+              <div>H: {getElBox(selected, elements.indexOf(selected)).h.toFixed(1)}%</div>
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+              <button
+                onClick={() => {
+                  const f = zRef.current; if (!f) return;
+                  f.elements.familySlug.value = familySlug;
+                  f.elements.pageId.value = page.id;
+                  f.elements.elementId.value = selected.id;
+                  f.elements.direction.value = "up";
+                  setTimeout(() => f.requestSubmit(), 0);
+                }}
+                title="Z-index oldinga"
+                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink }}
+              ><ChevronUp size={15} /></button>
+              <button
+                onClick={() => {
+                  const f = zRef.current; if (!f) return;
+                  f.elements.familySlug.value = familySlug;
+                  f.elements.pageId.value = page.id;
+                  f.elements.elementId.value = selected.id;
+                  f.elements.direction.value = "down";
+                  setTimeout(() => f.requestSubmit(), 0);
+                }}
+                title="Z-index orqaga"
+                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink }}
+              ><ChevronDown size={15} /></button>
+              <button
+                onClick={() => {
+                  const f = mvUpRef.current; if (!f) return;
+                  f.elements.familySlug.value = familySlug;
+                  f.elements.pageId.value = page.id;
+                  f.elements.elementId.value = selected.id;
+                  setTimeout(() => f.requestSubmit(), 0);
+                }}
+                title="Slot oldinga"
+                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink, fontSize: 11 }}>↑↑</button>
+              <button
+                onClick={() => {
+                  const f = mvDnRef.current; if (!f) return;
+                  f.elements.familySlug.value = familySlug;
+                  f.elements.pageId.value = page.id;
+                  f.elements.elementId.value = selected.id;
+                  setTimeout(() => f.requestSubmit(), 0);
+                }}
+                title="Slot orqaga"
+                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink, fontSize: 11 }}>↓↓</button>
+            </div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              <button
+                onClick={() => {
+                  const f = dupRef.current; if (!f) return;
+                  f.elements.familySlug.value = familySlug;
+                  f.elements.pageId.value = page.id;
+                  f.elements.albumId.value = albumId;
+                  f.elements.elementId.value = selected.id;
+                  setTimeout(() => f.requestSubmit(), 0);
+                }}
+                style={{ flex: 1, padding: "8px", background: TOKENS.gold, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+              ><Copy size={13} /> Nusxa</button>
+              <button
+                onClick={() => {
+                  if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
+                  const f = delRef.current; if (!f) return;
+                  f.elements.familySlug.value = familySlug;
+                  f.elements.pageId.value = page.id;
+                  f.elements.albumId.value = albumId;
+                  f.elements.elementId.value = selected.id;
+                  setTimeout(() => f.requestSubmit(), 0);
+                  setSelectedId(null);
+                }}
+                style={{ flex: 1, padding: "8px", background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+              ><Trash2 size={13} /> O'chir</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Caption (tag)</div>
+                <input
+                  value={captionDraft}
+                  onChange={(e) => setCaptionDraft(e.target.value)}
+                  onBlur={() => {
+                    const f = capRef.current; if (!f) return;
+                    f.elements.familySlug.value = familySlug;
+                    f.elements.elementId.value = selected.id;
+                    f.elements.caption.value = captionDraft;
+                    setTimeout(() => f.requestSubmit(), 0);
+                  }}
+                  placeholder="Rasm tagi yozuv..."
+                  style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, fontFamily: "inherit", color: TOKENS.ink }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Joy (location)</div>
+                <input
+                  value={placeDraft}
+                  onChange={(e) => setPlaceDraft(e.target.value)}
+                  onBlur={() => {
+                    const f = placeRef.current; if (!f) return;
+                    f.elements.familySlug.value = familySlug;
+                    f.elements.elementId.value = selected.id;
+                    f.elements.location.value = placeDraft;
+                    setTimeout(() => f.requestSubmit(), 0);
+                  }}
+                  placeholder="Qayerda olingan..."
+                  style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, fontFamily: "inherit", color: TOKENS.ink }}
+                />
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 10.5, color: TOKENS.ink40, lineHeight: 1.5, textAlign: "center" }}>
+            💡 Elementni sichqoncha bilan tortib, erkin joylashtiring. Koordinatalar avtomatik saqlanadi.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2010,6 +2323,13 @@ function AlbumEditor({
   updateElementTextAction,
   reorderElementsAction,
   deleteElementAction,
+  updateElementPositionAction,
+  updateElementCaptionAction,
+  updateElementPlaceAction,
+  changeZIndexAction,
+  duplicateElementAction,
+  moveElementUpAction,
+  moveElementDownAction,
   deleteAlbumAction,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
@@ -2103,6 +2423,13 @@ function AlbumEditor({
               updateElementTextAction={updateElementTextAction}
               reorderElementsAction={reorderElementsAction}
               deleteElementAction={deleteElementAction}
+              updateElementPositionAction={updateElementPositionAction}
+              updateElementCaptionAction={updateElementCaptionAction}
+              updateElementPlaceAction={updateElementPlaceAction}
+              changeZIndexAction={changeZIndexAction}
+              duplicateElementAction={duplicateElementAction}
+              moveElementUpAction={moveElementUpAction}
+              moveElementDownAction={moveElementDownAction}
             />
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 20 }}>
@@ -2169,6 +2496,13 @@ function AlbumsView({
   updateElementTextAction,
   reorderElementsAction,
   deleteElementAction,
+  updateElementPositionAction,
+  updateElementCaptionAction,
+  updateElementPlaceAction,
+  changeZIndexAction,
+  duplicateElementAction,
+  moveElementUpAction,
+  moveElementDownAction,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
   const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
@@ -2188,6 +2522,13 @@ function AlbumsView({
           updateElementTextAction={updateElementTextAction}
           reorderElementsAction={reorderElementsAction}
           deleteElementAction={deleteElementAction}
+          updateElementPositionAction={updateElementPositionAction}
+          updateElementCaptionAction={updateElementCaptionAction}
+          updateElementPlaceAction={updateElementPlaceAction}
+          changeZIndexAction={changeZIndexAction}
+          duplicateElementAction={duplicateElementAction}
+          moveElementUpAction={moveElementUpAction}
+          moveElementDownAction={moveElementDownAction}
           deleteAlbumAction={deleteAlbumAction}
         />
       ) : (
@@ -3139,6 +3480,13 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  * @property {Function} [uploadElementPhotoAction]
  * @property {Function} [deleteElementAction]
  * @property {Function} [reorderElementsAction]
+ * @property {Function} [updateElementPositionAction]
+ * @property {Function} [updateElementCaptionAction]
+ * @property {Function} [updateElementPlaceAction]
+ * @property {Function} [changeZIndexAction]
+ * @property {Function} [duplicateElementAction]
+ * @property {Function} [moveElementUpAction]
+ * @property {Function} [moveElementDownAction]
  * @property {Function} [bulkUploadPhotosAction]
  * @property {Function} [createPlaceAction]
  * @property {Function} [updatePlaceAction]
@@ -3202,6 +3550,13 @@ export default function HeirloomApp({
   uploadElementPhotoAction,
   deleteElementAction,
   reorderElementsAction,
+  updateElementPositionAction,
+  updateElementCaptionAction,
+  updateElementPlaceAction,
+  changeZIndexAction,
+  duplicateElementAction,
+  moveElementUpAction,
+  moveElementDownAction,
   bulkUploadPhotosAction,
   createPlaceAction,
   updatePlaceAction,
@@ -3225,6 +3580,9 @@ export default function HeirloomApp({
       : initialView === "people" ? VIEWS.PEOPLE
       : initialView === "settings" ? VIEWS.SETTINGS
       : initialView === "timeline" ? VIEWS.TIMELINE
+      : initialView === "memories" ? VIEWS.MEMORIES
+      : initialView === "stories" ? VIEWS.STORIES
+      : initialView === "places" ? VIEWS.PLACES
       : VIEWS.DASHBOARD
   );
   const [openAlbumId, setOpenAlbumId] = useState(null);
@@ -3298,6 +3656,14 @@ export default function HeirloomApp({
                 uploadElementPhotoAction={uploadElementPhotoAction}
                 updateElementTextAction={updateElementTextAction}
                 reorderElementsAction={reorderElementsAction}
+                deleteElementAction={deleteElementAction}
+                updateElementPositionAction={updateElementPositionAction}
+                updateElementCaptionAction={updateElementCaptionAction}
+                updateElementPlaceAction={updateElementPlaceAction}
+                changeZIndexAction={changeZIndexAction}
+                duplicateElementAction={duplicateElementAction}
+                moveElementUpAction={moveElementUpAction}
+                moveElementDownAction={moveElementDownAction}
               />
             )}
             {view === VIEWS.PEOPLE && (
@@ -3347,6 +3713,16 @@ export default function HeirloomApp({
                 updateStoryAction={updateStoryAction}
                 updateStoryPhotoAction={updateStoryPhotoAction}
                 deleteStoryAction={deleteStoryAction}
+              />
+            )}
+            {view === VIEWS.PLACES && (
+              <PlacesView
+                places={places}
+                canEdit={canEdit}
+                familySlug={familySlug}
+                createPlaceAction={createPlaceAction}
+                updatePlaceAction={updatePlaceAction}
+                deletePlaceAction={deletePlaceAction}
               />
             )}
             {view === VIEWS.SETTINGS && (
@@ -3501,6 +3877,92 @@ function StoriesView({ stories, people, canEdit, createStoryAction, deleteStoryA
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function PlacesView({ places, canEdit, familySlug, createPlaceAction, updatePlaceAction, deletePlaceAction }) {
+  const [showForm, setShowForm] = useState(false);
+  const [formState, formAction] = useActionState(createPlaceAction, undefined);
+  const [editState, editFormAction] = useActionState(updatePlaceAction, undefined);
+  const [selected, setSelected] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [deleteState, deleteFormAction] = useActionState(deletePlaceAction, undefined);
+
+  return (
+    <div style={{ display: "flex", height: "100%", gap: 20, padding: "20px 24px" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: TOKENS.ink, margin: 0 }}>Joylar</h1>
+          {canEdit && (
+            <button onClick={() => { setShowForm(!showForm); setSelected(null); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", borderRadius: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+              <Plus size={16} /> Yangi joy
+            </button>
+          )}
+        </div>
+
+        {(showForm || selected) && canEdit && (
+          <form action={selected ? editFormAction : formAction} style={{ background: TOKENS.card, padding: 16, borderRadius: 12, gap: 12, display: "flex", flexDirection: "column" }}>
+            <input type="hidden" name="familySlug" value={familySlug} />
+            {selected && <input type="hidden" name="placeId" value={selected.id} />}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{selected ? "Joyni tahrirlash" : "Yangi joy qo'shish"}</h3>
+              <button type="button" onClick={() => { setShowForm(false); setSelected(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={16} /></button>
+            </div>
+            <input type="text" name="name" defaultValue={selected?.name || ""} placeholder="Joy nomi (masalan: Bobo uyi)" required style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <textarea name="description" defaultValue={selected?.description || ""} placeholder="Tavsif / xotira" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13, minHeight: 60, fontFamily: "inherit" }} />
+            <input type="text" name="address" defaultValue={selected?.address || ""} placeholder="To'liq manzil" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <input type="number" step="any" name="latitude" defaultValue={selected?.latitude ?? ""} placeholder="Kenglik (latitude)" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+              <input type="number" step="any" name="longitude" defaultValue={selected?.longitude ?? ""} placeholder="Uzunlik (longitude)" style={{ padding: "8px 12px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 13 }} />
+            </div>
+            {(formState?.error || editState?.error) && <div style={{ fontSize: 12, color: TOKENS.danger }}>{formState?.error || editState?.error}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="submit" style={{ flex: 1, padding: "10px 16px", borderRadius: 6, background: TOKENS.teal, color: TOKENS.parchment, border: "none", cursor: "pointer", fontWeight: 600 }}>Saqlash</button>
+              {selected && (
+                <button type="button" onClick={() => setConfirmDelete(selected.id)} style={{ padding: "10px 16px", borderRadius: 6, background: TOKENS.danger, color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}>O'chirish</button>
+              )}
+            </div>
+          </form>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12, flex: 1, overflowY: "auto" }}>
+          {places.length === 0 ? (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", color: TOKENS.ink60, padding: "40px" }}>
+              <MapPinned size={32} style={{ marginBottom: 16, opacity: 0.5 }} />
+              <div style={{ fontSize: 14, fontWeight: 500 }}>Hali joy qo'shilmagan</div>
+              <div style={{ fontSize: 12, marginTop: 8 }}>Oilangizga tegishli joylarni saqlang — uylar, shaharlar, davlatlar</div>
+            </div>
+          ) : (
+            places.map(p => (
+              <div key={p.id} onClick={() => { setSelected(p); setShowForm(false); }} style={{ background: TOKENS.card, borderRadius: 8, padding: 14, cursor: "pointer", boxShadow: `0 2px 8px rgba(30,38,33,0.08)`, border: selected?.id === p.id ? `2px solid ${TOKENS.gold}` : "1px solid transparent" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: TOKENS.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <MapPinned size={14} color={TOKENS.teal} />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: TOKENS.ink, marginBottom: 4 }}>{p.name}</div>
+                    {p.address && <div style={{ fontSize: 11.5, color: TOKENS.ink60, marginBottom: 4 }}>{p.address}</div>}
+                    {p.latitude != null && p.longitude != null && (
+                      <div style={{ fontSize: 10.5, color: TOKENS.teal, fontFamily: "monospace" }}>{p.latitude.toFixed(4)}, {p.longitude.toFixed(4)}</div>
+                    )}
+                    {p.description && <div style={{ fontSize: 11.5, color: TOKENS.ink60, marginTop: 6, lineHeight: 1.4 }}>{p.description.substring(0, 80)}{p.description.length > 80 ? "…" : ""}</div>}
+                  </div>
+                </div>
+                {confirmDelete === p.id && (
+                  <form action={deleteFormAction} style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${TOKENS.parchmentDeep}`, display: "flex", gap: 6 }}>
+                    <input type="hidden" name="familySlug" value={familySlug} />
+                    <input type="hidden" name="placeId" value={p.id} />
+                    <button type="submit" style={{ flex: 1, padding: "6px 10px", borderRadius: 6, background: TOKENS.danger, color: "#fff", border: "none", cursor: "pointer", fontSize: 11.5, fontWeight: 600 }}>Rostdan ham</button>
+                    <button type="button" onClick={() => setConfirmDelete(null)} style={{ padding: "6px 10px", borderRadius: 6, border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", cursor: "pointer", fontSize: 11.5, fontWeight: 600 }}>Bekor</button>
+                  </form>
+                )}
+                {deleteState?.error && <div style={{ marginTop: 8, fontSize: 11, color: TOKENS.danger }}>{deleteState.error}</div>}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -48,6 +48,13 @@ import {
   updateStoryAction,
   updateStoryPhotoAction,
   deleteStoryAction,
+  updateElementPositionAction,
+  updateElementCaptionAction,
+  updateElementPlaceAction,
+  changeZIndexAction,
+  duplicateElementAction,
+  moveElementUpAction,
+  moveElementDownAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -141,6 +148,13 @@ export default async function FamilyDashboardPage({
       uploadElementPhotoAction={uploadElementPhotoAction}
       deleteElementAction={deleteElementAction}
       reorderElementsAction={reorderElementsAction}
+      updateElementPositionAction={updateElementPositionAction}
+      updateElementCaptionAction={updateElementCaptionAction}
+      updateElementPlaceAction={updateElementPlaceAction}
+      changeZIndexAction={changeZIndexAction}
+      duplicateElementAction={duplicateElementAction}
+      moveElementUpAction={moveElementUpAction}
+      moveElementDownAction={moveElementDownAction}
       createPlaceAction={createPlaceAction}
       updatePlaceAction={updatePlaceAction}
       deletePlaceAction={deletePlaceAction}
