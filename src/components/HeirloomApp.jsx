@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef, useMemo, useEffect, useLayoutEffect, useCallback, useActionState } from "react";
 import { useRouter } from "next/navigation";
@@ -1884,9 +1884,11 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
   );
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction, deleteElementAction }) {
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction, reorderElementsAction, deleteElementAction }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
+  const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
+  const reorderRef = useRef(null);
 
   const handleDragStart = (index) => {
     setDraggedIndex(index);
@@ -1899,19 +1901,48 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
 
   const handleDrop = (e, dropIdx) => {
     e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== dropIdx && canEdit) {
-      const newElements = [...page.elements];
-      [newElements[draggedIndex], newElements[dropIdx]] = [newElements[dropIdx], newElements[draggedIndex]];
-      setDropIndex(null);
+    if (draggedIndex === null || draggedIndex === dropIdx || !canEdit) return;
+    if (reorderPending) {
       setDraggedIndex(null);
+      setDropIndex(null);
+      return;
     }
+    const oldElements = page.elements || [];
+    const sourceEl = oldElements[draggedIndex];
+    const targetEl = oldElements[dropIdx];
+    if (!sourceEl || !targetEl) {
+      setDraggedIndex(null);
+      setDropIndex(null);
+      return;
+    }
+    const nextElements = [...oldElements];
+    [nextElements[draggedIndex], nextElements[dropIdx]] = [nextElements[dropIdx], nextElements[draggedIndex]];
+
+    // Visual: inline form orqali server action ni chaqirish —
+    // formData yaratib, useActionState hook'ini trigger qilamiz.
+    if (reorderRef.current) {
+      const f = reorderRef.current;
+      f.elements.familySlug.value = familySlug;
+      f.elements.albumId.value = albumId;
+      f.elements.pageId.value = page.id;
+      f.elements.elementIds.value = nextElements.map((el) => el?.id).filter(Boolean).join(",");
+      setTimeout(() => f.requestSubmit(), 0);
+    }
+    setDraggedIndex(null);
+    setDropIndex(null);
   };
 
   return (
     <div
-      style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)" }}
+      style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)", opacity: reorderPending ? 0.7 : 1, transition: "opacity 0.2s" }}
       onDragOver={handleDragOver}
     >
+      <form ref={reorderRef} action={reorderFormAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="albumId" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementIds" />
+      </form>
       {layout.slots.map((slot, i) => {
         const element = page.elements[i];
         if (!element) return null;
@@ -1958,6 +1989,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
           />
         );
       })}
+      {reorderState?.error && <div style={{ position: "absolute", top: 8, left: 8, right: 8, background: "#fff1f0", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 6, padding: "6px 10px", fontSize: 11.5, zIndex: 50 }}>{reorderState.error}</div>}
       <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
         {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
         {page.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>}
@@ -1976,6 +2008,7 @@ function AlbumEditor({
   changePageLayoutAction,
   uploadElementPhotoAction,
   updateElementTextAction,
+  reorderElementsAction,
   deleteElementAction,
   deleteAlbumAction,
 }) {
@@ -2068,6 +2101,7 @@ function AlbumEditor({
               canEdit={canEdit}
               uploadElementPhotoAction={uploadElementPhotoAction}
               updateElementTextAction={updateElementTextAction}
+              reorderElementsAction={reorderElementsAction}
               deleteElementAction={deleteElementAction}
             />
 
@@ -2133,6 +2167,7 @@ function AlbumsView({
   changePageLayoutAction,
   uploadElementPhotoAction,
   updateElementTextAction,
+  reorderElementsAction,
   deleteElementAction,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
@@ -2151,6 +2186,7 @@ function AlbumsView({
           changePageLayoutAction={changePageLayoutAction}
           uploadElementPhotoAction={uploadElementPhotoAction}
           updateElementTextAction={updateElementTextAction}
+          reorderElementsAction={reorderElementsAction}
           deleteElementAction={deleteElementAction}
           deleteAlbumAction={deleteAlbumAction}
         />
@@ -3075,6 +3111,7 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  * @property {any[]} [timelineEvents]
  * @property {any[]} [memories]
  * @property {any[]} [stories]
+ * @property {any[]} [places]
  * @property {string | null} [activeAlbumId]
  * @property {boolean} [canEdit]
  * @property {boolean} [isOwner]
@@ -3101,7 +3138,11 @@ function SettingsView({ familyName, familySince, familySlug, members, invites, i
  * @property {Function} [updateElementTextAction]
  * @property {Function} [uploadElementPhotoAction]
  * @property {Function} [deleteElementAction]
+ * @property {Function} [reorderElementsAction]
  * @property {Function} [bulkUploadPhotosAction]
+ * @property {Function} [createPlaceAction]
+ * @property {Function} [updatePlaceAction]
+ * @property {Function} [deletePlaceAction]
  * @property {Function} [createTimelineEventAction]
  * @property {Function} [updateTimelineEventAction]
  * @property {Function} [deleteTimelineEventAction]
@@ -3133,6 +3174,7 @@ export default function HeirloomApp({
   timelineEvents = /** @type {any[]} */ ([]),
   memories = /** @type {any[]} */ ([]),
   stories = /** @type {any[]} */ ([]),
+  places = /** @type {any[]} */ ([]),
   activeAlbumId = null,
   canEdit = true,
   isOwner = false,
@@ -3159,7 +3201,11 @@ export default function HeirloomApp({
   updateElementTextAction,
   uploadElementPhotoAction,
   deleteElementAction,
+  reorderElementsAction,
   bulkUploadPhotosAction,
+  createPlaceAction,
+  updatePlaceAction,
+  deletePlaceAction,
   createTimelineEventAction,
   updateTimelineEventAction,
   deleteTimelineEventAction,
@@ -3251,6 +3297,7 @@ export default function HeirloomApp({
                 changePageLayoutAction={changePageLayoutAction}
                 uploadElementPhotoAction={uploadElementPhotoAction}
                 updateElementTextAction={updateElementTextAction}
+                reorderElementsAction={reorderElementsAction}
               />
             )}
             {view === VIEWS.PEOPLE && (

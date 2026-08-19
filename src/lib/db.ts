@@ -128,6 +128,48 @@ export async function ensureSchema(): Promise<void> {
       )
     `;
 
+    // Photo Gallery, Album Editor free-form va meta ma'lumotlar uchun kerakli
+    // yangi ustunlar — eski deploy'lar uchun ALTER TABLE IF NOT EXISTS bilan.
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS caption TEXT`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS location TEXT`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS created_at TEXT`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_x FLOAT`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_y FLOAT`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_w FLOAT`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS position_h FLOAT`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS rotation FLOAT DEFAULT 0`;
+    await sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS z_index INTEGER DEFAULT 0`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_page_elements_positioning
+               ON page_elements(page_id, z_index, position_x)`;
+
+    // Eski deploy'larda allaqachon yaratilgan page_elements qatorlari uchun
+    // bo'sh qolgan ustunlarni default qiymatlar bilan to'ldiramiz
+    // (slot_index bo'yicha taxminiy joylashuv + created_at avtomatik).
+    await sql`
+      UPDATE page_elements
+      SET
+        created_at = COALESCE(created_at, (
+          SELECT p.created_at FROM album_pages p WHERE p.id = page_id LIMIT 1
+        )),
+        position_x = COALESCE(position_x, CASE
+          WHEN slot_index = 0 THEN 5.0
+          WHEN slot_index = 1 THEN 55.0
+          WHEN slot_index = 2 THEN 5.0
+          WHEN slot_index = 3 THEN 55.0
+          ELSE 5.0
+        END),
+        position_y = COALESCE(position_y, CASE
+          WHEN slot_index IN (0, 1) THEN 10.0
+          WHEN slot_index IN (2, 3) THEN 50.0
+          ELSE 10.0
+        END),
+        position_w = COALESCE(position_w, 40.0),
+        position_h = COALESCE(position_h, 40.0),
+        rotation = COALESCE(rotation, 0),
+        z_index = COALESCE(z_index, slot_index)
+      WHERE position_x IS NULL OR created_at IS NULL
+    `;
+
     await sql`
       CREATE TABLE IF NOT EXISTS timeline_events (
         id TEXT PRIMARY KEY,

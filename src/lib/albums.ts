@@ -29,6 +29,15 @@ export type PageElement = {
   type: "photo" | "text";
   photo_url: string | null;
   text_content: string | null;
+  caption: string | null;
+  location: string | null;
+  created_at: string | null;
+  position_x: number | null;
+  position_y: number | null;
+  position_w: number | null;
+  position_h: number | null;
+  rotation: number;
+  z_index: number;
 };
 
 // Sahifa shablonlari — bular faqat vizual joylashuv, database'da saqlanmaydi.
@@ -117,11 +126,12 @@ export async function createAlbumPage(albumId: string, layoutId: LayoutId): Prom
 
 async function createEmptyElements(pageId: string, layoutId: LayoutId): Promise<void> {
   const layout = LAYOUTS[layoutId];
+  const now = new Date().toISOString();
   for (let i = 0; i < layout.slots.length; i++) {
     const slot = layout.slots[i];
     await sql`
-      INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content)
-      VALUES (${randomUUID()}, ${pageId}, ${i}, ${slot.type}, ${null}, ${slot.type === "text" ? "" : null})
+      INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
+      VALUES (${randomUUID()}, ${pageId}, ${i}, ${slot.type}, ${null}, ${slot.type === "text" ? "" : null}, ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, 0, ${i})
     `;
   }
 }
@@ -194,4 +204,89 @@ export async function moveElementDown(elementId: string, pageId: string): Promis
     await sql`UPDATE page_elements SET slot_index = ${currentIndex} WHERE id = ${nextElement[0].id}`;
     await sql`UPDATE page_elements SET slot_index = ${currentIndex + 1} WHERE id = ${elementId}`;
   }
+}
+
+export async function updateElementPosition(
+  elementId: string,
+  pageId: string,
+  pos: { x: number; y: number; w: number; h: number; zIndex?: number; rotation?: number }
+): Promise<void> {
+  await ensureSchema();
+  if (pos.x !== undefined) {
+    await sql`UPDATE page_elements SET position_x = ${pos.x} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  }
+  if (pos.y !== undefined) {
+    await sql`UPDATE page_elements SET position_y = ${pos.y} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  }
+  if (pos.w !== undefined) {
+    await sql`UPDATE page_elements SET position_w = ${pos.w} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  }
+  if (pos.h !== undefined) {
+    await sql`UPDATE page_elements SET position_h = ${pos.h} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  }
+  if (pos.zIndex !== undefined) {
+    await sql`UPDATE page_elements SET z_index = ${pos.zIndex} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  }
+  if (pos.rotation !== undefined) {
+    await sql`UPDATE page_elements SET rotation = ${pos.rotation} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  }
+}
+
+export async function updateElementCaption(elementId: string, caption: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE page_elements SET caption = ${caption.trim() || null} WHERE id = ${elementId}`;
+}
+
+export async function updateElementLocation(elementId: string, location: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE page_elements SET location = ${location.trim() || null} WHERE id = ${elementId}`;
+}
+
+export async function changeZIndex(elementId: string, pageId: string, direction: "up" | "down"): Promise<void> {
+  await ensureSchema();
+  const rows = (await sql`
+    SELECT id, z_index FROM page_elements
+    WHERE page_id = ${pageId}
+    ORDER BY z_index ASC, slot_index ASC
+  `) as { id: string; z_index: number }[];
+  const idx = rows.findIndex((r) => r.id === elementId);
+  if (idx < 0) return;
+  const swapIdx = direction === "up" ? idx + 1 : idx - 1;
+  if (swapIdx < 0 || swapIdx >= rows.length) return;
+  const a = rows[idx];
+  const b = rows[swapIdx];
+  await sql`UPDATE page_elements SET z_index = ${b.z_index} WHERE id = ${a.id} AND page_id = ${pageId}`;
+  await sql`UPDATE page_elements SET z_index = ${a.z_index} WHERE id = ${b.id} AND page_id = ${pageId}`;
+}
+
+export async function duplicateElement(elementId: string, pageId: string): Promise<string | null> {
+  await ensureSchema();
+  const rows = (await sql`SELECT * FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`) as (PageElement & { slot_index: number })[];
+  const src = rows[0];
+  if (!src) return null;
+  const newId = randomUUID();
+  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  const now = new Date().toISOString();
+  await sql`
+    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
+    VALUES (
+      ${newId},
+      ${pageId},
+      ${maxSlotRows[0].m + 1},
+      ${src.type},
+      ${src.photo_url},
+      ${src.text_content},
+      ${src.caption},
+      ${src.location},
+      ${now},
+      ${(src.position_x ?? 8) + 3},
+      ${(src.position_y ?? 8) + 3},
+      ${src.position_w ?? 40},
+      ${src.position_h ?? 40},
+      ${src.rotation ?? 0},
+      ${maxZRows[0].m + 1}
+    )
+  `;
+  return newId;
 }

@@ -40,6 +40,11 @@ import {
   reorderPageElements,
   moveElementUp,
   moveElementDown,
+  updateElementPosition,
+  updateElementCaption,
+  updateElementLocation,
+  changeZIndex,
+  duplicateElement,
   type LayoutId,
 } from "@/lib/albums";
 import {
@@ -58,7 +63,7 @@ import { createStory, updateStory, deleteStory, updateStoryPhoto } from "@/lib/s
 import { createPlace, updatePlace, deletePlace } from "@/lib/places";
 import { put } from "@vercel/blob";
 
-export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string } | undefined;
+export type ActionState = { error?: string; ok?: boolean; familySlug?: string; mePersonId?: string; albumId?: string; inviteCode?: string; elementId?: string; placeId?: string } | undefined;
 
 async function verifyFamilyAccess(formData: FormData, minRole: "editor" | "owner" | "member" | "viewer" = "member") {
   const session = await getSession();
@@ -938,6 +943,111 @@ export async function moveElementDownAction(_prevState: ActionState, formData: F
     return { ok: true };
   } catch {
     return { error: "Element ko'chirishda xato yuz berdi." };
+  }
+}
+
+/* ============ Album Editor — Position / Caption / Free-form ============ */
+
+export async function updateElementPositionAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const x = Number(formData.get("positionX"));
+  const y = Number(formData.get("positionY"));
+  const w = Number(formData.get("positionW"));
+  const h = Number(formData.get("positionH"));
+  const zRaw = formData.get("zIndex");
+  const rRaw = formData.get("rotation");
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+  if ([x, y, w, h].some((v) => Number.isNaN(v))) return { error: "Joylashuv koordinatalari noto'g'ri." };
+
+  try {
+    await updateElementPosition(elementId, pageId, {
+      x, y, w, h,
+      zIndex: zRaw != null && zRaw !== "" ? Number(zRaw) : undefined,
+      rotation: rRaw != null && rRaw !== "" ? Number(rRaw) : undefined,
+    });
+    return { ok: true };
+  } catch {
+    return { error: "Element joylashuvini saqlashda xato." };
+  }
+}
+
+export async function updateElementCaptionAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const caption = String(formData.get("caption") || "");
+
+  if (!elementId) return { error: "Element ID kerak." };
+
+  try {
+    await updateElementCaption(elementId, caption);
+    return { ok: true };
+  } catch {
+    return { error: "Caption saqlashda xato." };
+  }
+}
+
+export async function updateElementPlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const location = String(formData.get("location") || "");
+
+  if (!elementId) return { error: "Element ID kerak." };
+
+  try {
+    await updateElementLocation(elementId, location);
+    return { ok: true };
+  } catch {
+    return { error: "Joy (location) saqlashda xato." };
+  }
+}
+
+export async function changeZIndexAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const direction = formData.get("direction") === "down" ? "down" : "up";
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+
+  try {
+    await changeZIndex(elementId, pageId, direction);
+    return { ok: true };
+  } catch {
+    return { error: "Z-index o'zgartirishda xato." };
+  }
+}
+
+export async function duplicateElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const albumId = String(formData.get("albumId") || "").trim();
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+
+  try {
+    const newId = await duplicateElement(elementId, pageId);
+    return { ok: true, elementId: newId ?? undefined, albumId: albumId || undefined };
+  } catch {
+    return { error: "Elementni nusxalashda xato." };
   }
 }
 

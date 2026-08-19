@@ -8,6 +8,7 @@ import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib
 import { getTimelineEventsForFamily } from "@/lib/timeline";
 import { getMemoriesForFamily } from "@/lib/memories";
 import { getStoriesForFamily } from "@/lib/stories";
+import { getPlacesForFamily } from "@/lib/places";
 import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
@@ -30,6 +31,10 @@ import {
   updateElementTextAction,
   uploadElementPhotoAction,
   deleteElementAction,
+  reorderElementsAction,
+  createPlaceAction,
+  updatePlaceAction,
+  deletePlaceAction,
   bulkUploadPhotosAction,
   createTimelineEventAction,
   updateTimelineEventAction,
@@ -63,7 +68,7 @@ export default async function FamilyDashboardPage({
   const membership = await getMembership(family.id, session.id);
   if (!membership) notFound();
 
-  const [people, relationships, albums, members, invites, timelineEvents, memories, stories] = await Promise.all([
+  const [people, relationships, albums, members, invites, timelineEvents, memories, stories, places] = await Promise.all([
     getPeopleForFamily(family.id),
     getRelationshipsForFamily(family.id),
     getAlbumsForFamily(family.id),
@@ -72,6 +77,7 @@ export default async function FamilyDashboardPage({
     getTimelineEventsForFamily(family.id),
     getMemoriesForFamily(family.id),
     getStoriesForFamily(family.id),
+    getPlacesForFamily(family.id),
   ]);
 
   // Har bir albom uchun sahifa va elementlarni yig'amiz (nested struktura,
@@ -107,6 +113,7 @@ export default async function FamilyDashboardPage({
       timelineEvents={timelineEvents}
       memories={memories}
       stories={stories}
+      places={places}
       activeAlbumId={activeAlbumId ?? null}
       canEdit={membership.role !== "viewer"}
       isOwner={membership.role === "owner"}
@@ -133,6 +140,10 @@ export default async function FamilyDashboardPage({
       updateElementTextAction={updateElementTextAction}
       uploadElementPhotoAction={uploadElementPhotoAction}
       deleteElementAction={deleteElementAction}
+      reorderElementsAction={reorderElementsAction}
+      createPlaceAction={createPlaceAction}
+      updatePlaceAction={updatePlaceAction}
+      deletePlaceAction={deletePlaceAction}
       bulkUploadPhotosAction={bulkUploadPhotosAction}
       createTimelineEventAction={createTimelineEventAction}
       updateTimelineEventAction={updateTimelineEventAction}
