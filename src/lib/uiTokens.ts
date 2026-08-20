@@ -1,4 +1,4 @@
-export const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');`;
+export const FONT_IMPORT = `@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=Caveat:wght@500;600;700&display=swap');`;
 
 export const TOKENS = {
   ink: "#1E2621",
@@ -12,6 +12,13 @@ export const TOKENS = {
   ink60: "rgba(30,38,33,0.6)",
   ink40: "rgba(30,38,33,0.4)",
   danger: "#A8453A",
+  // Scrapbook / album-spread specific tokens
+  bookCover: "#141915",
+  bookCoverSoft: "#1E2621",
+  paper: "#F4EDDD",
+  paperShadow: "rgba(120,96,54,0.16)",
+  tape: "rgba(217,188,133,0.55)",
+  handwriting: "'Caveat', cursive",
 };
 
 export const inputStyle = {

@@ -19,6 +19,27 @@ const LAYOUTS = [
   { id: "l4", name: "Uchtasi qatorda", slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55 }, { type: "photo", x: 36, y: 10, w: 28, h: 55 }, { type: "photo", x: 67, y: 10, w: 28, h: 55 }, { type: "text", x: 5, y: 70, w: 90, h: 22 }] },
 ];
 
+/* ---------------- Scrapbook decoration helpers ---------------- */
+
+// Small deterministic "randomness" from an element id, so the same photo
+// always gets the same paper-doll tilt/tape angle instead of jittering
+// between renders.
+function seeded(id, salt = 0) {
+  const str = String(id || "x") + "-" + salt;
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h % 1000) / 1000; // 0..1
+}
+
+function LeafDoodle({ style, flip }) {
+  return (
+    <svg viewBox="0 0 60 60" width={54} height={54} style={{ position: "absolute", opacity: 0.5, pointerEvents: "none", transform: flip ? "scaleX(-1)" : undefined, ...style }}>
+      <path d="M6 54C6 30 20 8 46 6c2 20-8 38-28 46-6 2-10 2-12 2Z" fill={TOKENS.tealSoft} opacity="0.55" />
+      <path d="M10 50C14 32 24 16 44 10" stroke={TOKENS.teal} strokeWidth="1.4" fill="none" opacity="0.6" />
+    </svg>
+  );
+}
+
 function ChipButton({ children, active, onClick }) {
   return (
     <button onClick={onClick} type="button" style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 20, border: active ? "none" : `1px solid ${TOKENS.parchmentDeep}`, background: active ? TOKENS.ink : "transparent", color: active ? TOKENS.parchment : TOKENS.ink60, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -240,6 +261,9 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
     }
   };
 
+  const tilt = element.photo_url ? (seeded(element.id, 1) * 4 - 2) : 0; // -2..2deg, decorative only
+  const tapeRotate = seeded(element.id, 2) * 16 - 8; // -8..8deg
+
   return (
     <div
       style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s" }}
@@ -248,16 +272,35 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
     >
       <div
         style={{
-          width: "100%", height: "100%", borderRadius: 3, position: "relative", overflow: "hidden",
-          background: element.photo_url ? undefined : TOKENS.parchment,
-          backgroundImage: element.photo_url ? `url(${element.photo_url})` : undefined,
-          backgroundSize: "cover", backgroundPosition: "center",
-          boxShadow: element.photo_url ? "0 3px 10px rgba(0,0,0,0.12)" : "none",
+          width: "100%", height: "100%", borderRadius: 2, position: "relative",
+          transform: `rotate(${tilt}deg)`,
+          background: element.photo_url ? "#fff" : TOKENS.parchment,
+          padding: element.photo_url ? "5% 5% 9%" : 0,
+          boxShadow: element.photo_url ? "0 8px 18px rgba(30,26,15,0.22), 0 2px 5px rgba(30,26,15,0.12)" : "none",
           border: element.photo_url ? "none" : `1.5px dashed ${TOKENS.parchmentDeep}`,
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: canEdit ? "grab" : "default",
+          boxSizing: "border-box",
         }}
       >
+        {element.photo_url && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", top: -10, left: "50%", width: 46, height: 20,
+              transform: `translateX(-50%) rotate(${tapeRotate}deg)`,
+              background: TOKENS.tape, boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
+              opacity: 0.85, pointerEvents: "none",
+            }}
+          />
+        )}
+        <div
+          style={{
+            width: "100%", height: "100%", position: "relative", overflow: "hidden", borderRadius: 1,
+            backgroundImage: element.photo_url ? `url(${element.photo_url})` : undefined,
+            backgroundSize: "cover", backgroundPosition: "center",
+          }}
+        >
         {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
         {canEdit && (
           <>
@@ -301,6 +344,7 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
             )}
           </>
         )}
+        </div>
       </div>
       {error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{error}</div>}
       {deleteState?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{deleteState.error}</div>}
@@ -328,7 +372,7 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
           placeholder={canEdit ? "Matn yozing..." : ""}
           style={{
             width: "100%", height: "100%", border: "none", outline: "none", resize: "none", background: "transparent",
-            fontFamily: "Fraunces, serif", fontStyle: "italic", fontSize: 13.5, lineHeight: 1.5, color: TOKENS.ink,
+            fontFamily: TOKENS.handwriting, fontSize: 22, lineHeight: 1.35, color: TOKENS.ink, fontWeight: 600,
           }}
         />
       </form>
@@ -511,9 +555,16 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
         onPointerUp={onPointerUpCanvas}
         onPointerCancel={onPointerUpCanvas}
         onClick={() => setSelectedId(null)}
-        style={{ width: "100%", aspectRatio: "4/3", background: "#FFFFFF", borderRadius: 4, position: "relative", boxShadow: "0 12px 34px rgba(30,38,33,0.16), 0 2px 6px rgba(30,38,33,0.08)", opacity: saving ? 0.7 : 1, transition: "opacity 0.2s", touchAction: "none" }}
+        style={{
+          width: "100%", aspectRatio: "4/3", borderRadius: 3, position: "relative",
+          background: `radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)`,
+          boxShadow: `inset 0 0 40px ${TOKENS.paperShadow}, 0 2px 6px rgba(30,38,33,0.08)`,
+          opacity: saving ? 0.7 : 1, transition: "opacity 0.2s", touchAction: "none", overflow: "hidden",
+        }}
         onDragOver={handleDragOver}
       >
+        <LeafDoodle style={{ bottom: 6, right: 8 }} flip />
+        <LeafDoodle style={{ top: 4, left: 6, opacity: 0.28 }} />
         <form ref={reorderRef} action={reorderFormAction} style={{ display: "none" }}>
           <input type="hidden" name="familySlug" />
           <input type="hidden" name="albumId" />
@@ -837,101 +888,167 @@ function AlbumEditor({
       {pages.length === 0 || !currentPage ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: TOKENS.ink60, fontSize: 13.5 }}>Bu albomda hali sahifa yo'q.</div>
       ) : (
-        <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 260 }}>
-            {canEdit && (
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                <ChipButton active={showLayoutPicker} onClick={() => setShowLayoutPicker(!showLayoutPicker)}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}><LayoutGrid size={13} /> Layout</span>
-                </ChipButton>
-              </div>
-            )}
+        (() => {
+          const rightPage = pages[pageIndex + 1] || null;
+          const rightLayout = rightPage ? (LAYOUTS.find((l) => l.id === rightPage.layout_id) || LAYOUTS[0]) : null;
+          const totalSpreads = Math.ceil(pages.length / 2);
+          const spreadNum = Math.floor(pageIndex / 2) + 1;
 
-            {showLayoutPicker && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
-                {LAYOUTS.map((l) => (
-                  <form key={l.id} action={layoutFormAction} onSubmit={() => setShowLayoutPicker(false)}>
+          return (
+            <div style={{ background: `linear-gradient(180deg, ${TOKENS.bookCoverSoft}, ${TOKENS.bookCover})`, borderRadius: 18, padding: "18px 18px 20px" }}>
+              {/* Book toolbar */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "0 6px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <button onClick={() => setPageIndex(Math.max(0, pageIndex - 2))} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex === 0 ? 0.3 : 0.85 }}><ChevronLeft size={20} /></button>
+                  <span style={{ fontSize: 12.5, color: "rgba(242,237,226,0.75)", fontWeight: 500 }}>Sahifa {spreadNum} / {totalSpreads}</span>
+                  <button onClick={() => setPageIndex(Math.min(pages.length - (pages.length % 2 === 0 ? 2 : 1), pageIndex + 2))} disabled={pageIndex + 2 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 2 >= pages.length ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex + 2 >= pages.length ? 0.3 : 0.85 }}><ChevronRight size={20} /></button>
+                </div>
+                {canEdit && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <ChipButton active={showLayoutPicker} onClick={() => setShowLayoutPicker(!showLayoutPicker)}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showLayoutPicker ? undefined : "#F2EDE2" }}><LayoutGrid size={13} /> Layout</span>
+                    </ChipButton>
+                  </div>
+                )}
+              </div>
+
+              {showLayoutPicker && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
+                  {LAYOUTS.map((l) => (
+                    <form key={l.id} action={layoutFormAction} onSubmit={() => setShowLayoutPicker(false)}>
+                      <input type="hidden" name="familySlug" value={familySlug} />
+                      <input type="hidden" name="albumId" value={album.id} />
+                      <input type="hidden" name="pageId" value={currentPage.id} />
+                      <input type="hidden" name="layoutId" value={l.id} />
+                      <button
+                        type="submit"
+                        style={{ width: "100%", cursor: "pointer", border: currentLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
+                      >
+                        <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
+                          {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
+                        </div>
+                        <div style={{ fontSize: 10, color: TOKENS.ink60, textAlign: "center" }}>{l.name}</div>
+                      </button>
+                    </form>
+                  ))}
+                </div>
+              )}
+              {layoutState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{layoutState.error}</div>}
+
+              {/* Two-page spread */}
+              <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative" }}>
+                <div style={{ flex: 1, position: "relative" }}>
+                  <PageCanvas
+                    page={currentPage}
+                    layout={currentLayout}
+                    familySlug={familySlug}
+                    albumId={album.id}
+                    canEdit={canEdit}
+                    saveElementPhotoUrlAction={saveElementPhotoUrlAction}
+                    updateElementTextAction={updateElementTextAction}
+                    reorderElementsAction={reorderElementsAction}
+                    deleteElementAction={deleteElementAction}
+                    updateElementPositionAction={updateElementPositionAction}
+                    updateElementCaptionAction={updateElementCaptionAction}
+                    updateElementPlaceAction={updateElementPlaceAction}
+                    changeZIndexAction={changeZIndexAction}
+                    duplicateElementAction={duplicateElementAction}
+                    moveElementUpAction={moveElementUpAction}
+                    moveElementDownAction={moveElementDownAction}
+                  />
+                </div>
+                {/* Spine shadow between pages */}
+                <div style={{ width: 22, marginLeft: -11, marginRight: -11, zIndex: 5, background: "linear-gradient(90deg, transparent, rgba(30,26,15,0.22) 45%, rgba(30,26,15,0.22) 55%, transparent)", pointerEvents: "none" }} />
+                <div style={{ flex: 1, position: "relative" }}>
+                  {rightPage ? (
+                    <PageCanvas
+                      page={rightPage}
+                      layout={rightLayout}
+                      familySlug={familySlug}
+                      albumId={album.id}
+                      canEdit={canEdit}
+                      saveElementPhotoUrlAction={saveElementPhotoUrlAction}
+                      updateElementTextAction={updateElementTextAction}
+                      reorderElementsAction={reorderElementsAction}
+                      deleteElementAction={deleteElementAction}
+                      updateElementPositionAction={updateElementPositionAction}
+                      updateElementCaptionAction={updateElementCaptionAction}
+                      updateElementPlaceAction={updateElementPlaceAction}
+                      changeZIndexAction={changeZIndexAction}
+                      duplicateElementAction={duplicateElementAction}
+                      moveElementUpAction={moveElementUpAction}
+                      moveElementDownAction={moveElementDownAction}
+                    />
+                  ) : (
+                    <div style={{ width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)` }}>
+                      {canEdit && (
+                        <form action={addPageFormAction} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <input type="hidden" name="familySlug" value={familySlug} />
+                          <input type="hidden" name="albumId" value={album.id} />
+                          <button type="submit" disabled={addPagePending} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "transparent", border: `1.5px dashed ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "16px 22px", color: TOKENS.ink40, cursor: addPagePending ? "default" : "pointer" }}>
+                            <Plus size={18} /><span style={{ fontSize: 11.5 }}>Sahifa qo'shish</span>
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {canEdit && (
+                <div style={{ textAlign: "center", marginTop: 14 }}>
+                  <form action={deletePageFormAction} style={{ display: "inline" }}>
                     <input type="hidden" name="familySlug" value={familySlug} />
                     <input type="hidden" name="albumId" value={album.id} />
                     <input type="hidden" name="pageId" value={currentPage.id} />
-                    <input type="hidden" name="layoutId" value={l.id} />
-                    <button
-                      type="submit"
-                      style={{ width: "100%", cursor: "pointer", border: currentLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
-                    >
-                      <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
-                        {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
-                      </div>
-                      <div style={{ fontSize: 10, color: TOKENS.ink60, textAlign: "center" }}>{l.name}</div>
+                    <button type="submit" disabled={pages.length <= 1} style={{ fontSize: 11.5, color: pages.length <= 1 ? "rgba(242,237,226,0.3)" : "#E7A79B", background: "none", border: "none", cursor: pages.length <= 1 ? "default" : "pointer" }}>
+                      Sahifani o'chirish
                     </button>
                   </form>
-                ))}
-              </div>
-            )}
-            {layoutState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10 }}>{layoutState.error}</div>}
-
-            <PageCanvas
-              page={currentPage}
-              layout={currentLayout}
-              familySlug={familySlug}
-              albumId={album.id}
-              canEdit={canEdit}
-              saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-              updateElementTextAction={updateElementTextAction}
-              reorderElementsAction={reorderElementsAction}
-              deleteElementAction={deleteElementAction}
-              updateElementPositionAction={updateElementPositionAction}
-              updateElementCaptionAction={updateElementCaptionAction}
-              updateElementPlaceAction={updateElementPlaceAction}
-              changeZIndexAction={changeZIndexAction}
-              duplicateElementAction={duplicateElementAction}
-              moveElementUpAction={moveElementUpAction}
-              moveElementDownAction={moveElementDownAction}
-            />
-
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, marginTop: 20 }}>
-              <button onClick={() => setPageIndex(Math.max(0, pageIndex - 1))} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: pageIndex === 0 ? TOKENS.ink40 : TOKENS.ink, opacity: pageIndex === 0 ? 0.4 : 1 }}><ChevronLeft size={20} /></button>
-              <span style={{ fontSize: 12.5, color: TOKENS.ink60, fontWeight: 500 }}>Sahifa {pageIndex + 1} / {pages.length}</span>
-              <button onClick={() => setPageIndex(Math.min(pages.length - 1, pageIndex + 1))} disabled={pageIndex === pages.length - 1} style={{ background: "none", border: "none", cursor: pageIndex === pages.length - 1 ? "default" : "pointer", color: pageIndex === pages.length - 1 ? TOKENS.ink40 : TOKENS.ink, opacity: pageIndex === pages.length - 1 ? 0.4 : 1 }}><ChevronRight size={20} /></button>
-            </div>
-
-            {canEdit && pages.length > 1 && (
-              <form action={deletePageFormAction} style={{ textAlign: "center", marginTop: 14 }}>
-                <input type="hidden" name="familySlug" value={familySlug} />
-                <input type="hidden" name="albumId" value={album.id} />
-                <input type="hidden" name="pageId" value={currentPage.id} />
-                <button type="submit" style={{ fontSize: 11.5, color: TOKENS.danger, background: "none", border: "none", cursor: "pointer" }}>
-                  Bu sahifani o'chirish
-                </button>
-              </form>
-            )}
-            {deletePageState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, textAlign: "center", marginTop: 6 }}>{deletePageState.error}</div>}
-          </div>
-
-          <div style={{ width: 128, flexShrink: 0 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.1em", color: TOKENS.ink40, textTransform: "uppercase", marginBottom: 12 }}>Sahifalar</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 480, overflowY: "auto" }}>
-              {pages.map((p, i) => {
-                const firstPhoto = p.elements.find((e) => e.type === "photo" && e.photo_url);
-                return (
-                  <div key={p.id} onClick={() => setPageIndex(i)} style={{ width: "100%", aspectRatio: "4/3", borderRadius: 4, background: "#fff", border: i === pageIndex ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                    {firstPhoto && <div style={{ position: "absolute", inset: 4, backgroundImage: `url(${firstPhoto.photo_url})`, backgroundSize: "cover", borderRadius: 2 }} />}
-                  </div>
-                );
-              })}
-              {canEdit && (
-                <form action={addPageFormAction}>
-                  <input type="hidden" name="familySlug" value={familySlug} />
-                  <input type="hidden" name="albumId" value={album.id} />
-                  <button type="submit" disabled={addPagePending} style={{ width: "100%", aspectRatio: "4/3", borderRadius: 4, border: `1.5px dashed ${TOKENS.parchmentDeep}`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink40, cursor: addPagePending ? "default" : "pointer" }}>
-                    <Plus size={18} />
-                  </button>
-                </form>
+                </div>
               )}
+              {deletePageState?.error && <div style={{ fontSize: 11.5, color: "#E7A79B", textAlign: "center", marginTop: 6 }}>{deletePageState.error}</div>}
+
+              {/* Thumbnail filmstrip */}
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", marginTop: 22, paddingTop: 4, paddingBottom: 2 }}>
+                {pages.map((p, i) => {
+                  const firstPhoto = p.elements.find((e) => e.type === "photo" && e.photo_url);
+                  const inSpread = i === pageIndex || i === pageIndex + 1;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setPageIndex(i % 2 === 0 ? i : i - 1)}
+                      title={`Sahifa ${i + 1}`}
+                      style={{
+                        width: 72, aspectRatio: "4/3", flexShrink: 0, borderRadius: 4, background: "#fff",
+                        border: inSpread ? `2px solid ${TOKENS.gold}` : "1px solid rgba(242,237,226,0.18)",
+                        cursor: "pointer", position: "relative", overflow: "hidden",
+                        boxShadow: inSpread ? `0 0 0 2px rgba(184,134,59,0.25)` : "none",
+                      }}
+                    >
+                      {firstPhoto ? (
+                        <div style={{ position: "absolute", inset: 3, backgroundImage: `url(${firstPhoto.photo_url})`, backgroundSize: "cover", borderRadius: 2 }} />
+                      ) : (
+                        <div style={{ position: "absolute", inset: 0, background: TOKENS.parchment }} />
+                      )}
+                      <div style={{ position: "absolute", bottom: 2, right: 3, fontSize: 8.5, color: "#fff", background: "rgba(0,0,0,0.5)", borderRadius: 3, padding: "0 3px" }}>{i + 1}</div>
+                    </div>
+                  );
+                })}
+                {canEdit && (
+                  <form action={addPageFormAction}>
+                    <input type="hidden" name="familySlug" value={familySlug} />
+                    <input type="hidden" name="albumId" value={album.id} />
+                    <button type="submit" disabled={addPagePending} style={{ width: 72, aspectRatio: "4/3", flexShrink: 0, borderRadius: 4, border: "1.5px dashed rgba(242,237,226,0.3)", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(242,237,226,0.6)", cursor: addPagePending ? "default" : "pointer" }}>
+                      <Plus size={16} />
+                    </button>
+                  </form>
+                )}
+              </div>
+              {addPageState?.error && <div style={{ fontSize: 11, color: "#E7A79B", marginTop: 8 }}>{addPageState.error}</div>}
             </div>
-            {addPageState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 8 }}>{addPageState.error}</div>}
-          </div>
-        </div>
+          );
+        })()
       )}
     </div>
   );
