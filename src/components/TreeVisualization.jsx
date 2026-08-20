@@ -226,7 +226,19 @@ export function TreeVisualization({
     return () => clearTimeout(renderTimeout);
   }, [treeData, width, height, mePersonId, onSelectPerson]);
 
-  // Handle zoom/pan
+  // Handle zoom/pan.
+  //
+  // IMPORTANT: this effect attaches the d3 zoom behavior ONCE (empty deps)
+  // and applies the +50/+50 centering offset only on first mount. It must
+  // NOT depend on `pan`/`zoom` React state: the "zoom" handler below calls
+  // onPan/onZoom to report the transform up to the parent, which stores it
+  // in state and passes it back down as the `pan`/`zoom` props. If this
+  // effect re-ran on every such update it would re-apply `pan.x + 50` on
+  // top of a `pan.x` that already includes the *previous* +50 — an
+  // unbounded feedback loop that pans the tree further off-screen on every
+  // render until every node is outside the visible SVG area (this was the
+  // cause of the tree appearing empty despite people existing).
+  const didInitialCenter = useRef(false);
   useEffect(() => {
     if (!svgRef.current) return;
 
@@ -247,14 +259,20 @@ export function TreeVisualization({
 
     svg.call(zoomBehavior);
 
-    // Apply current transform
-    if (pan && zoom) {
+    // Apply the initial centering offset exactly once. After this, d3 owns
+    // the live transform (via user drag/wheel); we only notify React of it,
+    // we never re-derive it from React state.
+    if (!didInitialCenter.current) {
+      didInitialCenter.current = true;
+      const initialZoom = zoom || 1;
+      const initialPan = pan || { x: 0, y: 0 };
       svg.call(
         zoomBehavior.transform,
-        d3.zoomIdentity.translate(pan.x + 50, pan.y + 50).scale(zoom)
+        d3.zoomIdentity.translate(initialPan.x + 50, initialPan.y + 50).scale(initialZoom)
       );
     }
-  }, [pan, zoom, onPan, onZoom]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{ position: "relative" }}>
