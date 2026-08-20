@@ -40,6 +40,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
 
     if (invite.revoked_at) statusMessage = "Bu taklif havolasi bekor qilingan.";
     else if (invite.used_at) statusMessage = "Bu taklif havolasi allaqachon ishlatilgan.";
+    else if (invite.expires_at && new Date(invite.expires_at) < new Date()) statusMessage = "Bu taklif havolasining muddati o'tgan.";
 
     if (session) {
       try {

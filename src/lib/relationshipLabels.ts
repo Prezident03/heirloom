@@ -80,3 +80,21 @@ export function relationLabelBetween(
 
   return null;
 }
+
+export type DisplayPerson = {
+  first_name: string;
+  last_name?: string | null;
+  birth_date?: string | null;
+  death_date?: string | null;
+};
+
+export function personLabel(p: DisplayPerson): string {
+  return [p.first_name, p.last_name].filter(Boolean).join(" ") || "Ism kiritilmagan";
+}
+
+export function personYears(p: DisplayPerson): string {
+  if (p.birth_date && p.death_date) return `${p.birth_date}–${p.death_date}`;
+  if (p.birth_date) return p.birth_date;
+  if (p.death_date) return `–${p.death_date}`;
+  return "";
+}

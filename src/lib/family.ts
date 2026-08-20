@@ -131,10 +131,13 @@ export type FamilyInvite = {
   role: "editor" | "member" | "viewer";
   created_by: string;
   created_at: string;
+  expires_at: string;
   revoked_at: string | null;
   used_by: string | null;
   used_at: string | null;
 };
+
+const INVITE_DURATION_DAYS = 7;
 
 function makeInviteCode(): string {
   // URL-friendly, taxminan qilib bo'lmaydigan 10 belgili kod.
@@ -146,13 +149,25 @@ export async function createInvite(familyId: string, role: FamilyInvite["role"],
   const id = randomUUID();
   const code = makeInviteCode();
   const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + INVITE_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   await sql`
-    INSERT INTO family_invites (id, family_id, code, role, created_by, created_at)
-    VALUES (${id}, ${familyId}, ${code}, ${role}, ${createdBy}, ${createdAt})
+    INSERT INTO family_invites (id, family_id, code, role, created_by, created_at, expires_at)
+    VALUES (${id}, ${familyId}, ${code}, ${role}, ${createdBy}, ${createdAt}, ${expiresAt})
   `;
 
-  return { id, family_id: familyId, code, role, created_by: createdBy, created_at: createdAt, revoked_at: null, used_by: null, used_at: null };
+  return {
+    id,
+    family_id: familyId,
+    code,
+    role,
+    created_by: createdBy,
+    created_at: createdAt,
+    expires_at: expiresAt,
+    revoked_at: null,
+    used_by: null,
+    used_at: null,
+  };
 }
 
 export async function getActiveInvitesForFamily(familyId: string): Promise<FamilyInvite[]> {
@@ -160,6 +175,7 @@ export async function getActiveInvitesForFamily(familyId: string): Promise<Famil
   const rows = (await sql`
     SELECT * FROM family_invites
     WHERE family_id = ${familyId} AND revoked_at IS NULL AND used_at IS NULL
+      AND (expires_at IS NULL OR expires_at > ${new Date().toISOString()})
     ORDER BY created_at DESC
   `) as FamilyInvite[];
   return rows;
@@ -185,6 +201,9 @@ export async function acceptInvite(code: string, userId: string): Promise<{ erro
   if (!invite) return { error: "Taklif havolasi topilmadi." };
   if (invite.revoked_at) return { error: "Bu taklif havolasi bekor qilingan." };
   if (invite.used_at) return { error: "Bu taklif havolasi allaqachon ishlatilgan." };
+  if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+    return { error: "Bu taklif havolasining muddati o'tgan." };
+  }
 
   const family = (await sql`SELECT * FROM families WHERE id = ${invite.family_id}`) as Family[];
   if (!family[0]) return { error: "Oila topilmadi." };
@@ -204,4 +223,63 @@ export async function acceptInvite(code: string, userId: string): Promise<{ erro
   `;
 
   return { family: family[0] };
+}
+
+export type FamilyStats = {
+  peopleCount: number;
+  albumsCount: number;
+  pagesCount: number;
+  photosCount: number;
+  memoriesCount: number;
+  storiesCount: number;
+  eventsCount: number;
+  placesCount: number;
+  generationsCount: number;
+};
+
+function extractYear(dateLabel: string | null): number | null {
+  if (!dateLabel) return null;
+  const match = String(dateLabel).match(/\d{3,4}/);
+  return match ? parseInt(match[0], 10) : null;
+}
+
+/** Avlodlar sonini taxminiy hisoblash: eng keksa odam bilan eng yosh o'rtasidagi farqni 25 ga bo'lish. */
+function estimateGenerations(peopleRows: { birth_date: string | null; death_date: string | null }[]): number {
+  const years = peopleRows
+    .map((p) => extractYear(p.birth_date) ?? extractYear(p.death_date))
+    .filter((y): y is number => y !== null);
+  if (years.length === 0) return 0;
+  const min = Math.min(...years);
+  const max = Math.max(...years);
+  const diff = max - min;
+  return Math.max(1, Math.round(diff / 25) + 1);
+}
+
+export async function getFamilyStats(familyId: string): Promise<FamilyStats> {
+  await ensureSchema();
+
+  const [peopleRows, albumsRes, pagesRes, elementsRes, memoriesRes, storiesRes, eventsRes, placesRes] = await Promise.all([
+    sql`SELECT birth_date, death_date FROM people WHERE family_id = ${familyId}`,
+    sql`SELECT COUNT(*)::int AS c FROM albums WHERE family_id = ${familyId}`,
+    sql`SELECT COUNT(*)::int AS c FROM album_pages ap JOIN albums a ON ap.album_id = a.id WHERE a.family_id = ${familyId}`,
+    sql`SELECT COUNT(*)::int AS c FROM page_elements pe JOIN album_pages ap ON pe.page_id = ap.id JOIN albums a ON ap.album_id = a.id WHERE a.family_id = ${familyId} AND pe.type = 'photo' AND pe.photo_url IS NOT NULL`,
+    sql`SELECT COUNT(*)::int AS c FROM memories WHERE family_id = ${familyId}`,
+    sql`SELECT COUNT(*)::int AS c FROM stories WHERE family_id = ${familyId}`,
+    sql`SELECT COUNT(*)::int AS c FROM timeline_events WHERE family_id = ${familyId}`,
+    sql`SELECT COUNT(*)::int AS c FROM places WHERE family_id = ${familyId}`,
+  ]);
+
+  const people = peopleRows as { birth_date: string | null; death_date: string | null }[];
+
+  return {
+    peopleCount: people.length,
+    albumsCount: (albumsRes as { c: number }[])[0]?.c ?? 0,
+    pagesCount: (pagesRes as { c: number }[])[0]?.c ?? 0,
+    photosCount: (elementsRes as { c: number }[])[0]?.c ?? 0,
+    memoriesCount: (memoriesRes as { c: number }[])[0]?.c ?? 0,
+    storiesCount: (storiesRes as { c: number }[])[0]?.c ?? 0,
+    eventsCount: (eventsRes as { c: number }[])[0]?.c ?? 0,
+    placesCount: (placesRes as { c: number }[])[0]?.c ?? 0,
+    generationsCount: estimateGenerations(people),
+  };
 }

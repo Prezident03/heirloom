@@ -2,11 +2,11 @@ export const dynamic = "force-dynamic";
 
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { getFamilyBySlug, getMembership, getMembersForFamily, getActiveInvitesForFamily } from "@/lib/family";
+import { getFamilyBySlug, getMembership, getMembersForFamily, getActiveInvitesForFamily, getFamilyStats } from "@/lib/family";
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib/albums";
 import { getTimelineEventsForFamily } from "@/lib/timeline";
-import { getMemoriesForFamily } from "@/lib/memories";
+import { getMemoriesForFamily, getOnThisDayMemories } from "@/lib/memories";
 import { getStoriesForFamily } from "@/lib/stories";
 import { getPlacesForFamily } from "@/lib/places";
 import HeirloomApp from "@/components/HeirloomApp";
@@ -86,9 +86,11 @@ export default async function FamilyDashboardPage({
   let invites: any[] = [];
   let timelineEvents: any[] = [];
   let memories: any[] = [];
+  let onThisDayMemories: any[] = [];
   let stories: any[] = [];
   let places: any[] = [];
   let albumsWithPages: any[] = [];
+  let stats: any = { peopleCount: 0, albumsCount: 0, pagesCount: 0, photosCount: 0, memoriesCount: 0, storiesCount: 0, eventsCount: 0, placesCount: 0, generationsCount: 0 };
 
   try {
     family = await getFamilyBySlug(familySlug);
@@ -97,7 +99,7 @@ export default async function FamilyDashboardPage({
     membership = await getMembership(family!.id, session!.id);
     if (!membership) notFound();
 
-    [people, relationships, albums, members, invites, timelineEvents, memories, stories, places] = await Promise.all([
+    [people, relationships, albums, members, invites, timelineEvents, memories, stories, places, stats] = await Promise.all([
       getPeopleForFamily(family!.id),
       getRelationshipsForFamily(family!.id),
       getAlbumsForFamily(family!.id),
@@ -107,7 +109,10 @@ export default async function FamilyDashboardPage({
       getMemoriesForFamily(family!.id),
       getStoriesForFamily(family!.id),
       getPlacesForFamily(family!.id),
+      getFamilyStats(family!.id),
     ]);
+
+    onThisDayMemories = await getOnThisDayMemories(family!.id);
 
     albumsWithPages = await Promise.all(
       albums.map(async (album) => {
@@ -152,14 +157,26 @@ export default async function FamilyDashboardPage({
       invites={invites}
       timelineEvents={timelineEvents}
       memories={memories}
+      onThisDayMemories={onThisDayMemories}
       stories={stories}
       places={places}
+      stats={stats}
       activeAlbumId={activeAlbumId ?? null}
       canEdit={membership!.role !== "viewer"}
       isOwner={membership!.role === "owner"}
       canInvite={membership!.role === "owner" || membership!.role === "editor"}
       mePersonId={mePerson?.id ?? null}
-      initialView={view === "tree" ? "tree" : view === "albums" ? "albums" : view === "people" ? "people" : view === "settings" ? "settings" : view === "timeline" ? "timeline" : "dashboard"}
+      initialView={
+        view === "tree" ? "tree"
+        : view === "albums" ? "albums"
+        : view === "people" ? "people"
+        : view === "settings" ? "settings"
+        : view === "timeline" ? "timeline"
+        : view === "memories" ? "memories"
+        : view === "stories" ? "stories"
+        : view === "places" ? "places"
+        : "dashboard"
+      }
       onLogout={logoutAction}
       updateFamilyNameAction={updateFamilyNameAction}
       updateMemberRoleAction={updateMemberRoleAction}

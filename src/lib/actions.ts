@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { findUserByEmail, createUser } from "@/lib/user";
 import { verifyPassword } from "@/lib/password";
 import { createSession, destroySession, getSession } from "@/lib/session";
@@ -114,6 +115,7 @@ export async function registerAction(_prevState: ActionState, formData: FormData
       try {
         const result = await acceptInvite(inviteCode, user.id);
         if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+        return { error: result.error };
       } catch (e) {
         if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
         return { error: "Taklifni qabul qilishda xato. Qaytadan urinib ko'ring." };
@@ -152,6 +154,7 @@ export async function loginAction(_prevState: ActionState, formData: FormData): 
       try {
         const result = await acceptInvite(inviteCode, user.id);
         if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+        return { error: result.error };
       } catch (e) {
         if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
         return { error: "Taklifni qabul qilishda xato." };
@@ -801,8 +804,15 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 
-export async function createMemoryAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+// MUHIM: bu action'lar frontendda `useActionState(createMemoryAction, ...)`
+// orqali chaqiriladi — React bunday holatda funksiyani
+// `(oldingi_holat, formData)` tartibida chaqiradi. Shuning uchun birinchi
+// parametr sifatida `_prevState` qabul qilinishi SHART — aks holda funksiya
+// ichida `formData` o'rniga haqiqatda oldingi holat (odatda `undefined`)
+// keladi va `.get()` chaqirilganda "formData.get is not a function" xatosi
+// bilan yiqiladi (bu "Saqlash" bosilganda sodir bo'lardi).
+export async function createMemoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const title = String(formData.get("title") || "").trim();
@@ -835,14 +845,15 @@ export async function createMemoryAction(formData: FormData): Promise<ActionStat
       check.session.id
     );
 
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Xotira yaratishda xato: " + String(e) };
   }
 }
 
-export async function updateMemoryAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+export async function updateMemoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const memoryId = String(formData.get("memoryId") || "").trim();
@@ -855,15 +866,17 @@ export async function updateMemoryAction(formData: FormData): Promise<ActionStat
   if (!memoryId || !title) return { error: "Xotira ID va nomi kerak." };
 
   try {
-    await updateMemory(memoryId, title, description, memoryDate, location, personId || null);
-    return { ok: true };
+    const updated = await updateMemory(memoryId, check.family.id, title, description, memoryDate, location, personId || null);
+    if (!updated) return { error: "Xotira topilmadi." };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Xotira yangilashda xato: " + String(e) };
   }
 }
 
-export async function updateMemoryPhotoAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+export async function updateMemoryPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const memoryId = String(formData.get("memoryId") || "").trim();
@@ -878,23 +891,29 @@ export async function updateMemoryPhotoAction(formData: FormData): Promise<Actio
       access: "public",
       addRandomSuffix: true,
     });
-    await updateMemoryPhoto(memoryId, blob.url);
-    return { ok: true };
+    const updated = await updateMemoryPhoto(memoryId, check.family.id, blob.url);
+    if (!updated) return { error: "Xotira topilmadi." };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Rasm yuklashda xato: " + String(e) };
   }
 }
 
-export async function deleteMemoryAction(formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+// MUHIM: bu action MemoriesView'da `deleteMemoryAction(undefined, formData)`
+// tarzida to'g'ridan-to'g'ri (useActionState orqali emas) chaqiriladi —
+// shuning uchun ikki parametrli imzoga mos kelishi kerak.
+export async function deleteMemoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const memoryId = String(formData.get("memoryId") || "").trim();
   if (!memoryId) return { error: "Xotira ID kerak." };
 
   try {
-    await deleteMemory(memoryId);
-    return { ok: true };
+    await deleteMemory(memoryId, check.family.id);
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Xotira o'chirishda xato: " + String(e) };
   }
@@ -1085,7 +1104,7 @@ export async function duplicateElementAction(_prevState: ActionState, formData: 
 /* ============ Stories (Hikoyalar) ============ */
 
 export async function createStoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const title = String(formData.get("title") || "").trim();
@@ -1116,14 +1135,15 @@ export async function createStoryAction(_prevState: ActionState, formData: FormD
       photoUrl: photoUrl || undefined,
     });
 
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Hikoya yaratishda xato: " + String(e) };
   }
 }
 
 export async function updateStoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const storyId = String(formData.get("storyId") || "").trim();
@@ -1143,14 +1163,15 @@ export async function updateStoryAction(_prevState: ActionState, formData: FormD
       location,
       storyDate,
     });
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Hikoya yangilashda xato: " + String(e) };
   }
 }
 
 export async function updateStoryPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const storyId = String(formData.get("storyId") || "").trim();
@@ -1166,14 +1187,15 @@ export async function updateStoryPhotoAction(_prevState: ActionState, formData: 
       addRandomSuffix: true,
     });
     await updateStoryPhoto(storyId, blob.url);
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Rasm yuklashda xato: " + String(e) };
   }
 }
 
 export async function deleteStoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const storyId = String(formData.get("storyId") || "").trim();
@@ -1181,7 +1203,8 @@ export async function deleteStoryAction(_prevState: ActionState, formData: FormD
 
   try {
     await deleteStory(storyId, check.family.id);
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Hikoya o'chirishda xato: " + String(e) };
   }
@@ -1190,7 +1213,7 @@ export async function deleteStoryAction(_prevState: ActionState, formData: FormD
 /* ============ Places (Joylar) ============ */
 
 export async function createPlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const name = String(formData.get("name") || "").trim();
@@ -1207,14 +1230,15 @@ export async function createPlaceAction(_prevState: ActionState, formData: FormD
       longitude,
       address: String(formData.get("address") || "").trim() || undefined,
     });
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Joy qo'shishda xato: " + String(e) };
   }
 }
 
 export async function updatePlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const placeId = String(formData.get("placeId") || "").trim();
@@ -1231,14 +1255,15 @@ export async function updatePlaceAction(_prevState: ActionState, formData: FormD
       longitude,
       address: String(formData.get("address") || "").trim() || undefined,
     });
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Joy yangilashda xato: " + String(e) };
   }
 }
 
 export async function deletePlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const check = await verifyFamilyAccess(formData, "editor");
+  const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
 
   const placeId = String(formData.get("placeId") || "").trim();
@@ -1246,7 +1271,8 @@ export async function deletePlaceAction(_prevState: ActionState, formData: FormD
 
   try {
     await deletePlace(placeId, check.family.id);
-    return { ok: true };
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Joy o'chirishda xato: " + String(e) };
   }

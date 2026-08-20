@@ -13,3 +13,15 @@ export const TOKENS = {
   ink40: "rgba(30,38,33,0.4)",
   danger: "#A8453A",
 };
+
+export const inputStyle = {
+  width: "100%",
+  padding: "11px 12px",
+  borderRadius: 8,
+  border: `1px solid ${TOKENS.parchmentDeep}`,
+  background: "#fff",
+  fontSize: 13.5,
+  color: TOKENS.ink,
+  outline: "none",
+  fontFamily: "Inter, sans-serif",
+};

@@ -251,6 +251,12 @@ export async function ensureSchema(): Promise<void> {
         used_at TEXT
       )
     `, "create family_invites");
+
+    await safe(() => sql`ALTER TABLE family_invites ADD COLUMN IF NOT EXISTS expires_at TEXT`, "add invite expires_at");
+    await safe(() => sql`
+      UPDATE family_invites SET expires_at = created_at
+      WHERE expires_at IS NULL
+    `, "backfill invite expires_at (treats pre-existing invites as expired)");
   })();
 
   return _schemaReady;
