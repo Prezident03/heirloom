@@ -1,32 +1,54 @@
 import React, { useState, useMemo } from "react";
-import { BookImage, Camera, Cake, History, Search, TreePine, UserPlus } from "lucide-react";
+import { BookImage, Camera, Search, TreePine, UserPlus } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
 import { VIEWS, SectionLabel, CreateMenu, StatItem, EmptyState, AlbumCard, buildFamilyGenerations } from "./shared";
 
-/** Family Space'ning "shaxsiyati" — daraxt statistikasi asosida, hech qanday demo son yo'q. */
-function FamilyIdentityBar({ familyName, familySince, genCount, memberCount, albumCount, photoCount, onNavigate }) {
+/**
+ * Family Space'ning "shaxsiyati" — daraxt statistikasi asosida, hech qanday
+ * demo son yo'q. Fon sifatida oiladagi haqiqiy rasm (birinchi topilgan album
+ * muqovasi, keyin xotira, keyin voqea rasmi) ishlatiladi; hech narsa topilmasa
+ * eski gradient fonga qaytadi.
+ */
+function FamilyHeroBanner({ familyName, familySince, genCount, memberCount, albumCount, photoCount, heroPhotoUrl, onNavigate }) {
   return (
     <div
       onClick={() => onNavigate(VIEWS.TREE)}
       style={{
-        cursor: "pointer", background: `linear-gradient(120deg, ${TOKENS.ink} 0%, ${TOKENS.teal} 130%)`,
-        borderRadius: 16, padding: "24px 30px", display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 24, flexWrap: "wrap", marginBottom: 40,
+        cursor: "pointer",
+        position: "relative",
+        borderRadius: 18,
+        overflow: "hidden",
+        minHeight: 224,
+        marginBottom: 40,
+        display: "flex",
+        alignItems: "flex-end",
+        background: heroPhotoUrl ? `url(${heroPhotoUrl}) center/cover` : `linear-gradient(120deg, ${TOKENS.ink} 0%, ${TOKENS.teal} 130%)`,
       }}
     >
-      <div>
-        <div style={{ fontSize: 11, letterSpacing: "0.16em", color: TOKENS.goldSoft, fontWeight: 700, textTransform: "uppercase" }}>
-          {familyName}{familySince ? ` · ${familySince} yildan beri` : ""}
+      {heroPhotoUrl && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `linear-gradient(0deg, rgba(30,38,33,0.90) 0%, rgba(30,38,33,0.55) 50%, rgba(30,38,33,0.18) 100%)`,
+          }}
+        />
+      )}
+      <div style={{ position: "relative", width: "100%", padding: "26px 30px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: "0.16em", color: TOKENS.goldSoft, fontWeight: 700, textTransform: "uppercase" }}>
+            {familyName}{familySince ? ` · ${familySince} yildan beri` : ""}
+          </div>
+          <div style={{ fontFamily: "Fraunces, serif", fontSize: 23, color: TOKENS.parchment, marginTop: 4 }}>
+            Oilangizning raqamli uyi
+          </div>
         </div>
-        <div style={{ fontFamily: "Fraunces, serif", fontSize: 22, color: TOKENS.parchment, marginTop: 4 }}>
-          Oilangizning raqamli uyi
+        <div style={{ display: "flex", gap: 30 }}>
+          <StatItem value={genCount} label="avlod" />
+          <StatItem value={memberCount} label="a'zo" />
+          <StatItem value={albumCount} label="albom" />
+          <StatItem value={photoCount} label="rasm" />
         </div>
-      </div>
-      <div style={{ display: "flex", gap: 30 }}>
-        <StatItem value={genCount} label="avlod" />
-        <StatItem value={memberCount} label="a'zo" />
-        <StatItem value={albumCount} label="albom" />
-        <StatItem value={photoCount} label="rasm" />
       </div>
     </div>
   );
@@ -55,6 +77,140 @@ function DashboardWelcome({ familyName, onAddPerson, onCreateAlbum }) {
   );
 }
 
+/** Kichik doiraviy avatar — rasm bo'lsa rasm, bo'lmasa ismning birinchi harfi. */
+function MiniAvatar({ photoUrl, name, size = 34, ring }) {
+  return (
+    <div
+      style={{
+        width: size, height: size, borderRadius: "50%", flexShrink: 0,
+        border: ring ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
+        background: photoUrl ? undefined : TOKENS.parchmentDeep,
+        backgroundImage: photoUrl ? `url(${photoUrl})` : undefined,
+        backgroundSize: "cover", backgroundPosition: "center",
+        display: photoUrl ? undefined : "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: "Fraunces, serif", fontSize: Math.round(size * 0.36), color: TOKENS.ink60,
+      }}
+    >
+      {!photoUrl && (name?.[0]?.toUpperCase() || "?")}
+    </div>
+  );
+}
+
+/** Bosh sahifadagi ixcham "vidjet karta" qobig'i — sarlavha + "ko'proq" havolasi. */
+function MiniWidgetShell({ title, action, onAction, children }) {
+  return (
+    <div style={{ background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 14, padding: "18px 20px", display: "flex", flexDirection: "column", minHeight: 216 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ fontFamily: "Fraunces, serif", fontSize: 15.5, fontWeight: 500 }}>{title}</div>
+        {onAction && (
+          <span onClick={onAction} style={{ cursor: "pointer", fontSize: 11.5, color: TOKENS.gold, fontWeight: 600 }}>{action}</span>
+        )}
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>{children}</div>
+    </div>
+  );
+}
+
+/** "Vaqt chizig'i" mini-vidjeti — so'nggi voqealarning ixcham ro'yxati. */
+function TimelineMiniWidget({ events, onNavigate }) {
+  const items = (events || []).slice(-5).reverse();
+  return (
+    <MiniWidgetShell title="Vaqt chizig'i" action="Barchasi" onAction={() => onNavigate(VIEWS.TIMELINE)}>
+      {items.length === 0 ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 12.5, color: TOKENS.ink60 }}>
+          Hali voqealar yo'q
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+          {items.map((ev) => (
+            <div key={ev.id} onClick={() => onNavigate(VIEWS.TIMELINE)} style={{ cursor: "pointer", display: "flex", alignItems: "baseline", gap: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: TOKENS.gold, flexShrink: 0, minWidth: 32 }}>
+                {ev.event_date ? new Date(ev.event_date).getFullYear() : "—"}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </MiniWidgetShell>
+  );
+}
+
+/** "Oila daraxti" mini-vidjeti — birinchi ikki avlodning kichik preview'i. */
+function FamilyTreeMiniWidget({ generations, genCount, memberCount, onNavigate }) {
+  const gen0 = (generations[0]?.units || []).flatMap((u) => u.people).slice(0, 2);
+  const gen1 = (generations[1]?.units || []).flatMap((u) => u.people).slice(0, 4);
+
+  return (
+    <MiniWidgetShell title="Oila daraxti" action="Ochish" onAction={() => onNavigate(VIEWS.TREE)}>
+      {memberCount === 0 ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 12.5, color: TOKENS.ink60 }}>
+          Hali a'zolar yo'q
+        </div>
+      ) : (
+        <div onClick={() => onNavigate(VIEWS.TREE)} style={{ cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9 }}>
+          {gen0.length > 0 && (
+            <div style={{ display: "flex", gap: 10 }}>
+              {gen0.map((p) => <MiniAvatar key={p.id} photoUrl={p.photoUrl} name={p.name} />)}
+            </div>
+          )}
+          {gen0.length > 0 && gen1.length > 0 && <div style={{ width: 1, height: 14, background: TOKENS.parchmentDeep }} />}
+          {gen1.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+              {gen1.map((p) => <MiniAvatar key={p.id} photoUrl={p.photoUrl} name={p.name} size={30} />)}
+            </div>
+          )}
+          <div style={{ fontSize: 11.5, color: TOKENS.ink60, marginTop: 4 }}>{genCount} avlod · {memberCount} a'zo</div>
+        </div>
+      )}
+    </MiniWidgetShell>
+  );
+}
+
+/** "Bugungi xotira" mini-vidjeti — bugungi kunga to'g'ri keluvchi xotira bo'lsa shu, bo'lmasa eng so'nggi xotira. */
+function TodayMemoryWidget({ item, isOnThisDay, onNavigate, onAddMemory }) {
+  const yearsAgo = useMemo(() => {
+    if (!item?.date) return 0;
+    const y = new Date(item.date).getFullYear();
+    return y ? new Date().getFullYear() - y : 0;
+  }, [item]);
+
+  return (
+    <MiniWidgetShell title="Bugungi xotira">
+      {!item ? (
+        <div
+          onClick={onAddMemory}
+          style={{ cursor: onAddMemory ? "pointer" : "default", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 12.5, color: TOKENS.ink60 }}
+        >
+          Hali xotiralar yo'q
+        </div>
+      ) : (
+        <div onClick={() => onNavigate(VIEWS.MEMORIES)} style={{ cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div
+            style={{
+              flex: 1, minHeight: 82, borderRadius: 10,
+              background: item.photo_url ? `url(${item.photo_url}) center/cover` : TOKENS.parchment,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            {!item.photo_url && <Camera size={26} color={TOKENS.goldSoft} strokeWidth={1.4} />}
+          </div>
+          <div>
+            {isOnThisDay && yearsAgo > 0 && (
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.gold, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
+                {yearsAgo} yil oldin
+              </div>
+            )}
+            <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</div>
+          </div>
+        </div>
+      )}
+    </MiniWidgetShell>
+  );
+}
+
 export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAlbum, onUploadPhotos, onAddEvent, onAddMemory, onAddStory, onAddPlace, userName, familyName, familySince, people, relationships, albums, timelineEvents, memories, stats }) {
   const [query, setQuery] = useState("");
   const [greeting] = useState(() => {
@@ -68,8 +224,8 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
   // (React Hooks qoidasi) — shuning uchun natijalar avval hisoblab olinadi,
   // keyin faqat qaysi qiymatdan (stats yoki hisoblangan) foydalanish
   // shartli ravishda tanlanadi.
-  const computedGenCount = useMemo(() => buildFamilyGenerations(people, relationships).length, [people, relationships]);
-  const genCount = stats?.generationsCount && stats.generationsCount > 0 ? stats.generationsCount : computedGenCount;
+  const generations = useMemo(() => buildFamilyGenerations(people, relationships), [people, relationships]);
+  const genCount = stats?.generationsCount && stats.generationsCount > 0 ? stats.generationsCount : generations.length;
   const memberCount = typeof stats?.peopleCount === "number" ? stats.peopleCount : people.length;
   const albumCount = typeof stats?.albumsCount === "number" ? stats.albumsCount : albums.length;
   const computedPhotoCount = useMemo(
@@ -78,6 +234,19 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
   );
   const photoCount = typeof stats?.photosCount === "number" ? stats.photosCount : computedPhotoCount;
   const memoryCount = typeof stats?.memoriesCount === "number" ? stats.memoriesCount : memories?.length ?? 0;
+
+  // Hero banner foni — birinchi topilgan haqiqiy rasm: album muqovasi →
+  // xotira rasmi → voqea rasmi. Hech narsa topilmasa komponent o'zi
+  // gradient fonga tushadi.
+  const heroPhotoUrl = useMemo(() => {
+    const albumWithCover = albums.find((a) => a.cover_url);
+    if (albumWithCover) return albumWithCover.cover_url;
+    const memoryWithPhoto = (memories || []).find((m) => m.photo_url);
+    if (memoryWithPhoto) return memoryWithPhoto.photo_url;
+    const eventWithPhoto = (timelineEvents || []).find((ev) => ev.photo_url);
+    if (eventWithPhoto) return eventWithPhoto.photo_url;
+    return null;
+  }, [albums, memories, timelineEvents]);
 
   // On This Day — bugungi sana (oy + kun) bo'yicha xotira va voqealarni filter
   const onThisDayItems = useMemo(() => {
@@ -111,6 +280,15 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
     return items;
   }, [memories, timelineEvents, people]);
 
+  // "Bugungi xotira" vidjeti uchun: avval shu kunga to'g'ri keluvchi voqea,
+  // bo'lmasa eng so'nggi qo'shilgan xotira (fallback).
+  const todayMemoryItem = useMemo(() => {
+    if (onThisDayItems.length > 0) return onThisDayItems[0];
+    const latest = (memories || [])[memories.length - 1];
+    if (!latest) return null;
+    return { kind: "memory", id: latest.id, title: latest.title, subtitle: latest.caption, date: latest.memory_date, photo_url: latest.photo_url };
+  }, [onThisDayItems, memories]);
+
   const isTotallyEmpty = memberCount === 0 && albumCount === 0 && (timelineEvents?.length ?? 0) === 0 && memoryCount === 0;
 
   return (
@@ -139,50 +317,18 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
         )
       ) : (
         <>
-          <FamilyIdentityBar
+          <FamilyHeroBanner
             familyName={familyName}
             familySince={familySince}
             genCount={genCount}
             memberCount={memberCount}
             albumCount={albumCount}
             photoCount={photoCount}
+            heroPhotoUrl={heroPhotoUrl}
             onNavigate={onNavigate}
           />
 
-          {onThisDayItems.length > 0 && (
-            <section style={{ marginBottom: 48 }}>
-              <SectionLabel eyebrow="Bugungi kun" title="Shu kunda" action="Xotiralar" onAction={() => onNavigate(VIEWS.MEMORIES)} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-                {onThisDayItems.slice(0, 4).map((it) => {
-                  const year = it.date ? new Date(it.date).getFullYear() : "";
-                  const yearsAgo = year ? new Date().getFullYear() - year : 0;
-                  const accent = it.kind === "birthday" ? TOKENS.gold : it.kind === "death" ? TOKENS.ink60 : TOKENS.goldSoft;
-                  const Icon = it.kind === "birthday" ? Cake : it.kind === "memory" ? Camera : History;
-                  return (
-                    <div
-                      key={it.id}
-                      onClick={() => onNavigate(it.kind === "event" ? VIEWS.TIMELINE : it.kind === "birthday" || it.kind === "death" ? VIEWS.PEOPLE : VIEWS.MEMORIES)}
-                      className="fm-album-card"
-                      style={{ cursor: "pointer", borderRadius: 14, overflow: "hidden", background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, display: "flex", flexDirection: "column" }}
-                    >
-                      <div style={{ aspectRatio: "4 / 3", background: it.photo_url ? `url(${it.photo_url}) center/cover` : TOKENS.parchment, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {!it.photo_url && <Icon size={28} color={accent} strokeWidth={1.4} />}
-                      </div>
-                      <div style={{ padding: "12px 14px 14px" }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.gold, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                          {year} · {yearsAgo > 0 ? `${yearsAgo} yil oldin` : ""}
-                        </div>
-                        <div style={{ fontFamily: "Fraunces, serif", fontSize: 14.5, fontWeight: 500, lineHeight: 1.3 }}>{it.title}</div>
-                        {it.subtitle && <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 4, lineHeight: 1.4 }}>{String(it.subtitle).slice(0, 80)}</div>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          <section style={{ marginBottom: 48 }}>
+          <section style={{ marginBottom: 40 }}>
             <SectionLabel eyebrow="Arxiv" title="So'nggi albomlar" action="Barchasi" onAction={() => onNavigate(VIEWS.ALBUMS)} />
             {albums.length === 0 ? (
               <EmptyState
@@ -201,65 +347,10 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
             )}
           </section>
 
-          <section style={{ marginBottom: 48 }}>
-            <SectionLabel eyebrow="Xotira" title="So'nggi voqealar" action="Barchasi" onAction={() => onNavigate(VIEWS.TIMELINE)} />
-            {timelineEvents.length === 0 ? (
-              <EmptyState
-                icon={<History size={32} color={TOKENS.goldSoft} strokeWidth={1.4} />}
-                title="Vaqt chizig'i bo'sh"
-                description="Oilingiz tarixidagi muhim voqealarni qo'shishni boshlang."
-                actionLabel={onAddEvent ? "+ Voqea qo'shish" : undefined}
-                onAction={onAddEvent}
-              />
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {timelineEvents.slice(-3).reverse().map((ev) => (
-                  <div
-                    key={ev.id}
-                    onClick={() => onNavigate(VIEWS.TIMELINE)}
-                    className="fm-album-card"
-                    style={{ display: "flex", alignItems: "center", gap: 14, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 12, padding: "12px 16px" }}
-                  >
-                    <div
-                      style={{
-                        width: 40, height: 40, borderRadius: 8, flexShrink: 0,
-                        background: ev.photo_url ? undefined : TOKENS.parchment,
-                        backgroundImage: ev.photo_url ? `url(${ev.photo_url})` : undefined,
-                        backgroundSize: "cover", backgroundPosition: "center",
-                        display: ev.photo_url ? undefined : "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                    >
-                      {!ev.photo_url && <History size={16} color={TOKENS.goldSoft} />}
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.gold }}>{ev.event_date || "Sana ko'rsatilmagan"}</div>
-                      <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section>
-            <SectionLabel eyebrow="Avlodlar" title="Oila daraxti" action="Ochish" onAction={() => onNavigate(VIEWS.TREE)} />
-            {memberCount === 0 ? (
-              <EmptyState
-                icon={<TreePine size={32} color={TOKENS.goldSoft} strokeWidth={1.4} />}
-                title="Oila daraxti hali yaratilmagan"
-                description="Avval oila a'zolarini kiritib, ular orasidagi munosabatlarni hosil qiling."
-                actionLabel={onAddPerson ? "+ Birinchi a'zoni qo'shish" : undefined}
-                onAction={onAddPerson}
-              />
-            ) : (
-              <div onClick={() => onNavigate(VIEWS.TREE)} style={{ cursor: "pointer", background: `linear-gradient(135deg, ${TOKENS.teal}, ${TOKENS.ink})`, borderRadius: 14, padding: "30px 34px", display: "flex", alignItems: "center", justifyContent: "space-between", color: TOKENS.parchment }}>
-                <div>
-                  <div style={{ fontFamily: "Fraunces, serif", fontSize: 19, marginBottom: 6 }}>{familyName}</div>
-                  <div style={{ fontSize: 12.5, color: "rgba(242,237,226,0.7)" }}>{genCount} avlod · {memberCount} a'zo</div>
-                </div>
-                <TreePine size={34} color={TOKENS.goldSoft} strokeWidth={1.3} />
-              </div>
-            )}
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18 }}>
+            <TimelineMiniWidget events={timelineEvents} onNavigate={onNavigate} />
+            <FamilyTreeMiniWidget generations={generations} genCount={genCount} memberCount={memberCount} onNavigate={onNavigate} />
+            <TodayMemoryWidget item={todayMemoryItem} isOnThisDay={onThisDayItems.length > 0} onNavigate={onNavigate} onAddMemory={onAddMemory} />
           </section>
         </>
       )}
