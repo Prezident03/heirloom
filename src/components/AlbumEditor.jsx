@@ -396,6 +396,14 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
 
   const onPointerDownElement = (e, el) => {
     if (!canEdit) return;
+    // Rasm yuklash/o'chirish tugmasi yoki matn maydoni ustida bosilgan bo'lsa,
+    // "tortib joylashtirish" rejimini ishga tushirmaymiz — aks holda canvas
+    // pointer'ni o'zlashtirib olib, tugmaning onClick/inputning fokusi ishlamay qoladi.
+    const interactive = e.target.closest && e.target.closest("button, input, textarea, select, label, a");
+    if (interactive) {
+      setSelectedId(el.id);
+      return;
+    }
     e.stopPropagation();
     setSelectedId(el.id);
     const canvas = canvasRef.current;
@@ -553,6 +561,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
               onDragLeave={() => setDropIndex(null)}
               onDragEnter={() => setDropIndex(i)}
               onPointerDown={(e) => onPointerDownElement(e, el)}
+              onClick={(e) => e.stopPropagation()}
               style={style}
             >
               {isPhoto ? (
