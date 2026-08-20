@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import {
   BookImage, Plus, X, ImagePlus, LayoutGrid,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Trash2, Calendar, MapPinned,
@@ -193,10 +195,50 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
 
 /* ---------------- Page canvas (real elementlar bilan) ---------------- */
 
-function PhotoSlot({ element, familySlug, albumId, pageId, uploadElementPhotoAction, deleteElementAction, canEdit, style, onDragStart, isDragging }) {
-  const [state, formAction, pending] = useActionState(uploadElementPhotoAction, undefined);
+function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, deleteElementAction, canEdit, style, onDragStart, isDragging }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const [deleteState, deleteFormAction, deletePending] = useActionState(deleteElementAction, undefined);
   const inputRef = useRef(null);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ""; // xuddi shu faylni qayta tanlash imkoniyati uchun
+
+    if (!file.type.startsWith("image/")) {
+      setError("Faqat rasm fayllari qabul qilinadi.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError("Rasm hajmi 15MB dan oshmasligi kerak.");
+      return;
+    }
+
+    setError("");
+    setPending(true);
+    try {
+      // Fayl to'g'ridan-to'g'ri brauzerdan Vercel Blob'ga ketadi — bizning
+      // serverimiz (va uning 4.5MB chegarasi) faylning o'zini ko'rmaydi ham.
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/blob-upload",
+        clientPayload: JSON.stringify({ familySlug }),
+      });
+
+      const result = await saveElementPhotoUrlAction(familySlug, albumId, element.id, blob.url, false);
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      setError("Rasm yuklashda xato yuz berdi: " + (err?.message || String(err)));
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <div
@@ -219,30 +261,24 @@ function PhotoSlot({ element, familySlug, albumId, pageId, uploadElementPhotoAct
         {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
         {canEdit && (
           <>
-            <form action={formAction} style={{ position: "absolute", inset: 0 }}>
-              <input type="hidden" name="familySlug" value={familySlug} />
-              <input type="hidden" name="albumId" value={albumId} />
-              <input type="hidden" name="elementId" value={element.id} />
-              <input
-                ref={inputRef}
-                type="file"
-                name="photo"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => { if (e.target.files?.length) e.target.form.requestSubmit(); }}
-              />
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                disabled={pending}
-                style={{
-                  position: "absolute", inset: 0, width: "100%", height: "100%", background: "rgba(30,38,33,0.0)",
-                  border: "none", cursor: pending ? "default" : "pointer",
-                }}
-              >
-                {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
-              </button>
-            </form>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={pending}
+              style={{
+                position: "absolute", inset: 0, width: "100%", height: "100%", background: "rgba(30,38,33,0.0)",
+                border: "none", cursor: pending ? "default" : "pointer",
+              }}
+            >
+              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
+            </button>
             {element.photo_url && (
               <form action={deleteFormAction} style={{ position: "absolute", top: 4, right: 4 }}>
                 <input type="hidden" name="familySlug" value={familySlug} />
@@ -266,7 +302,7 @@ function PhotoSlot({ element, familySlug, albumId, pageId, uploadElementPhotoAct
           </>
         )}
       </div>
-      {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{state.error}</div>}
+      {error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{error}</div>}
       {deleteState?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{deleteState.error}</div>}
     </div>
   );
@@ -301,7 +337,7 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
   );
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementPhotoAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction }) {
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
@@ -570,7 +606,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, uploadElementP
                   familySlug={familySlug}
                   albumId={albumId}
                   pageId={page.id}
-                  uploadElementPhotoAction={uploadElementPhotoAction}
+                  saveElementPhotoUrlAction={saveElementPhotoUrlAction}
                   deleteElementAction={deleteElementAction}
                   canEdit={canEdit}
                   style={{ width: "100%", height: "100%", position: "relative" }}
@@ -740,7 +776,7 @@ function AlbumEditor({
   addAlbumPageAction,
   deleteAlbumPageAction,
   changePageLayoutAction,
-  uploadElementPhotoAction,
+  saveElementPhotoUrlAction,
   updateElementTextAction,
   reorderElementsAction,
   deleteElementAction,
@@ -840,7 +876,7 @@ function AlbumEditor({
               familySlug={familySlug}
               albumId={album.id}
               canEdit={canEdit}
-              uploadElementPhotoAction={uploadElementPhotoAction}
+              saveElementPhotoUrlAction={saveElementPhotoUrlAction}
               updateElementTextAction={updateElementTextAction}
               reorderElementsAction={reorderElementsAction}
               deleteElementAction={deleteElementAction}
@@ -913,7 +949,7 @@ export function AlbumsView({
   addAlbumPageAction,
   deleteAlbumPageAction,
   changePageLayoutAction,
-  uploadElementPhotoAction,
+  saveElementPhotoUrlAction,
   updateElementTextAction,
   reorderElementsAction,
   deleteElementAction,
@@ -939,7 +975,7 @@ export function AlbumsView({
           addAlbumPageAction={addAlbumPageAction}
           deleteAlbumPageAction={deleteAlbumPageAction}
           changePageLayoutAction={changePageLayoutAction}
-          uploadElementPhotoAction={uploadElementPhotoAction}
+          saveElementPhotoUrlAction={saveElementPhotoUrlAction}
           updateElementTextAction={updateElementTextAction}
           reorderElementsAction={reorderElementsAction}
           deleteElementAction={deleteElementAction}

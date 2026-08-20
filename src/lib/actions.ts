@@ -665,6 +665,42 @@ export async function uploadElementPhotoAction(_prevState: ActionState, formData
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 
+/**
+ * Faylning o'zi endi bu funksiyadan o'tmaydi — brauzer uni to'g'ridan-to'g'ri
+ * Vercel Blob'ga (@vercel/blob/client orqali, /api/blob-upload token'i bilan)
+ * yuklaydi va bizga faqat tayyor URL'ni beradi. Bu Vercel funksiyasining
+ * 4.5MB'lik qattiq chegarasini butunlay chetlab o'tadi. Bu — oddiy argumentli
+ * (FormData emas) Server Action, PhotoSlot'dan to'g'ridan-to'g'ri chaqiriladi.
+ */
+export async function saveElementPhotoUrlAction(
+  familySlug: string,
+  albumId: string,
+  elementId: string,
+  photoUrl: string,
+  setCover: boolean
+): Promise<{ error?: string; ok?: boolean }> {
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+  if (!elementId || !photoUrl) return { error: "Ma'lumot yetarli emas." };
+
+  try {
+    await updateElementPhoto(elementId, photoUrl);
+
+    if (setCover) {
+      await setAlbumCover(albumId, photoUrl);
+    } else {
+      const album = await getAlbumById(albumId, check.family.id);
+      if (album && !album.cover_url) {
+        await setAlbumCover(albumId, photoUrl);
+      }
+    }
+    revalidatePath(`/${familySlug}/dashboard`);
+    return { ok: true };
+  } catch (e) {
+    return { error: "Saqlashda xato: " + String(e) };
+  }
+}
+
 /* ---------------- Timeline (Vaqt chizig'i) ---------------- */
 
 export async function createTimelineEventAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {

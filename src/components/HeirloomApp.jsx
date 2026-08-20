@@ -256,7 +256,7 @@ function MobileBottomNav({ current, onNavigate }) {
  *   changePageLayoutAction?: any,
  *   updatePageMetaAction?: any,
  *   updateElementTextAction?: any,
- *   uploadElementPhotoAction?: any,
+ *   saveElementPhotoUrlAction?: any,
  *   bulkUploadPhotosAction?: any,
  *   createTimelineEventAction?: any,
  *   updateTimelineEventAction?: any,
@@ -310,7 +310,7 @@ function MobileBottomNav({ current, onNavigate }) {
  * @property {Function} [changePageLayoutAction]
  * @property {Function} [updatePageMetaAction]
  * @property {Function} [updateElementTextAction]
- * @property {Function} [uploadElementPhotoAction]
+ * @property {Function} [saveElementPhotoUrlAction]
  * @property {Function} [deleteElementAction]
  * @property {Function} [reorderElementsAction]
  * @property {Function} [updateElementPositionAction]
@@ -382,7 +382,7 @@ export default function HeirloomApp({
   changePageLayoutAction,
   updatePageMetaAction,
   updateElementTextAction,
-  uploadElementPhotoAction,
+  saveElementPhotoUrlAction,
   deleteElementAction,
   reorderElementsAction,
   updateElementPositionAction,
@@ -493,7 +493,7 @@ export default function HeirloomApp({
                 addAlbumPageAction={addAlbumPageAction}
                 deleteAlbumPageAction={deleteAlbumPageAction}
                 changePageLayoutAction={changePageLayoutAction}
-                uploadElementPhotoAction={uploadElementPhotoAction}
+                saveElementPhotoUrlAction={saveElementPhotoUrlAction}
                 updateElementTextAction={updateElementTextAction}
                 reorderElementsAction={reorderElementsAction}
                 deleteElementAction={deleteElementAction}

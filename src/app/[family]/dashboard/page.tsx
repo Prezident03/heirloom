@@ -29,7 +29,7 @@ import {
   changePageLayoutAction,
   updatePageMetaAction,
   updateElementTextAction,
-  uploadElementPhotoAction,
+  saveElementPhotoUrlAction,
   deleteElementAction,
   reorderElementsAction,
   createPlaceAction,
@@ -195,7 +195,7 @@ export default async function FamilyDashboardPage({
       changePageLayoutAction={changePageLayoutAction}
       updatePageMetaAction={updatePageMetaAction}
       updateElementTextAction={updateElementTextAction}
-      uploadElementPhotoAction={uploadElementPhotoAction}
+      saveElementPhotoUrlAction={saveElementPhotoUrlAction}
       deleteElementAction={deleteElementAction}
       reorderElementsAction={reorderElementsAction}
       updateElementPositionAction={updateElementPositionAction}
