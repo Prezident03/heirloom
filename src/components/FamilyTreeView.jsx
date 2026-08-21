@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Search } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Plus, Search, Minus, Crosshair } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
 import { relationLabelBetween, personLabel, personYears } from "@/lib/relationshipLabels";
 import { buildFamilyGenerations } from "./shared";
@@ -31,6 +31,7 @@ export function FamilyTreeView({
   // qiladi (o'zi mouse wheel / drag / pinch-zoomni ichkarida boshqaradi).
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const treeRef = useRef(null);
 
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -102,8 +103,32 @@ export function FamilyTreeView({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 12, color: TOKENS.ink60, fontWeight: 500 }}>
-            💡 Mouse wheel - zoom | Drag - pan
+          <div style={{ display: "flex", alignItems: "center", gap: 2, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 3 }}>
+            <button
+              onClick={() => treeRef.current?.zoomOut()}
+              title="Kichraytirish"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink60 }}
+            >
+              <Minus size={13} />
+            </button>
+            <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, minWidth: 38, textAlign: "center" }}>
+              {Math.round(zoom * 100)}%
+            </div>
+            <button
+              onClick={() => treeRef.current?.zoomIn()}
+              title="Kattalashtirish"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink60 }}
+            >
+              <Plus size={13} />
+            </button>
+            <div style={{ width: 1, alignSelf: "stretch", background: TOKENS.parchmentDeep, margin: "0 2px" }} />
+            <button
+              onClick={() => treeRef.current?.center()}
+              title="Markazga qaytarish"
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 9px", height: 26, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink60, fontSize: 11.5, fontWeight: 600 }}
+            >
+              <Crosshair size={13} /> Markazga
+            </button>
           </div>
           <div style={{ position: "relative", flex: "0 1 220px", minWidth: 160 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "0 10px", height: 32 }}>
@@ -137,9 +162,10 @@ export function FamilyTreeView({
 
         <div style={{ flex: 1, minHeight: 420, position: "relative" }}>
           <TreeVisualization
+            ref={treeRef}
             people={people}
             relationships={relationships}
-            onSelectPerson={setSelected}
+            onSelectPerson={goToPerson}
             mePersonId={mePersonId}
             width={1200}
             height={600}
@@ -154,6 +180,8 @@ export function FamilyTreeView({
       {selected && (
         <PersonDetailPanel
           selected={selected}
+          people={people}
+          relationships={relationships}
           mePersonId={mePersonId}
           relationToMe={relationToMe}
           canEdit={canEdit}
@@ -161,6 +189,7 @@ export function FamilyTreeView({
           uploadPersonPhotoAction={uploadPersonPhotoAction}
           photoError={photoError}
           setPhotoError={setPhotoError}
+          onSelectRelated={goToPerson}
           onClose={() => { setSelected(null); setConfirmDelete(false); }}
           onEdit={() => setShowEditModal(true)}
           onLink={() => setShowLinkModal(true)}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useActionState } from "react";
-import { X, Calendar, MapPinned, ChevronLeft, TreePine, Plus, Camera, Search } from "lucide-react";
+import { X, Calendar, MapPinned, ChevronLeft, TreePine, Plus, Camera, Search, Users, Heart, Baby } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { personLabel, personYears, relationLabelBetween } from "@/lib/relationshipLabels";
 
@@ -78,6 +78,8 @@ export function DeletePersonConfirm({ familySlug, personId, deletePersonAction, 
  */
 export function PersonDetailPanel({
   selected,
+  people = [],
+  relationships = [],
   mePersonId,
   relationToMe,
   canEdit,
@@ -85,6 +87,7 @@ export function PersonDetailPanel({
   uploadPersonPhotoAction,
   photoError,
   setPhotoError,
+  onSelectRelated,
   onClose,
   onEdit,
   onLink,
@@ -93,6 +96,19 @@ export function PersonDetailPanel({
   deletePersonAction,
 }) {
   const [activeTab, setActiveTab] = useState("about");
+
+  const relatedParents = useMemo(
+    () => getParentsOf(selected.id, people, relationships),
+    [selected.id, people, relationships]
+  );
+  const relatedSpouse = useMemo(
+    () => getSpouseOf(selected.id, people, relationships),
+    [selected.id, people, relationships]
+  );
+  const relatedChildren = useMemo(
+    () => getChildrenOf(selected.id, people, relationships),
+    [selected.id, people, relationships]
+  );
 
   const tabs = [
     { id: "about", label: "Ma'lumot" },
@@ -180,10 +196,14 @@ export function PersonDetailPanel({
             </div>
           )}
           {selected.raw?.gender && (
-            <div style={{ fontSize: 12, color: TOKENS.ink60 }}>
+            <div style={{ fontSize: 12, color: TOKENS.ink60, marginBottom: 14 }}>
               Jinsi: {selected.raw.gender === "male" ? "Erkak" : selected.raw.gender === "female" ? "Ayol" : "Boshqa"}
             </div>
           )}
+
+          <RelatedPersonGroup icon={Users} label="Ota-onasi" people={relatedParents} onSelectRelated={onSelectRelated} />
+          <RelatedPersonGroup icon={Heart} label="Turmush o'rtog'i" people={relatedSpouse ? [relatedSpouse] : []} onSelectRelated={onSelectRelated} />
+          <RelatedPersonGroup icon={Baby} label="Farzandlari" people={relatedChildren} onSelectRelated={onSelectRelated} />
         </div>
       )}
 
@@ -276,6 +296,75 @@ export function getParentsOf(personId, people, relationships) {
     .filter((r) => r.type === "parent" && r.person_b_id === personId)
     .map((r) => people.find((p) => p.id === r.person_a_id))
     .filter(Boolean);
+}
+
+/** personId'ning farzandlarini qaytaradi. */
+export function getChildrenOf(personId, people, relationships) {
+  return relationships
+    .filter((r) => r.type === "parent" && r.person_a_id === personId)
+    .map((r) => people.find((p) => p.id === r.person_b_id))
+    .filter(Boolean);
+}
+
+/** personId'ning turmush o'rtog'ini (bo'lsa) qaytaradi. */
+export function getSpouseOf(personId, people, relationships) {
+  const rel = relationships.find(
+    (r) => r.type === "spouse" && (r.person_a_id === personId || r.person_b_id === personId)
+  );
+  if (!rel) return null;
+  const spouseId = rel.person_a_id === personId ? rel.person_b_id : rel.person_a_id;
+  return people.find((p) => p.id === spouseId) || null;
+}
+
+/** PersonDetailPanel "Ma'lumot" tabidagi bosiladigan qarindoshlar ro'yxati
+ * (Ota-onasi / Turmush o'rtog'i / Farzandlari) — har birini bosish
+ * onSelectRelated(personId) orqali o'sha odamga o'tkazadi. */
+export function RelatedPersonGroup({ icon: Icon, label, people: relatedPeople, onSelectRelated }) {
+  if (!relatedPeople || relatedPeople.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: TOKENS.ink40, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+        <Icon size={12} /> {label}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {relatedPeople.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onSelectRelated?.(p.id)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              textAlign: "left",
+              background: "transparent",
+              border: "none",
+              borderRadius: 6,
+              padding: "5px 6px",
+              cursor: onSelectRelated ? "pointer" : "default",
+              fontSize: 12.5,
+              color: TOKENS.ink,
+            }}
+            onMouseEnter={(e) => onSelectRelated && (e.currentTarget.style.background = TOKENS.parchment)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <div
+              style={{
+                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                background: p.profile_photo_url ? undefined : TOKENS.parchmentDeep,
+                backgroundImage: p.profile_photo_url ? `url(${p.profile_photo_url})` : undefined,
+                backgroundSize: "cover", backgroundPosition: "center",
+                display: p.profile_photo_url ? undefined : "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 10, color: TOKENS.ink60, fontFamily: "Fraunces, serif",
+              }}
+            >
+              {!p.profile_photo_url && (personLabel(p)?.[0]?.toUpperCase() || "?")}
+            </div>
+            {personLabel(p)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function AddPersonModal({ familySlug, people, relationships = [], addPersonAction, onClose }) {

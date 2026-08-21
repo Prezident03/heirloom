@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useRef, useState, useMemo, forwardRef, useImperativeHandle } from "react";
 import * as d3 from "d3";
 import { TOKENS } from "@/lib/uiTokens";
 
@@ -9,8 +9,10 @@ import { TOKENS } from "@/lib/uiTokens";
  * Optimized for families with 100+ people.
  *
  * Features:
- * - Hierarchical tree layout
- * - Zoom/pan with mouse wheel and drag
+ * - Hierarchical tree layout with spouse pairs rendered side-by-side
+ * - Right-angle ("elbow") parent -> children connectors, genealogy-chart style
+ * - Real profile photos (clipped circle) with initial-letter fallback
+ * - Zoom/pan with mouse wheel and drag; imperative zoomIn/zoomOut/center via ref
  * - Click to select person
  * - Performance optimized for large trees
  *
@@ -25,21 +27,35 @@ import { TOKENS } from "@/lib/uiTokens";
  * - pan: {x, y}
  * - onZoom: (scale) => void
  * - onPan: ({x, y}) => void
+ *
+ * Ref API (via forwardRef):
+ * - zoomIn()
+ * - zoomOut()
+ * - center()
  */
-export function TreeVisualization({
-  people,
-  relationships,
-  onSelectPerson,
-  mePersonId,
-  width = 900,
-  height = 600,
-  zoom = 1,
-  pan = { x: 0, y: 0 },
-  onZoom,
-  onPan,
-}) {
+const CARD_W = 140;
+const CARD_H = 80;
+const SPOUSE_GAP = 14;
+const SPOUSE_OFFSET = CARD_W + SPOUSE_GAP; // horizontal offset of spouse card from main card
+
+export const TreeVisualization = forwardRef(function TreeVisualization(
+  {
+    people,
+    relationships,
+    onSelectPerson,
+    mePersonId,
+    width = 900,
+    height = 600,
+    zoom = 1,
+    pan = { x: 0, y: 0 },
+    onZoom,
+    onPan,
+  },
+  ref
+) {
   const svgRef = useRef(null);
   const gRef = useRef(null);
+  const zoomBehaviorRef = useRef(null);
   const [isRendering, setIsRendering] = useState(false);
 
   // Build tree data structure from people and relationships
@@ -87,6 +103,7 @@ export function TreeVisualization({
         (spouseRel.person_a_id === personId
           ? spouseRel.person_b_id
           : spouseRel.person_a_id);
+      const spousePerson = spouseId ? byId[spouseId] : null;
 
       return {
         id: person.id,
@@ -95,7 +112,16 @@ export function TreeVisualization({
           (person.birth_date ? person.birth_date : "") +
           (person.death_date ? "–" + person.death_date : ""),
         photo: person.profile_photo_url,
-        spouse: spouseId ? byId[spouseId] : null,
+        spouse: spousePerson
+          ? {
+              id: spousePerson.id,
+              name: [spousePerson.first_name, spousePerson.last_name].filter(Boolean).join(" "),
+              years:
+                (spousePerson.birth_date ? spousePerson.birth_date : "") +
+                (spousePerson.death_date ? "–" + spousePerson.death_date : ""),
+              photo: spousePerson.profile_photo_url,
+            }
+          : null,
         children,
       };
     };
@@ -112,36 +138,57 @@ export function TreeVisualization({
     setIsRendering(true);
     const renderTimeout = setTimeout(() => {
       try {
-        const svg = d3.select(svgRef.current);
         const g = d3.select(gRef.current);
 
         // Clear previous
         g.selectAll("*").remove();
+        const defs = g.append("defs");
 
         // Create hierarchy
         const hierarchy = d3.hierarchy(treeData);
 
-        // Create tree layout - optimized for large trees
-        const treeLayout = d3.tree().size([
-          Math.max(width - 100, 400),
-          Math.max(height - 100, 400)
-        ]);
+        // Create tree layout - optimized for large trees. Extra horizontal
+        // room is reserved per node so spouse cards (rendered as a second
+        // card offset to the right of the primary node) don't overlap
+        // neighboring branches.
+        const treeLayout = d3
+          .tree()
+          .size([Math.max(width - 100, 400), Math.max(height - 100, 400)])
+          .separation((a, b) => {
+            const aWide = a.data.spouse ? 1.6 : 1;
+            const bWide = b.data.spouse ? 1.6 : 1;
+            return ((aWide + bWide) / 2) * (a.parent === b.parent ? 1 : 1.4);
+          });
         const root = treeLayout(hierarchy);
 
-        // Create links group (draw first so they appear behind nodes)
+        // Helper: x-coordinate of the *couple midpoint* for a node (used as
+        // the connector anchor so lines drop from between the two spouse
+        // cards rather than from the primary card alone).
+        const coupleX = (d) => (d.data.spouse ? d.x + SPOUSE_OFFSET / 2 : d.x);
+
+        // ---- Links: right-angle ("elbow") connectors, genealogy-chart style ----
+        // Path: down from the parent couple-midpoint to a horizontal "bus"
+        // line at the vertical midpoint between parent and child, across to
+        // the child's x, then down into the child card.
         g.selectAll(".tree-link")
           .data(root.links(), (d) => `${d.source.data.id}-${d.target.data.id}`)
           .enter()
-          .append("line")
+          .append("path")
           .attr("class", "tree-link")
-          .attr("x1", (d) => d.source.x)
-          .attr("y1", (d) => d.source.y)
-          .attr("x2", (d) => d.target.x)
-          .attr("y2", (d) => d.target.y)
+          .attr("fill", "none")
           .attr("stroke", TOKENS.parchmentDeep)
           .attr("stroke-width", 2)
           .attr("stroke-linecap", "round")
-          .attr("opacity", 0.6);
+          .attr("stroke-linejoin", "round")
+          .attr("opacity", 0.6)
+          .attr("d", (d) => {
+            const sx = coupleX(d.source);
+            const sy = d.source.y;
+            const tx = d.target.x;
+            const ty = d.target.y;
+            const midY = sy + (ty - sy) / 2;
+            return `M${sx},${sy} L${sx},${midY} L${tx},${midY} L${tx},${ty}`;
+          });
 
         // Create nodes group
         const nodes = g
@@ -150,71 +197,151 @@ export function TreeVisualization({
           .enter()
           .append("g")
           .attr("class", "tree-node")
-          .attr("transform", (d) => `translate(${d.x},${d.y})`)
-          .style("cursor", "pointer");
+          .attr("transform", (d) => `translate(${d.x},${d.y})`);
 
-        // Add person cards (background)
-        nodes
-          .append("rect")
-          .attr("width", 140)
-          .attr("height", 80)
-          .attr("x", -70)
-          .attr("y", -40)
-          .attr("rx", 8)
-          .attr("fill", TOKENS.card)
-          .attr("stroke", TOKENS.parchmentDeep)
-          .attr("stroke-width", 1)
-          .style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))")
-          .style("transition", "filter 0.2s ease");
+        // ---- Reusable card renderer (used for both the primary person and,
+        // when present, their spouse rendered as a second card) ----
+        const renderCard = (selection, personAccessor, offsetX, isMe) => {
+          const card = selection
+            .append("g")
+            .attr("class", "person-card")
+            .attr("transform", `translate(${offsetX},0)`)
+            .style("cursor", "pointer");
 
-        // Add photo circle
-        nodes
-          .append("circle")
-          .attr("r", 24)
-          .attr("cx", 0)
-          .attr("cy", -10)
-          .attr("fill", TOKENS.parchmentDeep)
-          .attr("stroke", (d) => (d.data.id === mePersonId ? TOKENS.gold : TOKENS.parchmentDeep))
-          .attr("stroke-width", (d) => (d.data.id === mePersonId ? 2 : 1));
+          card
+            .append("rect")
+            .attr("width", CARD_W)
+            .attr("height", CARD_H)
+            .attr("x", -CARD_W / 2)
+            .attr("y", -CARD_H / 2 + 10)
+            .attr("rx", 8)
+            .attr("fill", TOKENS.card)
+            .attr("stroke", TOKENS.parchmentDeep)
+            .attr("stroke-width", 1)
+            .style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))")
+            .style("transition", "filter 0.2s ease");
 
-        // Add text (name)
-        nodes
-          .append("text")
-          .attr("y", 15)
-          .attr("text-anchor", "middle")
-          .attr("font-size", "12px")
-          .attr("font-weight", "600")
-          .attr("fill", TOKENS.ink)
-          .attr("pointer-events", "none")
-          .text((d) => {
-            const name = d.data.name;
-            return name.length > 16 ? name.substring(0, 13) + "..." : name;
+          card.each(function (d) {
+            const person = personAccessor(d);
+            if (!person) return;
+            const group = d3.select(this);
+            const clipId = `tree-clip-${person.id}`;
+
+            if (person.photo) {
+              defs
+                .append("clipPath")
+                .attr("id", clipId)
+                .append("circle")
+                .attr("r", 24)
+                .attr("cx", 0)
+                .attr("cy", -10);
+
+              group
+                .append("image")
+                .attr("href", person.photo)
+                .attr("x", -24)
+                .attr("y", -34)
+                .attr("width", 48)
+                .attr("height", 48)
+                .attr("preserveAspectRatio", "xMidYMid slice")
+                .attr("clip-path", `url(#${clipId})`);
+
+              group
+                .append("circle")
+                .attr("r", 24)
+                .attr("cx", 0)
+                .attr("cy", -10)
+                .attr("fill", "none")
+                .attr("stroke", isMe(person) ? TOKENS.gold : TOKENS.parchmentDeep)
+                .attr("stroke-width", isMe(person) ? 2 : 1);
+            } else {
+              group
+                .append("circle")
+                .attr("r", 24)
+                .attr("cx", 0)
+                .attr("cy", -10)
+                .attr("fill", TOKENS.parchmentDeep)
+                .attr("stroke", isMe(person) ? TOKENS.gold : TOKENS.parchmentDeep)
+                .attr("stroke-width", isMe(person) ? 2 : 1);
+
+              group
+                .append("text")
+                .attr("x", 0)
+                .attr("y", -5)
+                .attr("text-anchor", "middle")
+                .attr("font-family", "Fraunces, serif")
+                .attr("font-size", "16px")
+                .attr("fill", TOKENS.ink60)
+                .attr("pointer-events", "none")
+                .text((person.name || "?").charAt(0).toUpperCase());
+            }
+
+            group
+              .append("text")
+              .attr("y", 15)
+              .attr("text-anchor", "middle")
+              .attr("font-size", "12px")
+              .attr("font-weight", "600")
+              .attr("fill", TOKENS.ink)
+              .attr("pointer-events", "none")
+              .text(() => {
+                const name = person.name || "";
+                return name.length > 16 ? name.substring(0, 13) + "..." : name;
+              });
+
+            group
+              .append("text")
+              .attr("y", 32)
+              .attr("text-anchor", "middle")
+              .attr("font-size", "10px")
+              .attr("fill", TOKENS.ink60)
+              .attr("pointer-events", "none")
+              .text(person.years || "");
           });
 
-        // Add text (years)
-        nodes
-          .append("text")
-          .attr("y", 32)
-          .attr("text-anchor", "middle")
-          .attr("font-size", "10px")
-          .attr("fill", TOKENS.ink60)
-          .attr("pointer-events", "none")
-          .text((d) => d.data.years);
+          card
+            .on("click", function (event, d) {
+              event.stopPropagation();
+              const person = personAccessor(d);
+              if (person) onSelectPerson(person.id);
+            })
+            .on("mouseenter", function () {
+              d3.select(this).select("rect").style("filter", "drop-shadow(0 6px 14px rgba(30,38,33,0.14))");
+            })
+            .on("mouseleave", function () {
+              d3.select(this).select("rect").style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))");
+            });
 
-        // Add click handlers
-        nodes.on("click", (event, d) => {
-          event.stopPropagation();
-          onSelectPerson(d.data.id);
-        });
+          return card;
+        };
 
-        // Add hover effects
-        nodes
-          .on("mouseenter", function () {
-            d3.select(this).select("rect").style("filter", "drop-shadow(0 6px 14px rgba(30,38,33,0.14))");
-          })
-          .on("mouseleave", function () {
-            d3.select(this).select("rect").style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))");
-          });
+        renderCard(
+          nodes,
+          (d) => ({ id: d.data.id, name: d.data.name, years: d.data.years, photo: d.data.photo }),
+          0,
+          (person) => person.id === mePersonId
+        );
+
+        // Spouse card + connecting line, only for nodes that have one
+        const spouseNodes = nodes.filter((d) => !!d.data.spouse);
+
+        spouseNodes
+          .append("line")
+          .attr("class", "spouse-link")
+          .attr("x1", CARD_W / 2 - 14)
+          .attr("y1", -10)
+          .attr("x2", SPOUSE_OFFSET - (CARD_W / 2 - 14))
+          .attr("y2", -10)
+          .attr("stroke", TOKENS.gold)
+          .attr("stroke-width", 2)
+          .attr("opacity", 0.7);
+
+        renderCard(
+          spouseNodes,
+          (d) => d.data.spouse,
+          SPOUSE_OFFSET,
+          (person) => person.id === mePersonId
+        );
 
         setIsRendering(false);
       } catch (err) {
@@ -247,6 +374,7 @@ export function TreeVisualization({
 
     const zoomBehavior = d3
       .zoom()
+      .scaleExtent([0.25, 2.5])
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
         if (onPan) {
@@ -257,6 +385,7 @@ export function TreeVisualization({
         }
       });
 
+    zoomBehaviorRef.current = zoomBehavior;
     svg.call(zoomBehavior);
 
     // Apply the initial centering offset exactly once. After this, d3 owns
@@ -273,6 +402,28 @@ export function TreeVisualization({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Imperative API for the parent toolbar (zoom in / out / center). These
+  // call d3 directly and never touch the pan/zoom React state that the
+  // mount-effect above watches, so they can't reintroduce the earlier
+  // pan-drift feedback loop.
+  useImperativeHandle(ref, () => ({
+    zoomIn() {
+      if (!svgRef.current || !zoomBehaviorRef.current) return;
+      d3.select(svgRef.current).transition().duration(200).call(zoomBehaviorRef.current.scaleBy, 1.25);
+    },
+    zoomOut() {
+      if (!svgRef.current || !zoomBehaviorRef.current) return;
+      d3.select(svgRef.current).transition().duration(200).call(zoomBehaviorRef.current.scaleBy, 1 / 1.25);
+    },
+    center() {
+      if (!svgRef.current || !zoomBehaviorRef.current) return;
+      d3.select(svgRef.current)
+        .transition()
+        .duration(300)
+        .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(50, 50).scale(1));
+    },
+  }));
 
   return (
     <div style={{ position: "relative" }}>
@@ -309,4 +460,4 @@ export function TreeVisualization({
       )}
     </div>
   );
-}
+});
