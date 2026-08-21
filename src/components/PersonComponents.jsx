@@ -112,8 +112,9 @@ export function PersonDetailPanel({
 
   const tabs = [
     { id: "about", label: "Ma'lumot" },
-    { id: "timeline", label: "Vaqt chizig'i" },
-    { id: "photos", label: "Rasmlar" },
+    { id: "memories", label: "Xotiralar" },
+    { id: "albums", label: "Albomlar" },
+    { id: "events", label: "Voqealar" },
   ];
 
   return (
@@ -162,20 +163,22 @@ export function PersonDetailPanel({
         ) : null}
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, marginTop: 12, borderBottom: `1px solid ${TOKENS.parchmentDeep}` }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 16, marginTop: 12, borderBottom: `1px solid ${TOKENS.parchmentDeep}`, overflowX: "auto" }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: 600,
-              padding: "8px 12px",
+              padding: "8px 9px",
               borderRadius: "8px 8px 0 0",
               background: activeTab === tab.id ? TOKENS.ink : "transparent",
               color: activeTab === tab.id ? TOKENS.parchment : TOKENS.ink60,
               border: "none",
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
               borderBottom: activeTab === tab.id ? "none" : `2px solid transparent`,
             }}
           >
@@ -207,15 +210,21 @@ export function PersonDetailPanel({
         </div>
       )}
 
-      {activeTab === "timeline" && (
+      {activeTab === "memories" && (
         <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
-          Bu odam bilan bog'langan voqealar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+          Bu odam bilan bog'langan xotiralar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
         </div>
       )}
 
-      {activeTab === "photos" && (
+      {activeTab === "albums" && (
         <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
-          Bu odam bilan bog'langan rasmlar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+          Bu odam ishtirok etgan albomlar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+        </div>
+      )}
+
+      {activeTab === "events" && (
+        <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
+          Bu odam bilan bog'langan voqealar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
         </div>
       )}
 

@@ -167,6 +167,7 @@ export function FamilyTreeView({
             relationships={relationships}
             onSelectPerson={goToPerson}
             mePersonId={mePersonId}
+            selectedId={selected?.id || null}
             width={1200}
             height={600}
             zoom={zoom}

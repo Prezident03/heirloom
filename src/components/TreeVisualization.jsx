@@ -11,6 +11,9 @@ import { TOKENS } from "@/lib/uiTokens";
  * Features:
  * - Hierarchical tree layout with spouse pairs rendered side-by-side
  * - Right-angle ("elbow") parent -> children connectors, genealogy-chart style
+ * - Wide horizontal cards (avatar left, name/years right, status dot),
+ *   matching the mockup — no name truncation at normal name lengths
+ * - Selected-person card gets a solid dark fill (matches mockup highlight)
  * - Real profile photos (clipped circle) with initial-letter fallback
  * - Zoom/pan with mouse wheel and drag; imperative zoomIn/zoomOut/center via ref
  * - Click to select person
@@ -21,6 +24,7 @@ import { TOKENS } from "@/lib/uiTokens";
  * - relationships: Relationship[]
  * - onSelectPerson: (personId) => void
  * - mePersonId: string | null
+ * - selectedId: string | null — currently-open person, gets the dark highlight fill
  * - width: number
  * - height: number
  * - zoom: number
@@ -33,9 +37,12 @@ import { TOKENS } from "@/lib/uiTokens";
  * - zoomOut()
  * - center()
  */
-const CARD_W = 140;
-const CARD_H = 80;
-const SPOUSE_GAP = 14;
+const CARD_W = 196;
+const CARD_H = 60;
+const AVATAR_R = 20;
+const AVATAR_X = -CARD_W / 2 + 30; // avatar center, left-padded inside the card
+const TEXT_X = AVATAR_X + AVATAR_R + 12; // text starts to the right of the avatar
+const SPOUSE_GAP = 16;
 const SPOUSE_OFFSET = CARD_W + SPOUSE_GAP; // horizontal offset of spouse card from main card
 
 export const TreeVisualization = forwardRef(function TreeVisualization(
@@ -44,6 +51,7 @@ export const TreeVisualization = forwardRef(function TreeVisualization(
     relationships,
     onSelectPerson,
     mePersonId,
+    selectedId = null,
     width = 900,
     height = 600,
     zoom = 1,
@@ -155,8 +163,8 @@ export const TreeVisualization = forwardRef(function TreeVisualization(
           .tree()
           .size([Math.max(width - 100, 400), Math.max(height - 100, 400)])
           .separation((a, b) => {
-            const aWide = a.data.spouse ? 1.6 : 1;
-            const bWide = b.data.spouse ? 1.6 : 1;
+            const aWide = a.data.spouse ? 1.7 : 1;
+            const bWide = b.data.spouse ? 1.7 : 1;
             return ((aWide + bWide) / 2) * (a.parent === b.parent ? 1 : 1.4);
           });
         const root = treeLayout(hierarchy);
@@ -200,7 +208,10 @@ export const TreeVisualization = forwardRef(function TreeVisualization(
           .attr("transform", (d) => `translate(${d.x},${d.y})`);
 
         // ---- Reusable card renderer (used for both the primary person and,
-        // when present, their spouse rendered as a second card) ----
+        // when present, their spouse rendered as a second card). Horizontal
+        // layout: avatar on the left, name + years left-aligned to its
+        // right, small status dot on the avatar — matches the mockup. The
+        // currently-selected person's card gets a solid dark fill. ----
         const renderCard = (selection, personAccessor, offsetX, isMe) => {
           const card = selection
             .append("g")
@@ -208,93 +219,118 @@ export const TreeVisualization = forwardRef(function TreeVisualization(
             .attr("transform", `translate(${offsetX},0)`)
             .style("cursor", "pointer");
 
-          card
-            .append("rect")
-            .attr("width", CARD_W)
-            .attr("height", CARD_H)
-            .attr("x", -CARD_W / 2)
-            .attr("y", -CARD_H / 2 + 10)
-            .attr("rx", 8)
-            .attr("fill", TOKENS.card)
-            .attr("stroke", TOKENS.parchmentDeep)
-            .attr("stroke-width", 1)
-            .style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))")
-            .style("transition", "filter 0.2s ease");
-
           card.each(function (d) {
             const person = personAccessor(d);
             if (!person) return;
             const group = d3.select(this);
             const clipId = `tree-clip-${person.id}`;
+            const isSelected = person.id === selectedId;
+            const cardFill = isSelected ? TOKENS.ink : TOKENS.card;
+            const nameColor = isSelected ? TOKENS.parchment : TOKENS.ink;
+            const yearColor = isSelected ? "rgba(242,237,226,0.65)" : TOKENS.ink60;
+            const avatarRing = isMe(person) ? TOKENS.gold : isSelected ? "rgba(242,237,226,0.4)" : TOKENS.parchmentDeep;
+
+            group
+              .append("rect")
+              .attr("class", "card-bg")
+              .attr("width", CARD_W)
+              .attr("height", CARD_H)
+              .attr("x", -CARD_W / 2)
+              .attr("y", -CARD_H / 2)
+              .attr("rx", 10)
+              .attr("fill", cardFill)
+              .attr("stroke", isSelected ? TOKENS.ink : TOKENS.parchmentDeep)
+              .attr("stroke-width", 1)
+              .style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))")
+              .style("transition", "filter 0.2s ease");
 
             if (person.photo) {
               defs
                 .append("clipPath")
                 .attr("id", clipId)
                 .append("circle")
-                .attr("r", 24)
-                .attr("cx", 0)
-                .attr("cy", -10);
+                .attr("r", AVATAR_R)
+                .attr("cx", AVATAR_X)
+                .attr("cy", 0);
 
               group
                 .append("image")
                 .attr("href", person.photo)
-                .attr("x", -24)
-                .attr("y", -34)
-                .attr("width", 48)
-                .attr("height", 48)
+                .attr("x", AVATAR_X - AVATAR_R)
+                .attr("y", -AVATAR_R)
+                .attr("width", AVATAR_R * 2)
+                .attr("height", AVATAR_R * 2)
                 .attr("preserveAspectRatio", "xMidYMid slice")
                 .attr("clip-path", `url(#${clipId})`);
 
               group
                 .append("circle")
-                .attr("r", 24)
-                .attr("cx", 0)
-                .attr("cy", -10)
+                .attr("r", AVATAR_R)
+                .attr("cx", AVATAR_X)
+                .attr("cy", 0)
                 .attr("fill", "none")
-                .attr("stroke", isMe(person) ? TOKENS.gold : TOKENS.parchmentDeep)
+                .attr("stroke", avatarRing)
                 .attr("stroke-width", isMe(person) ? 2 : 1);
             } else {
               group
                 .append("circle")
-                .attr("r", 24)
-                .attr("cx", 0)
-                .attr("cy", -10)
-                .attr("fill", TOKENS.parchmentDeep)
-                .attr("stroke", isMe(person) ? TOKENS.gold : TOKENS.parchmentDeep)
+                .attr("r", AVATAR_R)
+                .attr("cx", AVATAR_X)
+                .attr("cy", 0)
+                .attr("fill", isSelected ? "rgba(242,237,226,0.15)" : TOKENS.parchmentDeep)
+                .attr("stroke", avatarRing)
                 .attr("stroke-width", isMe(person) ? 2 : 1);
 
               group
                 .append("text")
-                .attr("x", 0)
-                .attr("y", -5)
+                .attr("x", AVATAR_X)
+                .attr("y", 5)
                 .attr("text-anchor", "middle")
                 .attr("font-family", "Fraunces, serif")
-                .attr("font-size", "16px")
-                .attr("fill", TOKENS.ink60)
+                .attr("font-size", "15px")
+                .attr("fill", nameColor)
                 .attr("pointer-events", "none")
                 .text((person.name || "?").charAt(0).toUpperCase());
             }
 
+            // Small status dot on the avatar's bottom-right, matching the
+            // mockup's little indicator — a thin "cutout" ring in the card
+            // color separates it visually from the avatar.
+            group
+              .append("circle")
+              .attr("cx", AVATAR_X + AVATAR_R * 0.72)
+              .attr("cy", AVATAR_R * 0.72)
+              .attr("r", 5.5)
+              .attr("fill", cardFill);
+            group
+              .append("circle")
+              .attr("cx", AVATAR_X + AVATAR_R * 0.72)
+              .attr("cy", AVATAR_R * 0.72)
+              .attr("r", 3.5)
+              .attr("fill", person.years && person.years.includes("–") ? TOKENS.ink40 : TOKENS.teal);
+
             group
               .append("text")
-              .attr("y", 15)
-              .attr("text-anchor", "middle")
-              .attr("font-size", "12px")
+              .attr("x", TEXT_X)
+              .attr("y", -3)
+              .attr("text-anchor", "start")
+              .attr("font-size", "13px")
               .attr("font-weight", "600")
-              .attr("fill", TOKENS.ink)
+              .attr("fill", nameColor)
               .attr("pointer-events", "none")
               .text(() => {
                 const name = person.name || "";
-                return name.length > 16 ? name.substring(0, 13) + "..." : name;
+                const maxChars = Math.floor((CARD_W - (TEXT_X - AVATAR_X) - AVATAR_R - 14) / 6.4);
+                return name.length > maxChars ? name.substring(0, maxChars - 1) + "…" : name;
               });
 
             group
               .append("text")
-              .attr("y", 32)
-              .attr("text-anchor", "middle")
-              .attr("font-size", "10px")
-              .attr("fill", TOKENS.ink60)
+              .attr("x", TEXT_X)
+              .attr("y", 14)
+              .attr("text-anchor", "start")
+              .attr("font-size", "11px")
+              .attr("fill", yearColor)
               .attr("pointer-events", "none")
               .text(person.years || "");
           });
@@ -306,10 +342,10 @@ export const TreeVisualization = forwardRef(function TreeVisualization(
               if (person) onSelectPerson(person.id);
             })
             .on("mouseenter", function () {
-              d3.select(this).select("rect").style("filter", "drop-shadow(0 6px 14px rgba(30,38,33,0.14))");
+              d3.select(this).select(".card-bg").style("filter", "drop-shadow(0 6px 14px rgba(30,38,33,0.14))");
             })
             .on("mouseleave", function () {
-              d3.select(this).select("rect").style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))");
+              d3.select(this).select(".card-bg").style("filter", "drop-shadow(0 2px 6px rgba(30,38,33,0.08))");
             });
 
           return card;
@@ -328,10 +364,10 @@ export const TreeVisualization = forwardRef(function TreeVisualization(
         spouseNodes
           .append("line")
           .attr("class", "spouse-link")
-          .attr("x1", CARD_W / 2 - 14)
-          .attr("y1", -10)
-          .attr("x2", SPOUSE_OFFSET - (CARD_W / 2 - 14))
-          .attr("y2", -10)
+          .attr("x1", CARD_W / 2 - 6)
+          .attr("y1", 0)
+          .attr("x2", SPOUSE_OFFSET - (CARD_W / 2 - 6))
+          .attr("y2", 0)
           .attr("stroke", TOKENS.gold)
           .attr("stroke-width", 2)
           .attr("opacity", 0.7);
@@ -351,7 +387,7 @@ export const TreeVisualization = forwardRef(function TreeVisualization(
     }, 50); // Debounce renders
 
     return () => clearTimeout(renderTimeout);
-  }, [treeData, width, height, mePersonId, onSelectPerson]);
+  }, [treeData, width, height, mePersonId, selectedId, onSelectPerson]);
 
   // Handle zoom/pan.
   //
