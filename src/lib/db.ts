@@ -153,6 +153,9 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS frame_style TEXT DEFAULT 'polaroid'`, "add frame_style");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS sticker_id TEXT`, "add sticker_id");
     await safe(() => sql`ALTER TABLE album_pages ADD COLUMN IF NOT EXISTS background_id TEXT DEFAULT 'paper'`, "add background_id");
+    // Eski CHECK constraint faqat 'photo'/'text'ga ruxsat berardi — 'sticker' turini qo'shish uchun kengaytiramiz.
+    await safe(() => sql`ALTER TABLE page_elements DROP CONSTRAINT IF EXISTS page_elements_type_check`, "drop old type check");
+    await safe(() => sql`ALTER TABLE page_elements ADD CONSTRAINT page_elements_type_check CHECK (type IN ('photo','text','sticker'))`, "add sticker type check");
     await safe(() => sql`CREATE INDEX IF NOT EXISTS idx_page_elements_positioning
                ON page_elements(page_id, z_index, position_x)`, "create positioning index");
 
