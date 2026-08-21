@@ -933,6 +933,7 @@ function AlbumEditor({
   deleteAlbumAction,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
+  const [activeSide, setActiveSide] = useState("left"); // "left" | "right" — Layout/Stiker/Fon shu tomonga ta'sir qiladi
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
@@ -989,15 +990,23 @@ function AlbumEditor({
           const rightLayout = rightPage ? (LAYOUTS.find((l) => l.id === rightPage.layout_id) || LAYOUTS[0]) : null;
           const totalSpreads = Math.ceil(pages.length / 2);
           const spreadNum = Math.floor(pageIndex / 2) + 1;
+          const targetPage = activeSide === "right" && rightPage ? rightPage : currentPage;
+          const targetLayout = activeSide === "right" && rightLayout ? rightLayout : currentLayout;
 
           return (
             <div style={{ background: `linear-gradient(180deg, ${TOKENS.bookCoverSoft}, ${TOKENS.bookCover})`, borderRadius: 18, padding: "18px 18px 20px" }}>
               {/* Book toolbar */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "0 6px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <button onClick={() => setPageIndex(Math.max(0, pageIndex - 2))} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex === 0 ? 0.3 : 0.85 }}><ChevronLeft size={20} /></button>
+                  <button onClick={() => { setPageIndex(Math.max(0, pageIndex - 2)); setActiveSide("left"); }} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex === 0 ? 0.3 : 0.85 }}><ChevronLeft size={20} /></button>
                   <span style={{ fontSize: 12.5, color: "rgba(242,237,226,0.75)", fontWeight: 500 }}>Sahifa {spreadNum} / {totalSpreads}</span>
-                  <button onClick={() => setPageIndex(Math.min(pages.length - (pages.length % 2 === 0 ? 2 : 1), pageIndex + 2))} disabled={pageIndex + 2 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 2 >= pages.length ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex + 2 >= pages.length ? 0.3 : 0.85 }}><ChevronRight size={20} /></button>
+                  <button onClick={() => { setPageIndex(Math.min(pages.length - (pages.length % 2 === 0 ? 2 : 1), pageIndex + 2)); setActiveSide("left"); }} disabled={pageIndex + 2 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 2 >= pages.length ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex + 2 >= pages.length ? 0.3 : 0.85 }}><ChevronRight size={20} /></button>
+                  {canEdit && rightPage && (
+                    <div style={{ display: "flex", gap: 4, marginLeft: 6, background: "rgba(255,255,255,0.08)", borderRadius: 20, padding: 3 }}>
+                      <button onClick={() => setActiveSide("left")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "left" ? TOKENS.gold : "transparent", color: activeSide === "left" ? "#fff" : "rgba(242,237,226,0.6)" }}>Chap</button>
+                      <button onClick={() => setActiveSide("right")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "right" ? TOKENS.gold : "transparent", color: activeSide === "right" ? "#fff" : "rgba(242,237,226,0.6)" }}>O'ng</button>
+                    </div>
+                  )}
                 </div>
                 {canEdit && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1022,7 +1031,7 @@ function AlbumEditor({
                       <form key={s.id} action={stickerFormAction} onSubmit={() => setShowStickerPicker(false)}>
                         <input type="hidden" name="familySlug" value={familySlug} />
                         <input type="hidden" name="albumId" value={album.id} />
-                        <input type="hidden" name="pageId" value={currentPage.id} />
+                        <input type="hidden" name="pageId" value={targetPage.id} />
                         <input type="hidden" name="stickerId" value={s.id} />
                         <button type="submit" disabled={stickerPending} title={s.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px 14px", cursor: stickerPending ? "default" : "pointer" }}>
                           <Icon size={20} color={TOKENS.teal} />
@@ -1031,7 +1040,7 @@ function AlbumEditor({
                       </form>
                     );
                   })}
-                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 160 }}>Chap sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
+                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 160 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
                 </div>
               )}
               {stickerState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{stickerState.error}</div>}
@@ -1042,15 +1051,15 @@ function AlbumEditor({
                     <form key={b.id} action={bgFormAction} onSubmit={() => setShowBgPicker(false)}>
                       <input type="hidden" name="familySlug" value={familySlug} />
                       <input type="hidden" name="albumId" value={album.id} />
-                      <input type="hidden" name="pageId" value={currentPage.id} />
+                      <input type="hidden" name="pageId" value={targetPage.id} />
                       <input type="hidden" name="backgroundId" value={b.id} />
-                      <button type="submit" title={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "transparent", border: (currentPage.background_id || "paper") === b.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 6, cursor: "pointer" }}>
+                      <button type="submit" title={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "transparent", border: (targetPage.background_id || "paper") === b.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 6, cursor: "pointer" }}>
                         <div style={{ width: 34, height: 34, borderRadius: 6, background: `linear-gradient(180deg, ${b.from}, ${b.to})` }} />
                         <span style={{ fontSize: 9.5, color: TOKENS.ink60 }}>{b.name}</span>
                       </button>
                     </form>
                   ))}
-                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 150 }}>Chap sahifaning foniga qo'llanadi.</div>
+                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 150 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaning foniga qo'llanadi.</div>
                 </div>
               )}
               {bgState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{bgState.error}</div>}
@@ -1061,11 +1070,11 @@ function AlbumEditor({
                     <form key={l.id} action={layoutFormAction} onSubmit={() => setShowLayoutPicker(false)}>
                       <input type="hidden" name="familySlug" value={familySlug} />
                       <input type="hidden" name="albumId" value={album.id} />
-                      <input type="hidden" name="pageId" value={currentPage.id} />
+                      <input type="hidden" name="pageId" value={targetPage.id} />
                       <input type="hidden" name="layoutId" value={l.id} />
                       <button
                         type="submit"
-                        style={{ width: "100%", cursor: "pointer", border: currentLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
+                        style={{ width: "100%", cursor: "pointer", border: targetLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
                       >
                         <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
                           {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
@@ -1080,7 +1089,14 @@ function AlbumEditor({
 
               {/* Two-page spread */}
               <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative" }}>
-                <div style={{ flex: 1, position: "relative" }}>
+                <div
+                  onMouseDownCapture={() => canEdit && setActiveSide("left")}
+                  style={{
+                    flex: 1, position: "relative",
+                    boxShadow: canEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
+                    zIndex: canEdit && rightPage && activeSide === "left" ? 2 : 1,
+                  }}
+                >
                   <PageCanvas
                     page={currentPage}
                     layout={currentLayout}
@@ -1104,7 +1120,14 @@ function AlbumEditor({
                 </div>
                 {/* Spine shadow between pages */}
                 <div style={{ width: 22, marginLeft: -11, marginRight: -11, zIndex: 5, background: "linear-gradient(90deg, transparent, rgba(30,26,15,0.22) 45%, rgba(30,26,15,0.22) 55%, transparent)", pointerEvents: "none" }} />
-                <div style={{ flex: 1, position: "relative" }}>
+                <div
+                  onMouseDownCapture={() => canEdit && rightPage && setActiveSide("right")}
+                  style={{
+                    flex: 1, position: "relative",
+                    boxShadow: canEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
+                    zIndex: canEdit && rightPage && activeSide === "right" ? 2 : 1,
+                  }}
+                >
                   {rightPage ? (
                     <PageCanvas
                       page={rightPage}
@@ -1147,9 +1170,9 @@ function AlbumEditor({
                   <form action={deletePageFormAction} style={{ display: "inline" }}>
                     <input type="hidden" name="familySlug" value={familySlug} />
                     <input type="hidden" name="albumId" value={album.id} />
-                    <input type="hidden" name="pageId" value={currentPage.id} />
+                    <input type="hidden" name="pageId" value={targetPage.id} />
                     <button type="submit" disabled={pages.length <= 1} style={{ fontSize: 11.5, color: pages.length <= 1 ? "rgba(242,237,226,0.3)" : "#E7A79B", background: "none", border: "none", cursor: pages.length <= 1 ? "default" : "pointer" }}>
-                      Sahifani o'chirish
+                      {activeSide === "right" ? "O'ng" : "Chap"} sahifani o'chirish
                     </button>
                   </form>
                 </div>
@@ -1164,7 +1187,7 @@ function AlbumEditor({
                   return (
                     <div
                       key={p.id}
-                      onClick={() => setPageIndex(i % 2 === 0 ? i : i - 1)}
+                      onClick={() => { setPageIndex(i % 2 === 0 ? i : i - 1); setActiveSide(i % 2 === 0 ? "left" : "right"); }}
                       title={`Sahifa ${i + 1}`}
                       style={{
                         width: 72, aspectRatio: "4/3", flexShrink: 0, borderRadius: 4, background: "#fff",
