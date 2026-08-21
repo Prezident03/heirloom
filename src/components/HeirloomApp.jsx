@@ -320,6 +320,9 @@ function MobileBottomNav({ current, onNavigate }) {
  * @property {Function} [duplicateElementAction]
  * @property {Function} [moveElementUpAction]
  * @property {Function} [moveElementDownAction]
+ * @property {Function} [changePageBackgroundAction]
+ * @property {Function} [updateElementFrameAction]
+ * @property {Function} [addStickerElementAction]
  * @property {Function} [bulkUploadPhotosAction]
  * @property {Function} [createPlaceAction]
  * @property {Function} [updatePlaceAction]
@@ -392,6 +395,9 @@ export default function HeirloomApp({
   duplicateElementAction,
   moveElementUpAction,
   moveElementDownAction,
+  changePageBackgroundAction,
+  updateElementFrameAction,
+  addStickerElementAction,
   bulkUploadPhotosAction,
   createPlaceAction,
   updatePlaceAction,
@@ -504,6 +510,9 @@ export default function HeirloomApp({
                 duplicateElementAction={duplicateElementAction}
                 moveElementUpAction={moveElementUpAction}
                 moveElementDownAction={moveElementDownAction}
+                changePageBackgroundAction={changePageBackgroundAction}
+                updateElementFrameAction={updateElementFrameAction}
+                addStickerElementAction={addStickerElementAction}
               />
             )}
             {view === VIEWS.PEOPLE && (

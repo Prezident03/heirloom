@@ -3,41 +3,6 @@ import { X, Calendar, MapPinned, ChevronLeft, TreePine, Plus, Camera, Search } f
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { personLabel, personYears, relationLabelBetween } from "@/lib/relationshipLabels";
 
-/* ---------------- Related-person list (Ota-onasi / Turmush o'rtog'i / Farzandlari) ---------------- */
-
-function RelatedPersonGroup({ label, people, onSelect }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 7 }}>{label}</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {people.map((p) => (
-          <div
-            key={p.id}
-            onClick={() => onSelect && onSelect(p.id)}
-            style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 4px", borderRadius: 7, cursor: onSelect ? "pointer" : "default" }}
-            onMouseEnter={(e) => onSelect && (e.currentTarget.style.background = TOKENS.parchment)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-          >
-            <div
-              style={{
-                width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                background: p.profile_photo_url ? undefined : TOKENS.parchmentDeep,
-                backgroundImage: p.profile_photo_url ? `url(${p.profile_photo_url})` : undefined,
-                backgroundSize: "cover", backgroundPosition: "center",
-                display: p.profile_photo_url ? undefined : "flex", alignItems: "center", justifyContent: "center",
-                fontFamily: "Fraunces, serif", fontSize: 11, color: TOKENS.ink60,
-              }}
-            >
-              {!p.profile_photo_url && (p.first_name?.[0]?.toUpperCase() || "?")}
-            </div>
-            <div style={{ fontSize: 12.5, color: TOKENS.ink, fontWeight: 500 }}>{personLabel(p)}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ---------------- Profile photo upload (small inline form + camera button) ---------------- */
 
 export function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction, onError }) {
@@ -126,10 +91,6 @@ export function PersonDetailPanel({
   confirmDelete,
   setConfirmDelete,
   deletePersonAction,
-  parents,
-  spouse,
-  children,
-  onSelectRelated,
 }) {
   const [activeTab, setActiveTab] = useState("about");
 
@@ -219,19 +180,9 @@ export function PersonDetailPanel({
             </div>
           )}
           {selected.raw?.gender && (
-            <div style={{ fontSize: 12, color: TOKENS.ink60, marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: TOKENS.ink60 }}>
               Jinsi: {selected.raw.gender === "male" ? "Erkak" : selected.raw.gender === "female" ? "Ayol" : "Boshqa"}
             </div>
-          )}
-
-          {parents && parents.length > 0 && (
-            <RelatedPersonGroup label="Ota-onasi" people={parents} onSelect={onSelectRelated} />
-          )}
-          {spouse && (
-            <RelatedPersonGroup label="Turmush o'rtog'i" people={[spouse]} onSelect={onSelectRelated} />
-          )}
-          {children && children.length > 0 && (
-            <RelatedPersonGroup label="Farzandlari" people={children} onSelect={onSelectRelated} />
           )}
         </div>
       )}
@@ -325,22 +276,6 @@ export function getParentsOf(personId, people, relationships) {
     .filter((r) => r.type === "parent" && r.person_b_id === personId)
     .map((r) => people.find((p) => p.id === r.person_a_id))
     .filter(Boolean);
-}
-
-export function getChildrenOf(personId, people, relationships) {
-  return relationships
-    .filter((r) => r.type === "parent" && r.person_a_id === personId)
-    .map((r) => people.find((p) => p.id === r.person_b_id))
-    .filter(Boolean);
-}
-
-export function getSpouseOf(personId, people, relationships) {
-  const rel = relationships.find(
-    (r) => r.type === "spouse" && (r.person_a_id === personId || r.person_b_id === personId)
-  );
-  if (!rel) return null;
-  const spouseId = rel.person_a_id === personId ? rel.person_b_id : rel.person_a_id;
-  return people.find((p) => p.id === spouseId) || null;
 }
 
 export function AddPersonModal({ familySlug, people, relationships = [], addPersonAction, onClose }) {

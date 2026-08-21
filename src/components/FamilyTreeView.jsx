@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
-import { Plus, Search, Minus, Locate } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Plus, Search } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
 import { relationLabelBetween, personLabel, personYears } from "@/lib/relationshipLabels";
 import { buildFamilyGenerations } from "./shared";
 import { TreeVisualization } from "./TreeVisualization";
-import { PersonDetailPanel, EmptyFamilyTree, AddPersonModal, LinkPersonModal, EditPersonModal, getParentsOf, getSpouseOf, getChildrenOf } from "./PersonComponents";
+import { PersonDetailPanel, EmptyFamilyTree, AddPersonModal, LinkPersonModal, EditPersonModal } from "./PersonComponents";
 
 export function FamilyTreeView({
   familyName,
@@ -31,7 +31,6 @@ export function FamilyTreeView({
   // qiladi (o'zi mouse wheel / drag / pinch-zoomni ichkarida boshqaradi).
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const treeRef = useRef(null);
 
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -65,10 +64,6 @@ export function FamilyTreeView({
     if (!selected || !mePersonId) return null;
     return relationLabelBetween(mePersonId, selected.id, people, relationships);
   }, [selected, mePersonId, people, relationships]);
-
-  const selectedParents = useMemo(() => (selected ? getParentsOf(selected.id, people, relationships) : []), [selected, people, relationships]);
-  const selectedSpouse = useMemo(() => (selected ? getSpouseOf(selected.id, people, relationships) : null), [selected, people, relationships]);
-  const selectedChildren = useMemo(() => (selected ? getChildrenOf(selected.id, people, relationships) : []), [selected, people, relationships]);
 
   useEffect(() => {
     setPhotoError(null);
@@ -106,31 +101,9 @@ export function FamilyTreeView({
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 3 }}>
-            <button
-              onClick={() => treeRef.current?.zoomOut()}
-              title="Kichraytirish"
-              style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink }}
-            >
-              <Minus size={13} />
-            </button>
-            <div style={{ minWidth: 42, textAlign: "center", fontSize: 12, fontWeight: 600, color: TOKENS.ink }}>{Math.round((zoom || 1) * 100)}%</div>
-            <button
-              onClick={() => treeRef.current?.zoomIn()}
-              title="Kattalashtirish"
-              style={{ width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink }}
-            >
-              <Plus size={13} />
-            </button>
-            <div style={{ width: 1, height: 18, background: TOKENS.parchmentDeep, margin: "0 4px" }} />
-            <button
-              onClick={() => treeRef.current?.center()}
-              title="Markazga qaytarish"
-              style={{ display: "flex", alignItems: "center", gap: 5, background: "transparent", border: "none", borderRadius: 6, padding: "0 8px", height: 26, cursor: "pointer", fontSize: 11.5, fontWeight: 600, color: TOKENS.ink }}
-            >
-              <Locate size={13} /> Markazga
-            </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 12, color: TOKENS.ink60, fontWeight: 500 }}>
+            💡 Mouse wheel - zoom | Drag - pan
           </div>
           <div style={{ position: "relative", flex: "0 1 220px", minWidth: 160 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "0 10px", height: 32 }}>
@@ -164,10 +137,9 @@ export function FamilyTreeView({
 
         <div style={{ flex: 1, minHeight: 420, position: "relative" }}>
           <TreeVisualization
-            ref={treeRef}
             people={people}
             relationships={relationships}
-            onSelectPerson={goToPerson}
+            onSelectPerson={setSelected}
             mePersonId={mePersonId}
             width={1200}
             height={600}
@@ -195,10 +167,6 @@ export function FamilyTreeView({
           confirmDelete={confirmDelete}
           setConfirmDelete={setConfirmDelete}
           deletePersonAction={deletePersonAction}
-          parents={selectedParents}
-          spouse={selectedSpouse}
-          children={selectedChildren}
-          onSelectRelated={goToPerson}
         />
       )}
 

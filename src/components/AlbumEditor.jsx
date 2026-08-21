@@ -6,6 +6,7 @@ import { upload } from "@vercel/blob/client";
 import {
   BookImage, Plus, X, ImagePlus, LayoutGrid,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Trash2, Calendar, MapPinned,
+  Leaf, Flower2, Heart, Star, Sun, Palette, Sticker as StickerIcon, Frame,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
@@ -17,6 +18,32 @@ const LAYOUTS = [
   { id: "l2", name: "Ikkita yonma-yon", slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 70 }, { type: "photo", x: 53, y: 8, w: 41, h: 70 }, { type: "text", x: 6, y: 82, w: 88, h: 12 }] },
   { id: "l3", name: "Katta + ikkita kichik", slots: [{ type: "photo", x: 6, y: 6, w: 60, h: 50 }, { type: "photo", x: 68, y: 6, w: 26, h: 24 }, { type: "photo", x: 68, y: 32, w: 26, h: 24 }, { type: "text", x: 6, y: 60, w: 88, h: 32 }] },
   { id: "l4", name: "Uchtasi qatorda", slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55 }, { type: "photo", x: 36, y: 10, w: 28, h: 55 }, { type: "photo", x: 67, y: 10, w: 28, h: 55 }, { type: "text", x: 5, y: 70, w: 90, h: 22 }] },
+];
+
+// Fon (background) tanlovlari — src/lib/albums.ts dagi BACKGROUNDS bilan mos id'lar.
+const BACKGROUNDS = {
+  paper: { name: "Qog'oz", from: "#F4EDDD", to: "#ECE2C8" },
+  sage: { name: "Sage", from: "#E7EDE3", to: "#D3DECB" },
+  slate: { name: "Slate", from: "#E4E7E6", to: "#CBD2D0" },
+  blush: { name: "Blush", from: "#F3E4DD", to: "#E6C9BC" },
+  midnight: { name: "Midnight", from: "#2A3630", to: "#1B231F" },
+};
+const BACKGROUND_LIST = Object.entries(BACKGROUNDS).map(([id, v]) => ({ id, ...v }));
+
+// Stikerlar — src/lib/albums.ts dagi STICKERS bilan mos id'lar.
+const STICKER_ICONS = { leaf: Leaf, flower: Flower2, heart: Heart, star: Star, sun: Sun };
+const STICKER_LIST = [
+  { id: "leaf", name: "Barg" },
+  { id: "flower", name: "Gul" },
+  { id: "heart", name: "Yurak" },
+  { id: "star", name: "Yulduz" },
+  { id: "sun", name: "Quyosh" },
+];
+
+const FRAME_LIST = [
+  { id: "polaroid", name: "Polaroid" },
+  { id: "soft", name: "Yumshoq soya" },
+  { id: "none", name: "Ramkasiz" },
 ];
 
 /* ---------------- Scrapbook decoration helpers ---------------- */
@@ -261,7 +288,10 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
     }
   };
 
-  const tilt = element.photo_url ? (seeded(element.id, 1) * 4 - 2) : 0; // -2..2deg, decorative only
+  const frameStyle = element.frame_style || "polaroid";
+  const isPolaroid = frameStyle === "polaroid";
+  const isSoft = frameStyle === "soft";
+  const tilt = element.photo_url && isPolaroid ? (seeded(element.id, 1) * 4 - 2) : 0; // -2..2deg, decorative only
   const tapeRotate = seeded(element.id, 2) * 16 - 8; // -8..8deg
 
   return (
@@ -272,10 +302,10 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
     >
       <div
         style={{
-          width: "100%", height: "100%", borderRadius: 2, position: "relative",
+          width: "100%", height: "100%", borderRadius: isPolaroid ? 2 : 8, position: "relative",
           transform: `rotate(${tilt}deg)`,
-          background: element.photo_url ? "#fff" : TOKENS.parchment,
-          padding: element.photo_url ? "5% 5% 9%" : 0,
+          background: element.photo_url ? (isPolaroid ? "#fff" : "transparent") : TOKENS.parchment,
+          padding: element.photo_url && isPolaroid ? "5% 5% 9%" : 0,
           boxShadow: element.photo_url ? "0 8px 18px rgba(30,26,15,0.22), 0 2px 5px rgba(30,26,15,0.12)" : "none",
           border: element.photo_url ? "none" : `1.5px dashed ${TOKENS.parchmentDeep}`,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -352,6 +382,22 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
   );
 }
 
+function StickerSlot({ element, canEdit, style, onDragStart, isDragging }) {
+  const Icon = STICKER_ICONS[element.sticker_id] || Leaf;
+  const rot = seeded(element.id, 3) * 20 - 10; // -10..10deg, decorative
+  return (
+    <div
+      style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s", cursor: canEdit ? "grab" : "default" }}
+      draggable={canEdit}
+      onDragStart={onDragStart}
+    >
+      <div style={{ width: "100%", height: "100%", transform: `rotate(${rot}deg)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Icon size="70%" color={TOKENS.teal} strokeWidth={1.4} fill={TOKENS.tealSoft} fillOpacity={0.35} />
+      </div>
+    </div>
+  );
+}
+
 function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEdit, style }) {
   const [state, formAction] = useActionState(updateElementTextAction, undefined);
   const [value, setValue] = useState(element.text_content || "");
@@ -381,7 +427,7 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
   );
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction }) {
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction, updateElementFrameAction, backgroundId }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
@@ -393,6 +439,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const [delState, delFormAction, delPending] = useActionState(deleteElementAction, undefined);
   const [mvUpState, mvUpFormAction] = useActionState(moveElementUpAction, undefined);
   const [mvDnState, mvDnFormAction] = useActionState(moveElementDownAction, undefined);
+  const [frameState, frameFormAction] = useActionState(updateElementFrameAction, undefined);
 
   const reorderRef = useRef(null);
   const posRef = useRef(null);
@@ -403,6 +450,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const delRef = useRef(null);
   const mvUpRef = useRef(null);
   const mvDnRef = useRef(null);
+  const frameRef = useRef(null);
 
   const [selectedId, setSelectedId] = useState(null);
   const [captionDraft, setCaptionDraft] = useState("");
@@ -557,7 +605,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
         onClick={() => setSelectedId(null)}
         style={{
           width: "100%", aspectRatio: "4/3", borderRadius: 3, position: "relative",
-          background: `radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)`,
+          background: `radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).from}, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).to})`,
           boxShadow: `inset 0 0 40px ${TOKENS.paperShadow}, 0 2px 6px rgba(30,38,33,0.08)`,
           opacity: saving ? 0.7 : 1, transition: "opacity 0.2s", touchAction: "none", overflow: "hidden",
         }}
@@ -620,6 +668,12 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
           <input type="hidden" name="pageId" />
           <input type="hidden" name="elementId" />
         </form>
+        <form ref={frameRef} action={frameFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="albumId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="frameStyle" />
+        </form>
         {elements.map((el, i) => {
           const live = dragState.current?.id === el.id;
           const box = getElBox(el, i);
@@ -639,7 +693,8 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
             transition: live ? "none" : "border 0.15s, box-shadow 0.15s",
           };
           const slot = layout.slots[i];
-          const isPhoto = el.type === "photo" || slot?.type === "photo";
+          const isPhoto = el.type === "photo" || (slot?.type === "photo" && el.type !== "sticker" && el.type !== "text");
+          const isSticker = el.type === "sticker";
           return (
             <div
               key={el.id}
@@ -651,7 +706,15 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
               onClick={(e) => e.stopPropagation()}
               style={style}
             >
-              {isPhoto ? (
+              {isSticker ? (
+                <StickerSlot
+                  element={el}
+                  canEdit={canEdit}
+                  style={{ width: "100%", height: "100%", position: "relative" }}
+                  onDragStart={() => handleDragStart(i)}
+                  isDragging={draggedIndex === i}
+                />
+              ) : isPhoto ? (
                 <PhotoSlot
                   element={el}
                   familySlug={familySlug}
@@ -775,6 +838,32 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
                 style={{ flex: 1, padding: "8px", background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
               ><Trash2 size={13} /> O'chir</button>
             </div>
+            {(selected.type === "photo" || (selected.type !== "sticker" && selected.type !== "text")) && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Ramka</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {FRAME_LIST.map((f) => (
+                    <button
+                      key={f.id}
+                      title={f.name}
+                      onClick={() => {
+                        const form = frameRef.current; if (!form) return;
+                        form.elements.familySlug.value = familySlug;
+                        form.elements.albumId.value = albumId;
+                        form.elements.elementId.value = selected.id;
+                        form.elements.frameStyle.value = f.id;
+                        setTimeout(() => form.requestSubmit(), 0);
+                      }}
+                      style={{
+                        flex: 1, padding: "7px 4px", fontSize: 10, borderRadius: 6, cursor: "pointer",
+                        border: (selected.frame_style || "polaroid") === f.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
+                        background: "transparent", color: TOKENS.ink,
+                      }}
+                    >{f.name}</button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Caption (tag)</div>
@@ -838,10 +927,15 @@ function AlbumEditor({
   duplicateElementAction,
   moveElementUpAction,
   moveElementDownAction,
+  updateElementFrameAction,
+  changePageBackgroundAction,
+  addStickerElementAction,
   deleteAlbumAction,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
+  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
 
   const pages = album.pages;
@@ -852,6 +946,8 @@ function AlbumEditor({
   const [layoutState, layoutFormAction] = useActionState(changePageLayoutAction, undefined);
   const [deletePageState, deletePageFormAction] = useActionState(deleteAlbumPageAction, undefined);
   const [deleteAlbumState, deleteAlbumFormAction, deleteAlbumPending] = useActionState(deleteAlbumAction, undefined);
+  const [bgState, bgFormAction] = useActionState(changePageBackgroundAction, undefined);
+  const [stickerState, stickerFormAction, stickerPending] = useActionState(addStickerElementAction, undefined);
 
   return (
     <div style={{ padding: "22px clamp(16px, 4vw, 40px) 60px", maxWidth: 1100, margin: "0 auto" }}>
@@ -905,12 +1001,59 @@ function AlbumEditor({
                 </div>
                 {canEdit && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <ChipButton active={showLayoutPicker} onClick={() => setShowLayoutPicker(!showLayoutPicker)}>
+                    <ChipButton active={showLayoutPicker} onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowBgPicker(false); setShowStickerPicker(false); }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 5, color: showLayoutPicker ? undefined : "#F2EDE2" }}><LayoutGrid size={13} /> Layout</span>
+                    </ChipButton>
+                    <ChipButton active={showStickerPicker} onClick={() => { setShowStickerPicker(!showStickerPicker); setShowBgPicker(false); setShowLayoutPicker(false); }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showStickerPicker ? undefined : "#F2EDE2" }}><StickerIcon size={13} /> Stiker</span>
+                    </ChipButton>
+                    <ChipButton active={showBgPicker} onClick={() => { setShowBgPicker(!showBgPicker); setShowLayoutPicker(false); setShowStickerPicker(false); }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showBgPicker ? undefined : "#F2EDE2" }}><Palette size={13} /> Fon</span>
                     </ChipButton>
                   </div>
                 )}
               </div>
+
+              {showStickerPicker && (
+                <div style={{ display: "flex", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
+                  {STICKER_LIST.map((s) => {
+                    const Icon = STICKER_ICONS[s.id];
+                    return (
+                      <form key={s.id} action={stickerFormAction} onSubmit={() => setShowStickerPicker(false)}>
+                        <input type="hidden" name="familySlug" value={familySlug} />
+                        <input type="hidden" name="albumId" value={album.id} />
+                        <input type="hidden" name="pageId" value={currentPage.id} />
+                        <input type="hidden" name="stickerId" value={s.id} />
+                        <button type="submit" disabled={stickerPending} title={s.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px 14px", cursor: stickerPending ? "default" : "pointer" }}>
+                          <Icon size={20} color={TOKENS.teal} />
+                          <span style={{ fontSize: 9.5, color: TOKENS.ink60 }}>{s.name}</span>
+                        </button>
+                      </form>
+                    );
+                  })}
+                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 160 }}>Chap sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
+                </div>
+              )}
+              {stickerState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{stickerState.error}</div>}
+
+              {showBgPicker && (
+                <div style={{ display: "flex", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
+                  {BACKGROUND_LIST.map((b) => (
+                    <form key={b.id} action={bgFormAction} onSubmit={() => setShowBgPicker(false)}>
+                      <input type="hidden" name="familySlug" value={familySlug} />
+                      <input type="hidden" name="albumId" value={album.id} />
+                      <input type="hidden" name="pageId" value={currentPage.id} />
+                      <input type="hidden" name="backgroundId" value={b.id} />
+                      <button type="submit" title={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "transparent", border: (currentPage.background_id || "paper") === b.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 6, cursor: "pointer" }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 6, background: `linear-gradient(180deg, ${b.from}, ${b.to})` }} />
+                        <span style={{ fontSize: 9.5, color: TOKENS.ink60 }}>{b.name}</span>
+                      </button>
+                    </form>
+                  ))}
+                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 150 }}>Chap sahifaning foniga qo'llanadi.</div>
+                </div>
+              )}
+              {bgState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{bgState.error}</div>}
 
               {showLayoutPicker && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
@@ -955,6 +1098,8 @@ function AlbumEditor({
                     duplicateElementAction={duplicateElementAction}
                     moveElementUpAction={moveElementUpAction}
                     moveElementDownAction={moveElementDownAction}
+                    updateElementFrameAction={updateElementFrameAction}
+                    backgroundId={currentPage.background_id || "paper"}
                   />
                 </div>
                 {/* Spine shadow between pages */}
@@ -978,6 +1123,8 @@ function AlbumEditor({
                       duplicateElementAction={duplicateElementAction}
                       moveElementUpAction={moveElementUpAction}
                       moveElementDownAction={moveElementDownAction}
+                      updateElementFrameAction={updateElementFrameAction}
+                      backgroundId={rightPage.background_id || "paper"}
                     />
                   ) : (
                     <div style={{ width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)` }}>
@@ -1077,6 +1224,9 @@ export function AlbumsView({
   duplicateElementAction,
   moveElementUpAction,
   moveElementDownAction,
+  updateElementFrameAction,
+  changePageBackgroundAction,
+  addStickerElementAction,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
   const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
@@ -1103,9 +1253,11 @@ export function AlbumsView({
           duplicateElementAction={duplicateElementAction}
           moveElementUpAction={moveElementUpAction}
           moveElementDownAction={moveElementDownAction}
+          updateElementFrameAction={updateElementFrameAction}
+          changePageBackgroundAction={changePageBackgroundAction}
+          addStickerElementAction={addStickerElementAction}
           deleteAlbumAction={deleteAlbumAction}
-        />
-      ) : (
+        />      ) : (
         <AlbumGrid albums={albums} onOpen={(a) => setOpenAlbumId(a.id)} canEdit={canEdit} createAlbumAction={createAlbumAction} familySlug={familySlug} />
       )}
     </div>

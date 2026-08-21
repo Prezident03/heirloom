@@ -20,13 +20,14 @@ export type AlbumPage = {
   layout_id: string;
   date_label: string | null;
   location: string | null;
+  background_id: string;
 };
 
 export type PageElement = {
   id: string;
   page_id: string;
   slot_index: number;
-  type: "photo" | "text";
+  type: "photo" | "text" | "sticker";
   photo_url: string | null;
   text_content: string | null;
   caption: string | null;
@@ -38,7 +39,37 @@ export type PageElement = {
   position_h: number | null;
   rotation: number;
   z_index: number;
+  frame_style: "polaroid" | "soft" | "none";
+  sticker_id: string | null;
 };
+
+// Fon (page background) tanlovlari — id + gradient ranglar.
+export const BACKGROUNDS = {
+  paper: { name: "Qog'oz", from: "#F4EDDD", to: "#ECE2C8" },
+  sage: { name: "Sage", from: "#E7EDE3", to: "#D3DECB" },
+  slate: { name: "Slate", from: "#E4E7E6", to: "#CBD2D0" },
+  blush: { name: "Blush", from: "#F3E4DD", to: "#E6C9BC" },
+  midnight: { name: "Midnight", from: "#2A3630", to: "#1B231F" },
+} as const;
+export type BackgroundId = keyof typeof BACKGROUNDS;
+
+// Ramka (photo frame) uslublari.
+export const FRAMES = {
+  polaroid: { name: "Polaroid" },
+  soft: { name: "Yumshoq soya" },
+  none: { name: "Ramkasiz" },
+} as const;
+export type FrameStyle = keyof typeof FRAMES;
+
+// Stikerlar — dekorativ elementlar, PageEditor'da chizib qo'yiladi.
+export const STICKERS = {
+  leaf: { name: "Barg" },
+  flower: { name: "Gul" },
+  heart: { name: "Yurak" },
+  star: { name: "Yulduz" },
+  sun: { name: "Quyosh" },
+} as const;
+export type StickerId = keyof typeof STICKERS;
 
 // Sahifa shablonlari — bular faqat vizual joylashuv, database'da saqlanmaydi.
 // Har bir slot: { type, x, y, w, h } (foiz asosida joylashuv).
@@ -121,7 +152,7 @@ export async function createAlbumPage(albumId: string, layoutId: LayoutId): Prom
   await sql`INSERT INTO album_pages (id, album_id, page_order, layout_id) VALUES (${id}, ${albumId}, ${order}, ${layoutId})`;
   await createEmptyElements(id, layoutId);
 
-  return { id, album_id: albumId, page_order: order, layout_id: layoutId, date_label: null, location: null };
+  return { id, album_id: albumId, page_order: order, layout_id: layoutId, date_label: null, location: null, background_id: "paper" };
 }
 
 async function createEmptyElements(pageId: string, layoutId: LayoutId): Promise<void> {
@@ -242,6 +273,34 @@ export async function updateElementLocation(elementId: string, location: string)
   await sql`UPDATE page_elements SET location = ${location.trim() || null} WHERE id = ${elementId}`;
 }
 
+export async function updatePageBackground(pageId: string, backgroundId: BackgroundId): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE album_pages SET background_id = ${backgroundId} WHERE id = ${pageId}`;
+}
+
+export async function updateElementFrame(elementId: string, frameStyle: FrameStyle): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE page_elements SET frame_style = ${frameStyle} WHERE id = ${elementId}`;
+}
+
+/** Sahifaga yangi dekorativ stiker elementi qo'shadi (erkin joylashuv bilan). */
+export async function addStickerElement(
+  pageId: string,
+  stickerId: StickerId,
+  pos: { x: number; y: number; w: number; h: number }
+): Promise<string> {
+  await ensureSchema();
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  await sql`
+    INSERT INTO page_elements (id, page_id, slot_index, type, sticker_id, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
+    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'sticker', ${stickerId}, ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1})
+  `;
+  return id;
+}
+
 export async function changeZIndex(elementId: string, pageId: string, direction: "up" | "down"): Promise<void> {
   await ensureSchema();
   const rows = (await sql`
@@ -269,7 +328,7 @@ export async function duplicateElement(elementId: string, pageId: string): Promi
   const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
   const now = new Date().toISOString();
   await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
+    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style, sticker_id)
     VALUES (
       ${newId},
       ${pageId},
@@ -285,7 +344,9 @@ export async function duplicateElement(elementId: string, pageId: string): Promi
       ${src.position_w ?? 40},
       ${src.position_h ?? 40},
       ${src.rotation ?? 0},
-      ${maxZRows[0].m + 1}
+      ${maxZRows[0].m + 1},
+      ${src.frame_style ?? "polaroid"},
+      ${src.sticker_id ?? null}
     )
   `;
   return newId;

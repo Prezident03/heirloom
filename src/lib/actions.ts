@@ -46,7 +46,13 @@ import {
   updateElementLocation,
   changeZIndex,
   duplicateElement,
+  updatePageBackground,
+  updateElementFrame,
+  addStickerElement,
   type LayoutId,
+  type BackgroundId,
+  type FrameStyle,
+  type StickerId,
 } from "@/lib/albums";
 import {
   createTimelineEvent,
@@ -1135,6 +1141,48 @@ export async function duplicateElementAction(_prevState: ActionState, formData: 
   } catch {
     return { error: "Elementni nusxalashda xato." };
   }
+}
+
+export async function changePageBackgroundAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const backgroundId = String(formData.get("backgroundId") || "paper") as BackgroundId;
+  if (!pageId) return { error: "Page ID kerak." };
+
+  await updatePageBackground(pageId, backgroundId);
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function updateElementFrameAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const elementId = String(formData.get("elementId") || "").trim();
+  const frameStyle = String(formData.get("frameStyle") || "polaroid") as FrameStyle;
+  if (!elementId) return { error: "Element ID kerak." };
+
+  await updateElementFrame(elementId, frameStyle);
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function addStickerElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const stickerId = String(formData.get("stickerId") || "leaf") as StickerId;
+  if (!pageId) return { error: "Page ID kerak." };
+
+  await addStickerElement(pageId, stickerId, { x: 38, y: 38, w: 16, h: 16 });
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 
 /* ============ Stories (Hikoyalar) ============ */
