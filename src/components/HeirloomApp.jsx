@@ -322,6 +322,7 @@ function MobileBottomNav({ current, onNavigate }) {
  * @property {Function} [moveElementDownAction]
  * @property {Function} [changePageBackgroundAction]
  * @property {Function} [updateElementFrameAction]
+ * @property {Function} [updateElementTextStyleAction]
  * @property {Function} [addStickerElementAction]
  * @property {Function} [addTextElementAction]
  * @property {Function} [addPhotoElementAction]
@@ -399,6 +400,7 @@ export default function HeirloomApp({
   moveElementDownAction,
   changePageBackgroundAction,
   updateElementFrameAction,
+  updateElementTextStyleAction,
   addStickerElementAction,
   addTextElementAction,
   addPhotoElementAction,
@@ -516,6 +518,7 @@ export default function HeirloomApp({
                 moveElementDownAction={moveElementDownAction}
                 changePageBackgroundAction={changePageBackgroundAction}
                 updateElementFrameAction={updateElementFrameAction}
+                updateElementTextStyleAction={updateElementTextStyleAction}
                 addStickerElementAction={addStickerElementAction}
                 addTextElementAction={addTextElementAction}
                 addPhotoElementAction={addPhotoElementAction}

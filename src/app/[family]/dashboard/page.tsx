@@ -57,6 +57,7 @@ import {
   moveElementDownAction,
   changePageBackgroundAction,
   updateElementFrameAction,
+  updateElementTextStyleAction,
   addStickerElementAction,
   addTextElementAction,
   addPhotoElementAction,
@@ -212,6 +213,7 @@ export default async function FamilyDashboardPage({
       moveElementDownAction={moveElementDownAction}
       changePageBackgroundAction={changePageBackgroundAction}
       updateElementFrameAction={updateElementFrameAction}
+      updateElementTextStyleAction={updateElementTextStyleAction}
       addStickerElementAction={addStickerElementAction}
       addTextElementAction={addTextElementAction}
       addPhotoElementAction={addPhotoElementAction}

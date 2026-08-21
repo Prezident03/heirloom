@@ -7,6 +7,7 @@ import {
   BookImage, Plus, X, ImagePlus, LayoutGrid,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Trash2, Calendar, MapPinned,
   Leaf, Flower2, Heart, Star, Sun, Palette, Sticker as StickerIcon, Frame,
+  AlignLeft, AlignCenter, AlignRight,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
@@ -44,6 +45,24 @@ const FRAME_LIST = [
   { id: "polaroid", name: "Polaroid" },
   { id: "soft", name: "Yumshoq soya" },
   { id: "none", name: "Ramkasiz" },
+];
+
+// Matn stillari — shrift oilalari, tayyor ranglar, tekislash tanlovlari.
+const FONT_FAMILIES = {
+  handwriting: "'Caveat', cursive",
+  serif: "'Fraunces', serif",
+  sans: "'Inter', sans-serif",
+};
+const FONT_LIST = [
+  { id: "handwriting", name: "Qo'lyozma" },
+  { id: "serif", name: "Serif" },
+  { id: "sans", name: "Sans" },
+];
+const TEXT_COLORS = ["#1E2621", "#B8863B", "#2F4C48", "#A8453A", "#F2EDE2", "#5C7A73"];
+const ALIGN_LIST = [
+  { id: "left", name: "Chap", icon: AlignLeft },
+  { id: "center", name: "Markaz", icon: AlignCenter },
+  { id: "right", name: "O'ng", icon: AlignRight },
 ];
 
 /* ---------------- Scrapbook decoration helpers ---------------- */
@@ -418,7 +437,12 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
           placeholder={canEdit ? "Matn yozing..." : ""}
           style={{
             width: "100%", height: "100%", border: "none", outline: "none", resize: "none", background: "transparent",
-            fontFamily: TOKENS.handwriting, fontSize: 22, lineHeight: 1.35, color: TOKENS.ink, fontWeight: 600,
+            fontFamily: FONT_FAMILIES[element.text_font || "handwriting"],
+            fontSize: element.text_size || 22,
+            lineHeight: 1.35,
+            color: element.text_color || TOKENS.ink,
+            textAlign: element.text_align || "left",
+            fontWeight: (element.text_font || "handwriting") === "handwriting" ? 600 : 500,
           }}
         />
       </form>
@@ -427,7 +451,7 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
   );
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction, updateElementFrameAction, backgroundId }) {
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction, updateElementFrameAction, updateElementTextStyleAction, backgroundId }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
@@ -440,6 +464,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const [mvUpState, mvUpFormAction] = useActionState(moveElementUpAction, undefined);
   const [mvDnState, mvDnFormAction] = useActionState(moveElementDownAction, undefined);
   const [frameState, frameFormAction] = useActionState(updateElementFrameAction, undefined);
+  const [textStyleState, textStyleFormAction] = useActionState(updateElementTextStyleAction, undefined);
 
   const reorderRef = useRef(null);
   const posRef = useRef(null);
@@ -451,6 +476,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const mvUpRef = useRef(null);
   const mvDnRef = useRef(null);
   const frameRef = useRef(null);
+  const textStyleRef = useRef(null);
 
   const [selectedId, setSelectedId] = useState(null);
   const [captionDraft, setCaptionDraft] = useState("");
@@ -519,6 +545,18 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
     f.elements.positionH.value = String(h);
     if (zIndex != null) f.elements.zIndex.value = String(zIndex); else f.elements.zIndex.value = "";
     if (rotation != null) f.elements.rotation.value = String(rotation); else f.elements.rotation.value = "";
+    setTimeout(() => f.requestSubmit(), 0);
+  };
+
+  const submitTextStyle = (elId, { size, color, align, font }) => {
+    const f = textStyleRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.elementId.value = elId;
+    f.elements.textSize.value = String(size);
+    f.elements.textColor.value = color;
+    f.elements.textAlign.value = align;
+    f.elements.textFont.value = font;
     setTimeout(() => f.requestSubmit(), 0);
   };
 
@@ -734,6 +772,14 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
           <input type="hidden" name="elementId" />
           <input type="hidden" name="frameStyle" />
         </form>
+        <form ref={textStyleRef} action={textStyleFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="textSize" />
+          <input type="hidden" name="textColor" />
+          <input type="hidden" name="textAlign" />
+          <input type="hidden" name="textFont" />
+        </form>
         {elements.map((el, i) => {
           const live = dragState.current?.id === el.id;
           const box = getElBox(el, i);
@@ -841,9 +887,9 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
             </div>
           );
         })}
-        {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error].filter(Boolean).length > 0 && (
+        {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error, textStyleState?.error].filter(Boolean).length > 0 && (
           <div style={{ position: "absolute", top: 8, left: 8, right: 8, background: "#fff1f0", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 6, padding: "6px 10px", fontSize: 11.5, zIndex: 50 }}>
-            {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error].filter(Boolean)[0]}
+            {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error, textStyleState?.error].filter(Boolean)[0]}
           </div>
         )}
         <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
@@ -960,6 +1006,88 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
                 </div>
               </div>
             )}
+            {selected.type === "text" && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Shrift</div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                  {FONT_LIST.map((f) => (
+                    <button
+                      key={f.id}
+                      title={f.name}
+                      onClick={() => submitTextStyle(selected.id, {
+                        size: selected.text_size || 22,
+                        color: selected.text_color || TOKENS.ink,
+                        align: selected.text_align || "left",
+                        font: f.id,
+                      })}
+                      style={{
+                        flex: 1, padding: "7px 4px", fontSize: 10, borderRadius: 6, cursor: "pointer",
+                        fontFamily: FONT_FAMILIES[f.id],
+                        border: (selected.text_font || "handwriting") === f.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
+                        background: "transparent", color: TOKENS.ink,
+                      }}
+                    >{f.name}</button>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>O'lcham: {selected.text_size || 22}px</div>
+                <input
+                  type="range"
+                  min={12}
+                  max={48}
+                  step={1}
+                  value={selected.text_size || 22}
+                  onChange={(e) => submitTextStyle(selected.id, {
+                    size: Number(e.target.value),
+                    color: selected.text_color || TOKENS.ink,
+                    align: selected.text_align || "left",
+                    font: selected.text_font || "handwriting",
+                  })}
+                  style={{ width: "100%", marginBottom: 10 }}
+                />
+
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Tekislash</div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                  {ALIGN_LIST.map((a) => (
+                    <button
+                      key={a.id}
+                      title={a.name}
+                      onClick={() => submitTextStyle(selected.id, {
+                        size: selected.text_size || 22,
+                        color: selected.text_color || TOKENS.ink,
+                        align: a.id,
+                        font: selected.text_font || "handwriting",
+                      })}
+                      style={{
+                        flex: 1, padding: "7px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                        border: (selected.text_align || "left") === a.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
+                        background: "transparent", color: TOKENS.ink,
+                      }}
+                    ><a.icon size={14} /></button>
+                  ))}
+                </div>
+
+                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Rang</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {TEXT_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      title={c}
+                      onClick={() => submitTextStyle(selected.id, {
+                        size: selected.text_size || 22,
+                        color: c,
+                        align: selected.text_align || "left",
+                        font: selected.text_font || "handwriting",
+                      })}
+                      style={{
+                        width: 24, height: 24, borderRadius: "50%", background: c, cursor: "pointer",
+                        border: (selected.text_color || TOKENS.ink) === c ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div>
                 <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Caption (tag)</div>
@@ -1024,6 +1152,7 @@ function AlbumEditor({
   moveElementUpAction,
   moveElementDownAction,
   updateElementFrameAction,
+  updateElementTextStyleAction,
   changePageBackgroundAction,
   addStickerElementAction,
   addTextElementAction,
@@ -1251,6 +1380,7 @@ function AlbumEditor({
                     moveElementUpAction={moveElementUpAction}
                     moveElementDownAction={moveElementDownAction}
                     updateElementFrameAction={updateElementFrameAction}
+                    updateElementTextStyleAction={updateElementTextStyleAction}
                     backgroundId={currentPage.background_id || "paper"}
                   />
                 </div>
@@ -1283,6 +1413,7 @@ function AlbumEditor({
                       moveElementUpAction={moveElementUpAction}
                       moveElementDownAction={moveElementDownAction}
                       updateElementFrameAction={updateElementFrameAction}
+                      updateElementTextStyleAction={updateElementTextStyleAction}
                       backgroundId={rightPage.background_id || "paper"}
                     />
                   ) : (
@@ -1384,6 +1515,7 @@ export function AlbumsView({
   moveElementUpAction,
   moveElementDownAction,
   updateElementFrameAction,
+  updateElementTextStyleAction,
   changePageBackgroundAction,
   addStickerElementAction,
   addTextElementAction,
@@ -1415,6 +1547,7 @@ export function AlbumsView({
           moveElementUpAction={moveElementUpAction}
           moveElementDownAction={moveElementDownAction}
           updateElementFrameAction={updateElementFrameAction}
+          updateElementTextStyleAction={updateElementTextStyleAction}
           changePageBackgroundAction={changePageBackgroundAction}
           addStickerElementAction={addStickerElementAction}
           addTextElementAction={addTextElementAction}

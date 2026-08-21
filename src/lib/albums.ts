@@ -41,6 +41,10 @@ export type PageElement = {
   z_index: number;
   frame_style: "polaroid" | "soft" | "none";
   sticker_id: string | null;
+  text_size: number | null;
+  text_color: string | null;
+  text_align: "left" | "center" | "right" | null;
+  text_font: "handwriting" | "serif" | "sans" | null;
 };
 
 // Fon (page background) tanlovlari — id + gradient ranglar.
@@ -281,6 +285,22 @@ export async function updatePageBackground(pageId: string, backgroundId: Backgro
 export async function updateElementFrame(elementId: string, frameStyle: FrameStyle): Promise<void> {
   await ensureSchema();
   await sql`UPDATE page_elements SET frame_style = ${frameStyle} WHERE id = ${elementId}`;
+}
+
+export type TextAlign = "left" | "center" | "right";
+export type TextFont = "handwriting" | "serif" | "sans";
+
+/** Matn elementining shrift o'lchami, rangi, tekislash va shrift oilasini yangilaydi. */
+export async function updateElementTextStyle(
+  elementId: string,
+  style: { size: number; color: string; align: TextAlign; font: TextFont }
+): Promise<void> {
+  await ensureSchema();
+  await sql`
+    UPDATE page_elements
+    SET text_size = ${style.size}, text_color = ${style.color}, text_align = ${style.align}, text_font = ${style.font}
+    WHERE id = ${elementId}
+  `;
 }
 
 /** Sahifaga yangi dekorativ stiker elementi qo'shadi (erkin joylashuv bilan). */

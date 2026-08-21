@@ -48,6 +48,7 @@ import {
   duplicateElement,
   updatePageBackground,
   updateElementFrame,
+  updateElementTextStyle,
   addStickerElement,
   addTextElement,
   addPhotoElement,
@@ -55,6 +56,8 @@ import {
   type BackgroundId,
   type FrameStyle,
   type StickerId,
+  type TextAlign,
+  type TextFont,
 } from "@/lib/albums";
 import {
   createTimelineEvent,
@@ -1171,6 +1174,23 @@ export async function updateElementFrameAction(_prevState: ActionState, formData
 
   await updateElementFrame(elementId, frameStyle);
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function updateElementTextStyleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  if (!elementId) return { error: "Element ID kerak." };
+
+  const size = Math.max(10, Math.min(72, Number(formData.get("textSize")) || 22));
+  const color = String(formData.get("textColor") || "#1E2621").trim();
+  const align = String(formData.get("textAlign") || "left") as TextAlign;
+  const font = String(formData.get("textFont") || "handwriting") as TextFont;
+
+  await updateElementTextStyle(elementId, { size, color, align, font });
+  return undefined;
 }
 
 export async function addStickerElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
