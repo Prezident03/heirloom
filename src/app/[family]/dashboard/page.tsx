@@ -58,6 +58,8 @@ import {
   changePageBackgroundAction,
   updateElementFrameAction,
   addStickerElementAction,
+  addTextElementAction,
+  addPhotoElementAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -211,6 +213,8 @@ export default async function FamilyDashboardPage({
       changePageBackgroundAction={changePageBackgroundAction}
       updateElementFrameAction={updateElementFrameAction}
       addStickerElementAction={addStickerElementAction}
+      addTextElementAction={addTextElementAction}
+      addPhotoElementAction={addPhotoElementAction}
       createPlaceAction={createPlaceAction}
       updatePlaceAction={updatePlaceAction}
       deletePlaceAction={deletePlaceAction}

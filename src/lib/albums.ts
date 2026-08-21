@@ -301,6 +301,40 @@ export async function addStickerElement(
   return id;
 }
 
+/** Sahifaga yangi bo'sh matn elementi qo'shadi (erkin joylashuv bilan). */
+export async function addTextElement(
+  pageId: string,
+  pos: { x: number; y: number; w: number; h: number }
+): Promise<string> {
+  await ensureSchema();
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  await sql`
+    INSERT INTO page_elements (id, page_id, slot_index, type, text_content, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
+    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'text', '', ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1})
+  `;
+  return id;
+}
+
+/** Sahifaga yangi bo'sh rasm elementi qo'shadi (erkin joylashuv bilan). */
+export async function addPhotoElement(
+  pageId: string,
+  pos: { x: number; y: number; w: number; h: number }
+): Promise<string> {
+  await ensureSchema();
+  const id = randomUUID();
+  const now = new Date().toISOString();
+  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  await sql`
+    INSERT INTO page_elements (id, page_id, slot_index, type, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style)
+    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'photo', ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1}, 'polaroid')
+  `;
+  return id;
+}
+
 export async function changeZIndex(elementId: string, pageId: string, direction: "up" | "down"): Promise<void> {
   await ensureSchema();
   const rows = (await sql`

@@ -49,6 +49,8 @@ import {
   updatePageBackground,
   updateElementFrame,
   addStickerElement,
+  addTextElement,
+  addPhotoElement,
   type LayoutId,
   type BackgroundId,
   type FrameStyle,
@@ -1182,6 +1184,32 @@ export async function addStickerElementAction(_prevState: ActionState, formData:
   if (!pageId) return { error: "Page ID kerak." };
 
   await addStickerElement(pageId, stickerId, { x: 38, y: 38, w: 16, h: 16 });
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function addTextElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  if (!pageId) return { error: "Page ID kerak." };
+
+  await addTextElement(pageId, { x: 30, y: 40, w: 40, h: 20 });
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function addPhotoElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  if (!pageId) return { error: "Page ID kerak." };
+
+  await addPhotoElement(pageId, { x: 30, y: 30, w: 32, h: 32 });
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 

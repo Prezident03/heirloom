@@ -522,6 +522,8 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
     setTimeout(() => f.requestSubmit(), 0);
   };
 
+  const MIN_SIZE = 4; // % — elementning eng kichik ruxsat etilgan kengligi/balandligi
+
   const onPointerDownElement = (e, el) => {
     if (!canEdit) return;
     // Rasm yuklash/o'chirish tugmasi yoki matn maydoni ustida bosilgan bo'lsa,
@@ -539,44 +541,102 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
     const rect = canvas.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width * 100;
     const py = (e.clientY - rect.top) / rect.height * 100;
-    const ex = el.position_x ?? layout.slots[page.elements.indexOf(el)]?.x ?? 0;
-    const ey = el.position_y ?? layout.slots[page.elements.indexOf(el)]?.y ?? 0;
-    const ew = el.position_w ?? layout.slots[page.elements.indexOf(el)]?.w ?? 40;
-    const eh = el.position_h ?? layout.slots[page.elements.indexOf(el)]?.h ?? 40;
-    if (px >= ex && px <= ex + ew && py >= ey && py <= ey + eh) {
-      dragState.current = { id: el.id, offsetX: px - ex, offsetY: py - ey, startX: ex, startY: ey, lastX: ex, lastY: ey, moved: false };
+    const box = getElBox(el, page.elements.indexOf(el));
+    if (px >= box.x && px <= box.x + box.w && py >= box.y && py <= box.y + box.h) {
+      dragState.current = {
+        id: el.id, mode: "move",
+        startX: box.x, startY: box.y, startW: box.w, startH: box.h, startR: box.r,
+        offsetX: px - box.x, offsetY: py - box.y,
+        lastX: box.x, lastY: box.y, lastW: box.w, lastH: box.h, lastR: box.r,
+        moved: false,
+      };
       canvas.setPointerCapture?.(e.pointerId);
     }
   };
 
+  // Resize (burchak tutqichi) yoki rotate (burish tutqichi) tortishni boshlaydi.
+  const onPointerDownHandle = (e, el, mode) => {
+    if (!canEdit) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const box = getElBox(el, page.elements.indexOf(el));
+    dragState.current = {
+      id: el.id, mode,
+      startX: box.x, startY: box.y, startW: box.w, startH: box.h, startR: box.r,
+      offsetX: 0, offsetY: 0,
+      lastX: box.x, lastY: box.y, lastW: box.w, lastH: box.h, lastR: box.r,
+      moved: false,
+    };
+    canvas.setPointerCapture?.(e.pointerId);
+  };
+
   const onPointerMoveCanvas = (e) => {
-    if (!dragState.current) return;
+    const ds = dragState.current;
+    if (!ds) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width * 100;
     const py = (e.clientY - rect.top) / rect.height * 100;
-    const newX = Math.max(0, Math.min(100, px - dragState.current.offsetX));
-    const newY = Math.max(0, Math.min(100, py - dragState.current.offsetY));
-    dragState.current.lastX = newX;
-    dragState.current.lastY = newY;
-    dragState.current.moved = true;
+
+    if (ds.mode === "move") {
+      ds.lastX = Math.max(0, Math.min(100 - ds.startW, px - ds.offsetX));
+      ds.lastY = Math.max(0, Math.min(100 - ds.startH, py - ds.offsetY));
+      ds.moved = true;
+    } else if (ds.mode.startsWith("resize-")) {
+      const corner = ds.mode.slice("resize-".length); // nw | ne | sw | se
+      const x2 = ds.startX + ds.startW;
+      const y2 = ds.startY + ds.startH;
+      let newX = ds.startX, newY = ds.startY, newW = ds.startW, newH = ds.startH;
+      if (corner === "se") {
+        newW = Math.max(MIN_SIZE, px - ds.startX);
+        newH = Math.max(MIN_SIZE, py - ds.startY);
+      } else if (corner === "nw") {
+        newX = Math.min(px, x2 - MIN_SIZE);
+        newY = Math.min(py, y2 - MIN_SIZE);
+        newW = x2 - newX;
+        newH = y2 - newY;
+      } else if (corner === "ne") {
+        newY = Math.min(py, y2 - MIN_SIZE);
+        newW = Math.max(MIN_SIZE, px - ds.startX);
+        newH = y2 - newY;
+      } else if (corner === "sw") {
+        newX = Math.min(px, x2 - MIN_SIZE);
+        newW = x2 - newX;
+        newH = Math.max(MIN_SIZE, py - ds.startY);
+      }
+      newX = Math.max(0, newX);
+      newY = Math.max(0, newY);
+      newW = Math.min(newW, 100 - newX);
+      newH = Math.min(newH, 100 - newY);
+      ds.lastX = newX; ds.lastY = newY; ds.lastW = newW; ds.lastH = newH;
+      ds.moved = true;
+    } else if (ds.mode === "rotate") {
+      // Aylanish burchagini piksellarda hisoblaymiz (canvas kvadrat emas, 4:3),
+      // aks holda % koordinatalar bo'yicha burchak noto'g'ri chiqadi.
+      const cx = rect.left + (ds.startX + ds.startW / 2) / 100 * rect.width;
+      const cy = rect.top + (ds.startY + ds.startH / 2) / 100 * rect.height;
+      const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
+      ds.lastR = Math.round(angle);
+      ds.moved = true;
+    }
     forceRender(v => v + 1);
   };
 
   const onPointerUpCanvas = () => {
-    if (!dragState.current) return;
-    const { id, startX, startY, lastX, lastY, moved } = dragState.current;
+    const ds = dragState.current;
+    if (!ds) return;
     dragState.current = null;
-    if (!moved) return;
-    const el = page.elements?.find(e => e.id === id);
-    if (!el) return;
-    const idx = page.elements.indexOf(el);
-    const w = el.position_w ?? layout.slots[idx]?.w ?? 40;
-    const h = el.position_h ?? layout.slots[idx]?.h ?? 40;
-    const z = el.z_index ?? idx;
-    const r = el.rotation ?? 0;
-    submitPosition(id, lastX, lastY, w, h, z, r);
+    if (!ds.moved) return;
+    if (ds.mode === "move") {
+      submitPosition(ds.id, ds.lastX, ds.lastY, ds.startW, ds.startH, undefined, undefined);
+    } else if (ds.mode.startsWith("resize-")) {
+      submitPosition(ds.id, ds.lastX, ds.lastY, ds.lastW, ds.lastH, undefined, undefined);
+    } else if (ds.mode === "rotate") {
+      submitPosition(ds.id, ds.startX, ds.startY, ds.startW, ds.startH, undefined, ds.lastR);
+    }
   };
 
   const elements = page.elements || [];
@@ -741,6 +801,42 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
                 <div style={{ position: "absolute", bottom: 4, left: 4, right: 4, fontSize: 10, color: "#fff", background: "rgba(0,0,0,0.55)", padding: "2px 6px", borderRadius: 3, pointerEvents: "none" }}>
                   {el.caption}
                 </div>
+              )}
+              {canEdit && selectedId === el.id && (
+                <>
+                  {["nw", "ne", "sw", "se"].map((corner) => (
+                    <div
+                      key={corner}
+                      onPointerDown={(e) => onPointerDownHandle(e, el, `resize-${corner}`)}
+                      style={{
+                        position: "absolute",
+                        width: 12, height: 12, borderRadius: "50%",
+                        background: TOKENS.gold, border: "2px solid #fff",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                        top: corner[0] === "n" ? -6 : "auto",
+                        bottom: corner[0] === "s" ? -6 : "auto",
+                        left: corner[1] === "w" ? -6 : "auto",
+                        right: corner[1] === "e" ? -6 : "auto",
+                        cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize",
+                        touchAction: "none",
+                        zIndex: 60,
+                      }}
+                    />
+                  ))}
+                  <div
+                    onPointerDown={(e) => onPointerDownHandle(e, el, "rotate")}
+                    title="Burish"
+                    style={{
+                      position: "absolute", left: "50%", top: -28, width: 12, height: 12, borderRadius: "50%",
+                      background: TOKENS.teal, border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                      transform: "translateX(-50%)", cursor: "grab", touchAction: "none", zIndex: 60,
+                    }}
+                  />
+                  <div
+                    aria-hidden
+                    style={{ position: "absolute", left: "50%", top: -18, width: 1, height: 18, background: TOKENS.teal, transform: "translateX(-50%)", pointerEvents: "none" }}
+                  />
+                </>
               )}
             </div>
           );
@@ -930,6 +1026,8 @@ function AlbumEditor({
   updateElementFrameAction,
   changePageBackgroundAction,
   addStickerElementAction,
+  addTextElementAction,
+  addPhotoElementAction,
   deleteAlbumAction,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
@@ -949,6 +1047,10 @@ function AlbumEditor({
   const [deleteAlbumState, deleteAlbumFormAction, deleteAlbumPending] = useActionState(deleteAlbumAction, undefined);
   const [bgState, bgFormAction] = useActionState(changePageBackgroundAction, undefined);
   const [stickerState, stickerFormAction, stickerPending] = useActionState(addStickerElementAction, undefined);
+  const [addTextState, addTextFormAction, addTextPending] = useActionState(addTextElementAction, undefined);
+  const [addPhotoState, addPhotoFormAction, addPhotoPending] = useActionState(addPhotoElementAction, undefined);
+  const addTextRef = useRef(null);
+  const addPhotoRef = useRef(null);
 
   return (
     <div style={{ padding: "22px clamp(16px, 4vw, 40px) 60px", maxWidth: 1100, margin: "0 auto" }}>
@@ -1019,9 +1121,43 @@ function AlbumEditor({
                     <ChipButton active={showBgPicker} onClick={() => { setShowBgPicker(!showBgPicker); setShowLayoutPicker(false); setShowStickerPicker(false); }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 5, color: showBgPicker ? undefined : "#F2EDE2" }}><Palette size={13} /> Fon</span>
                     </ChipButton>
+                    <ChipButton
+                      onClick={() => {
+                        const f = addTextRef.current; if (!f) return;
+                        f.elements.familySlug.value = familySlug;
+                        f.elements.albumId.value = album.id;
+                        f.elements.pageId.value = targetPage.id;
+                        setTimeout(() => f.requestSubmit(), 0);
+                      }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#F2EDE2" }}>+ Matn</span>
+                    </ChipButton>
+                    <ChipButton
+                      onClick={() => {
+                        const f = addPhotoRef.current; if (!f) return;
+                        f.elements.familySlug.value = familySlug;
+                        f.elements.albumId.value = album.id;
+                        f.elements.pageId.value = targetPage.id;
+                        setTimeout(() => f.requestSubmit(), 0);
+                      }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#F2EDE2" }}>+ Rasm</span>
+                    </ChipButton>
                   </div>
                 )}
               </div>
+              <form ref={addTextRef} action={addTextFormAction} style={{ display: "none" }}>
+                <input type="hidden" name="familySlug" />
+                <input type="hidden" name="albumId" />
+                <input type="hidden" name="pageId" />
+              </form>
+              <form ref={addPhotoRef} action={addPhotoFormAction} style={{ display: "none" }}>
+                <input type="hidden" name="familySlug" />
+                <input type="hidden" name="albumId" />
+                <input type="hidden" name="pageId" />
+              </form>
+              {addTextState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addTextState.error}</div>}
+              {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
 
               {showStickerPicker && (
                 <div style={{ display: "flex", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
@@ -1250,6 +1386,8 @@ export function AlbumsView({
   updateElementFrameAction,
   changePageBackgroundAction,
   addStickerElementAction,
+  addTextElementAction,
+  addPhotoElementAction,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
   const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
@@ -1279,6 +1417,8 @@ export function AlbumsView({
           updateElementFrameAction={updateElementFrameAction}
           changePageBackgroundAction={changePageBackgroundAction}
           addStickerElementAction={addStickerElementAction}
+          addTextElementAction={addTextElementAction}
+          addPhotoElementAction={addPhotoElementAction}
           deleteAlbumAction={deleteAlbumAction}
         />      ) : (
         <AlbumGrid albums={albums} onOpen={(a) => setOpenAlbumId(a.id)} canEdit={canEdit} createAlbumAction={createAlbumAction} familySlug={familySlug} />
