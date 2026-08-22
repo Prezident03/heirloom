@@ -8,6 +8,8 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Trash2, Calendar, MapPinned,
   Leaf, Flower2, Heart, Star, Sun, Palette, Sticker as StickerIcon, Frame,
   AlignLeft, AlignCenter, AlignRight,
+  Sparkles, Moon, Cloud, Gift, Cake, PartyPopper, Camera, Music, Crown, Umbrella,
+  Snowflake, Smile, Feather,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
@@ -31,15 +33,58 @@ const BACKGROUNDS = {
 };
 const BACKGROUND_LIST = Object.entries(BACKGROUNDS).map(([id, v]) => ({ id, ...v }));
 
-// Stikerlar — src/lib/albums.ts dagi STICKERS bilan mos id'lar.
-const STICKER_ICONS = { leaf: Leaf, flower: Flower2, heart: Heart, star: Star, sun: Sun };
-const STICKER_LIST = [
-  { id: "leaf", name: "Barg" },
-  { id: "flower", name: "Gul" },
-  { id: "heart", name: "Yurak" },
-  { id: "star", name: "Yulduz" },
-  { id: "sun", name: "Quyosh" },
+// Stikerlar — src/lib/albums.ts dagi STICKERS bilan mos id'lar/kind'lar.
+const STICKER_ICONS = {
+  leaf: Leaf, flower: Flower2, heart: Heart, star: Star, sun: Sun,
+  sparkles: Sparkles, moon: Moon, cloud: Cloud, gift: Gift, cake: Cake,
+  party: PartyPopper, camera: Camera, music: Music, crown: Crown,
+  umbrella: Umbrella, snowflake: Snowflake, smile: Smile, feather: Feather,
+};
+const STICKER_GROUPS = [
+  {
+    label: "Ikonkalar",
+    items: [
+      { id: "leaf", name: "Barg", kind: "icon", defaultColor: "#2F4C48" },
+      { id: "flower", name: "Gul", kind: "icon", defaultColor: "#2F4C48" },
+      { id: "heart", name: "Yurak", kind: "icon", defaultColor: "#A8453A" },
+      { id: "star", name: "Yulduz", kind: "icon", defaultColor: "#B8863B" },
+      { id: "sun", name: "Quyosh", kind: "icon", defaultColor: "#B8863B" },
+      { id: "sparkles", name: "Yulduzcha", kind: "icon", defaultColor: "#B8863B" },
+      { id: "moon", name: "Oy", kind: "icon", defaultColor: "#2F4C48" },
+      { id: "cloud", name: "Bulut", kind: "icon", defaultColor: "#5C7A73" },
+      { id: "gift", name: "Sovg'a", kind: "icon", defaultColor: "#A8453A" },
+      { id: "cake", name: "Tort", kind: "icon", defaultColor: "#A8453A" },
+      { id: "party", name: "Bayram", kind: "icon", defaultColor: "#B8863B" },
+      { id: "camera", name: "Kamera", kind: "icon", defaultColor: "#1E2621" },
+      { id: "music", name: "Musiqa", kind: "icon", defaultColor: "#2F4C48" },
+      { id: "crown", name: "Toj", kind: "icon", defaultColor: "#B8863B" },
+      { id: "umbrella", name: "Soyabon", kind: "icon", defaultColor: "#5C7A73" },
+      { id: "snowflake", name: "Qor kristali", kind: "icon", defaultColor: "#5C7A73" },
+      { id: "smile", name: "Kulgi", kind: "icon", defaultColor: "#B8863B" },
+      { id: "feather", name: "Pat", kind: "icon", defaultColor: "#5C7A73" },
+    ],
+  },
+  {
+    label: "Shakllar",
+    items: [
+      { id: "circle-shape", name: "Doira", kind: "shape", defaultColor: "#D9BC85" },
+      { id: "square-shape", name: "Kvadrat", kind: "shape", defaultColor: "#5C7A73" },
+      { id: "triangle-shape", name: "Uchburchak", kind: "shape", defaultColor: "#A8453A" },
+    ],
+  },
+  {
+    label: "Washi-lenta",
+    items: [
+      { id: "tape-gold", name: "Oltin", kind: "tape", defaultColor: "#D9BC85" },
+      { id: "tape-teal", name: "Teal", kind: "tape", defaultColor: "#5C7A73" },
+      { id: "tape-blush", name: "Blush", kind: "tape", defaultColor: "#E6C9BC" },
+      { id: "tape-stripe", name: "Chiziqli", kind: "tape", defaultColor: "#B8863B" },
+    ],
+  },
 ];
+const STICKER_LIST = STICKER_GROUPS.flatMap((g) => g.items);
+const STICKER_DEFAULT_COLORS = Object.fromEntries(STICKER_LIST.map((s) => [s.id, s.defaultColor]));
+const STICKER_COLORS = ["#1E2621", "#B8863B", "#2F4C48", "#A8453A", "#D9BC85", "#5C7A73", "#E6C9BC", "#F2EDE2"];
 
 const FRAME_LIST = [
   { id: "polaroid", name: "Polaroid" },
@@ -401,9 +446,77 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
   );
 }
 
+// Stiker tanlash panelidagi kichik ko'rinish (namuna) — 20px shakl/lenta yoki ikonka.
+function StickerPickerPreview({ stickerId, kind }) {
+  const color = STICKER_DEFAULT_COLORS[stickerId] || TOKENS.teal;
+  if (kind === "tape") {
+    const striped = stickerId === "tape-stripe";
+    return (
+      <div style={{
+        width: 26, height: 10, borderRadius: 1,
+        background: striped
+          ? `repeating-linear-gradient(45deg, ${color}, ${color} 4px, rgba(255,255,255,0.55) 4px, rgba(255,255,255,0.55) 8px)`
+          : color,
+        opacity: 0.85,
+      }} />
+    );
+  }
+  if (kind === "shape") {
+    if (stickerId === "circle-shape") return <div style={{ width: 20, height: 20, borderRadius: "50%", background: color, opacity: 0.85 }} />;
+    if (stickerId === "square-shape") return <div style={{ width: 20, height: 20, borderRadius: 4, background: color, opacity: 0.85 }} />;
+    return <div style={{ width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderBottom: `18px solid ${color}`, opacity: 0.85 }} />;
+  }
+  const Icon = STICKER_ICONS[stickerId] || Leaf;
+  return <Icon size={20} color={color} />;
+}
+
 function StickerSlot({ element, canEdit, style, onDragStart, isDragging }) {
-  const Icon = STICKER_ICONS[element.sticker_id] || Leaf;
+  const stickerId = element.sticker_id || "leaf";
+  const kind = stickerId.endsWith("-shape") ? "shape" : stickerId.startsWith("tape-") ? "tape" : "icon";
+  const color = element.sticker_color || TOKENS.teal;
   const rot = seeded(element.id, 3) * 20 - 10; // -10..10deg, decorative
+
+  let inner;
+  if (kind === "tape") {
+    const striped = stickerId === "tape-stripe";
+    inner = (
+      <div
+        style={{
+          width: "100%", height: "100%",
+          background: striped
+            ? `repeating-linear-gradient(45deg, ${color}, ${color} 8px, rgba(255,255,255,0.55) 8px, rgba(255,255,255,0.55) 16px)`
+            : color,
+          opacity: 0.82,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+          borderRadius: 1,
+        }}
+      />
+    );
+  } else if (kind === "shape") {
+    if (stickerId === "circle-shape") {
+      inner = <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: color, opacity: 0.85 }} />;
+    } else if (stickerId === "square-shape") {
+      inner = <div style={{ width: "100%", height: "100%", borderRadius: 4, background: color, opacity: 0.85 }} />;
+    } else {
+      // triangle-shape — CSS border-trick uchburchak
+      inner = (
+        <div
+          style={{
+            width: 0, height: 0,
+            borderLeft: "50% solid transparent",
+            borderRight: "50% solid transparent",
+            borderBottom: "100% solid " + color,
+            opacity: 0.85,
+            aspectRatio: "1/1",
+          }}
+        />
+      );
+    }
+  } else {
+    const Icon = STICKER_ICONS[stickerId] || Leaf;
+    inner = <Icon size="70%" color={color} strokeWidth={1.4} fill={color} fillOpacity={0.3} />;
+  }
+
   return (
     <div
       style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s", cursor: canEdit ? "grab" : "default" }}
@@ -411,7 +524,7 @@ function StickerSlot({ element, canEdit, style, onDragStart, isDragging }) {
       onDragStart={onDragStart}
     >
       <div style={{ width: "100%", height: "100%", transform: `rotate(${rot}deg)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Icon size="70%" color={TOKENS.teal} strokeWidth={1.4} fill={TOKENS.tealSoft} fillOpacity={0.35} />
+        {inner}
       </div>
     </div>
   );
@@ -451,45 +564,182 @@ function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEd
   );
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction, updateElementFrameAction, updateElementTextStyleAction, backgroundId }) {
+/* ---------------- Selected-element style panels ---------------- */
+
+const PANEL_LABEL_STYLE = { fontSize: 10.5, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+
+function StylePanelShell({ title, onClose, children }) {
+  return (
+    <div style={{ width: 208, flexShrink: 0, background: TOKENS.card, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, padding: 14, alignSelf: "flex-start" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.ink }}>{title}</span>
+        <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 2 }}>
+          <X size={14} />
+        </button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function TextStylePanel({ element, familySlug, updateElementTextStyleAction, onClose }) {
+  const [, formAction] = useActionState(updateElementTextStyleAction, undefined);
+  const formRef = useRef(null);
+  const [size, setSize] = useState(element.text_size || 22);
+
+  // Boshqa elementga o'tilganda slider'ni shu elementning saqlangan qiymatiga tenglashtiramiz.
+  useEffect(() => { setSize(element.text_size || 22); }, [element.id]);
+
+  const submit = (overrides) => {
+    const f = formRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.elementId.value = element.id;
+    f.elements.textSize.value = String(overrides.size ?? size);
+    f.elements.textColor.value = overrides.color ?? (element.text_color || TOKENS.ink);
+    f.elements.textAlign.value = overrides.align ?? (element.text_align || "left");
+    f.elements.textFont.value = overrides.font ?? (element.text_font || "handwriting");
+    f.requestSubmit();
+  };
+
+  return (
+    <StylePanelShell title="Matn uslubi" onClose={onClose}>
+      <form ref={formRef} action={formAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="textSize" />
+        <input type="hidden" name="textColor" />
+        <input type="hidden" name="textAlign" />
+        <input type="hidden" name="textFont" />
+      </form>
+
+      <div style={PANEL_LABEL_STYLE}>Shrift</div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        {FONT_LIST.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => submit({ font: f.id })}
+            title={f.name}
+            style={{
+              flex: 1, padding: "8px 4px", borderRadius: 6, cursor: "pointer",
+              border: `1px solid ${(element.text_font || "handwriting") === f.id ? TOKENS.gold : TOKENS.parchmentDeep}`,
+              background: (element.text_font || "handwriting") === f.id ? TOKENS.parchmentDeep : "transparent",
+              fontFamily: FONT_FAMILIES[f.id], fontSize: 15, color: TOKENS.ink,
+            }}
+          >
+            Aa
+          </button>
+        ))}
+      </div>
+
+      <div style={PANEL_LABEL_STYLE}>O'lcham ({size}px)</div>
+      <input
+        type="range" min={12} max={48} step={1}
+        value={size}
+        onChange={(e) => setSize(Number(e.target.value))}
+        onPointerUp={() => submit({ size })}
+        style={{ width: "100%", marginBottom: 14 }}
+      />
+
+      <div style={PANEL_LABEL_STYLE}>Tekislash</div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        {ALIGN_LIST.map((a) => {
+          const AIcon = a.icon;
+          const active = (element.text_align || "left") === a.id;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => submit({ align: a.id })}
+              title={a.name}
+              style={{
+                flex: 1, padding: "7px 4px", borderRadius: 6, cursor: "pointer", display: "flex", justifyContent: "center",
+                border: `1px solid ${active ? TOKENS.gold : TOKENS.parchmentDeep}`,
+                background: active ? TOKENS.parchmentDeep : "transparent",
+              }}
+            >
+              <AIcon size={14} color={TOKENS.ink} />
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={PANEL_LABEL_STYLE}>Rang</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {TEXT_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => submit({ color: c })}
+            title={c}
+            style={{
+              width: 22, height: 22, borderRadius: "50%", cursor: "pointer", padding: 0,
+              background: c, border: (element.text_color || TOKENS.ink).toLowerCase() === c.toLowerCase() ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
+            }}
+          />
+        ))}
+      </div>
+    </StylePanelShell>
+  );
+}
+
+function StickerStylePanel({ element, familySlug, updateElementStickerColorAction, onClose }) {
+  const [, formAction] = useActionState(updateElementStickerColorAction, undefined);
+  const formRef = useRef(null);
+
+  const submit = (color) => {
+    const f = formRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.elementId.value = element.id;
+    f.elements.color.value = color;
+    f.requestSubmit();
+  };
+
+  const stickerMeta = STICKER_LIST.find((s) => s.id === element.sticker_id);
+
+  return (
+    <StylePanelShell title={stickerMeta?.name || "Stiker"} onClose={onClose}>
+      <form ref={formRef} action={formAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="color" />
+      </form>
+      <div style={PANEL_LABEL_STYLE}>Rang</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {STICKER_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => submit(c)}
+            title={c}
+            style={{
+              width: 24, height: 24, borderRadius: "50%", cursor: "pointer", padding: 0,
+              background: c, border: (element.sticker_color || "").toLowerCase() === c.toLowerCase() ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
+            }}
+          />
+        ))}
+      </div>
+    </StylePanelShell>
+  );
+}
+
+function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction, updateElementFrameAction, updateElementTextStyleAction, updateElementStickerColorAction, backgroundId }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
   const [posState, posFormAction, posPending] = useActionState(updateElementPositionAction, undefined);
-  const [capState, capFormAction, capPending] = useActionState(updateElementCaptionAction, undefined);
-  const [placeState, placeFormAction, placePending] = useActionState(updateElementPlaceAction, undefined);
-  const [zState, zFormAction] = useActionState(changeZIndexAction, undefined);
-  const [dupState, dupFormAction, dupPending] = useActionState(duplicateElementAction, undefined);
   const [delState, delFormAction, delPending] = useActionState(deleteElementAction, undefined);
-  const [mvUpState, mvUpFormAction] = useActionState(moveElementUpAction, undefined);
-  const [mvDnState, mvDnFormAction] = useActionState(moveElementDownAction, undefined);
-  const [frameState, frameFormAction] = useActionState(updateElementFrameAction, undefined);
-  const [textStyleState, textStyleFormAction] = useActionState(updateElementTextStyleAction, undefined);
 
   const reorderRef = useRef(null);
   const posRef = useRef(null);
-  const capRef = useRef(null);
-  const placeRef = useRef(null);
-  const zRef = useRef(null);
-  const dupRef = useRef(null);
   const delRef = useRef(null);
-  const mvUpRef = useRef(null);
-  const mvDnRef = useRef(null);
-  const frameRef = useRef(null);
-  const textStyleRef = useRef(null);
 
   const [selectedId, setSelectedId] = useState(null);
-  const [captionDraft, setCaptionDraft] = useState("");
-  const [placeDraft, setPlaceDraft] = useState("");
   const canvasRef = useRef(null);
   const dragState = useRef(null);
   const [, forceRender] = useState(0);
-
-  useEffect(() => {
-    const sel = page.elements?.find(e => e.id === selectedId);
-    setCaptionDraft(sel?.caption || "");
-    setPlaceDraft(sel?.location || "");
-  }, [selectedId, page.elements]);
 
   const selected = page.elements?.find(e => e.id === selectedId) || null;
 
@@ -545,18 +795,6 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
     f.elements.positionH.value = String(h);
     if (zIndex != null) f.elements.zIndex.value = String(zIndex); else f.elements.zIndex.value = "";
     if (rotation != null) f.elements.rotation.value = String(rotation); else f.elements.rotation.value = "";
-    setTimeout(() => f.requestSubmit(), 0);
-  };
-
-  const submitTextStyle = (elId, { size, color, align, font }) => {
-    const f = textStyleRef.current;
-    if (!f) return;
-    f.elements.familySlug.value = familySlug;
-    f.elements.elementId.value = elId;
-    f.elements.textSize.value = String(size);
-    f.elements.textColor.value = color;
-    f.elements.textAlign.value = align;
-    f.elements.textFont.value = font;
     setTimeout(() => f.requestSubmit(), 0);
   };
 
@@ -691,7 +929,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
     };
   };
 
-  const saving = posPending || capPending || placePending || dupPending || delPending;
+  const saving = posPending || delPending;
 
   return (
     <div style={{ display: "flex", gap: 16 }}>
@@ -702,7 +940,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
         onPointerCancel={onPointerUpCanvas}
         onClick={() => setSelectedId(null)}
         style={{
-          width: "100%", aspectRatio: "4/3", borderRadius: 3, position: "relative",
+          flex: 1, minWidth: 0, aspectRatio: "4/3", borderRadius: 3, position: "relative",
           background: `radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).from}, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).to})`,
           boxShadow: `inset 0 0 40px ${TOKENS.paperShadow}, 0 2px 6px rgba(30,38,33,0.08)`,
           opacity: saving ? 0.7 : 1, transition: "opacity 0.2s", touchAction: "none", overflow: "hidden",
@@ -728,57 +966,11 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
           <input type="hidden" name="zIndex" />
           <input type="hidden" name="rotation" />
         </form>
-        <form ref={capRef} action={capFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="caption" />
-        </form>
-        <form ref={placeRef} action={placeFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="location" />
-        </form>
-        <form ref={zRef} action={zFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="direction" />
-        </form>
-        <form ref={dupRef} action={dupFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="albumId" />
-        </form>
         <form ref={delRef} action={delFormAction} style={{ display: "none" }}>
           <input type="hidden" name="familySlug" />
           <input type="hidden" name="pageId" />
           <input type="hidden" name="elementId" />
           <input type="hidden" name="albumId" />
-        </form>
-        <form ref={mvUpRef} action={mvUpFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-        </form>
-        <form ref={mvDnRef} action={mvDnFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-        </form>
-        <form ref={frameRef} action={frameFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="albumId" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="frameStyle" />
-        </form>
-        <form ref={textStyleRef} action={textStyleFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="textSize" />
-          <input type="hidden" name="textColor" />
-          <input type="hidden" name="textAlign" />
-          <input type="hidden" name="textFont" />
         </form>
         {elements.map((el, i) => {
           const live = dragState.current?.id === el.id;
@@ -882,14 +1074,38 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
                     aria-hidden
                     style={{ position: "absolute", left: "50%", top: -18, width: 1, height: 18, background: TOKENS.teal, transform: "translateX(-50%)", pointerEvents: "none" }}
                   />
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
+                      const f = delRef.current; if (!f) return;
+                      f.elements.familySlug.value = familySlug;
+                      f.elements.pageId.value = page.id;
+                      f.elements.albumId.value = albumId;
+                      f.elements.elementId.value = el.id;
+                      setTimeout(() => f.requestSubmit(), 0);
+                      setSelectedId(null);
+                    }}
+                    title="O'chirish"
+                    style={{
+                      position: "absolute", top: -10, right: -10, width: 22, height: 22, borderRadius: "50%",
+                      background: TOKENS.danger, border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                      color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: 0, zIndex: 61,
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
                 </>
               )}
             </div>
           );
         })}
-        {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error, textStyleState?.error].filter(Boolean).length > 0 && (
+        {[reorderState?.error, posState?.error, delState?.error].filter(Boolean).length > 0 && (
           <div style={{ position: "absolute", top: 8, left: 8, right: 8, background: "#fff1f0", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 6, padding: "6px 10px", fontSize: 11.5, zIndex: 50 }}>
-            {[reorderState?.error, posState?.error, capState?.error, placeState?.error, zState?.error, dupState?.error, delState?.error, mvUpState?.error, mvDnState?.error, textStyleState?.error].filter(Boolean)[0]}
+            {[reorderState?.error, posState?.error, delState?.error].filter(Boolean)[0]}
           </div>
         )}
         <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
@@ -898,235 +1114,21 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
         </div>
       </div>
 
-      {selected && canEdit && (
-        <div style={{ width: 240, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.1em", color: TOKENS.gold, fontWeight: 700, textTransform: "uppercase", marginBottom: 10 }}>Element</div>
-            <div style={{ fontSize: 12, color: TOKENS.ink60, marginBottom: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-              <div>X: {getElBox(selected, elements.indexOf(selected)).x.toFixed(1)}%</div>
-              <div>Y: {getElBox(selected, elements.indexOf(selected)).y.toFixed(1)}%</div>
-              <div>W: {getElBox(selected, elements.indexOf(selected)).w.toFixed(1)}%</div>
-              <div>H: {getElBox(selected, elements.indexOf(selected)).h.toFixed(1)}%</div>
-            </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-              <button
-                onClick={() => {
-                  const f = zRef.current; if (!f) return;
-                  f.elements.familySlug.value = familySlug;
-                  f.elements.pageId.value = page.id;
-                  f.elements.elementId.value = selected.id;
-                  f.elements.direction.value = "up";
-                  setTimeout(() => f.requestSubmit(), 0);
-                }}
-                title="Z-index oldinga"
-                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink }}
-              ><ChevronUp size={15} /></button>
-              <button
-                onClick={() => {
-                  const f = zRef.current; if (!f) return;
-                  f.elements.familySlug.value = familySlug;
-                  f.elements.pageId.value = page.id;
-                  f.elements.elementId.value = selected.id;
-                  f.elements.direction.value = "down";
-                  setTimeout(() => f.requestSubmit(), 0);
-                }}
-                title="Z-index orqaga"
-                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink }}
-              ><ChevronDown size={15} /></button>
-              <button
-                onClick={() => {
-                  const f = mvUpRef.current; if (!f) return;
-                  f.elements.familySlug.value = familySlug;
-                  f.elements.pageId.value = page.id;
-                  f.elements.elementId.value = selected.id;
-                  setTimeout(() => f.requestSubmit(), 0);
-                }}
-                title="Slot oldinga"
-                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink, fontSize: 11 }}>↑↑</button>
-              <button
-                onClick={() => {
-                  const f = mvDnRef.current; if (!f) return;
-                  f.elements.familySlug.value = familySlug;
-                  f.elements.pageId.value = page.id;
-                  f.elements.elementId.value = selected.id;
-                  setTimeout(() => f.requestSubmit(), 0);
-                }}
-                title="Slot orqaga"
-                style={{ flex: 1, padding: "7px", border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink, fontSize: 11 }}>↓↓</button>
-            </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              <button
-                onClick={() => {
-                  const f = dupRef.current; if (!f) return;
-                  f.elements.familySlug.value = familySlug;
-                  f.elements.pageId.value = page.id;
-                  f.elements.albumId.value = albumId;
-                  f.elements.elementId.value = selected.id;
-                  setTimeout(() => f.requestSubmit(), 0);
-                }}
-                style={{ flex: 1, padding: "8px", background: TOKENS.gold, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-              ><Copy size={13} /> Nusxa</button>
-              <button
-                onClick={() => {
-                  if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
-                  const f = delRef.current; if (!f) return;
-                  f.elements.familySlug.value = familySlug;
-                  f.elements.pageId.value = page.id;
-                  f.elements.albumId.value = albumId;
-                  f.elements.elementId.value = selected.id;
-                  setTimeout(() => f.requestSubmit(), 0);
-                  setSelectedId(null);
-                }}
-                style={{ flex: 1, padding: "8px", background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-              ><Trash2 size={13} /> O'chir</button>
-            </div>
-            {(selected.type === "photo" || (selected.type !== "sticker" && selected.type !== "text")) && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Ramka</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {FRAME_LIST.map((f) => (
-                    <button
-                      key={f.id}
-                      title={f.name}
-                      onClick={() => {
-                        const form = frameRef.current; if (!form) return;
-                        form.elements.familySlug.value = familySlug;
-                        form.elements.albumId.value = albumId;
-                        form.elements.elementId.value = selected.id;
-                        form.elements.frameStyle.value = f.id;
-                        setTimeout(() => form.requestSubmit(), 0);
-                      }}
-                      style={{
-                        flex: 1, padding: "7px 4px", fontSize: 10, borderRadius: 6, cursor: "pointer",
-                        border: (selected.frame_style || "polaroid") === f.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
-                        background: "transparent", color: TOKENS.ink,
-                      }}
-                    >{f.name}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {selected.type === "text" && (
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Shrift</div>
-                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                  {FONT_LIST.map((f) => (
-                    <button
-                      key={f.id}
-                      title={f.name}
-                      onClick={() => submitTextStyle(selected.id, {
-                        size: selected.text_size || 22,
-                        color: selected.text_color || TOKENS.ink,
-                        align: selected.text_align || "left",
-                        font: f.id,
-                      })}
-                      style={{
-                        flex: 1, padding: "7px 4px", fontSize: 10, borderRadius: 6, cursor: "pointer",
-                        fontFamily: FONT_FAMILIES[f.id],
-                        border: (selected.text_font || "handwriting") === f.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
-                        background: "transparent", color: TOKENS.ink,
-                      }}
-                    >{f.name}</button>
-                  ))}
-                </div>
-
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>O'lcham: {selected.text_size || 22}px</div>
-                <input
-                  type="range"
-                  min={12}
-                  max={48}
-                  step={1}
-                  value={selected.text_size || 22}
-                  onChange={(e) => submitTextStyle(selected.id, {
-                    size: Number(e.target.value),
-                    color: selected.text_color || TOKENS.ink,
-                    align: selected.text_align || "left",
-                    font: selected.text_font || "handwriting",
-                  })}
-                  style={{ width: "100%", marginBottom: 10 }}
-                />
-
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Tekislash</div>
-                <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                  {ALIGN_LIST.map((a) => (
-                    <button
-                      key={a.id}
-                      title={a.name}
-                      onClick={() => submitTextStyle(selected.id, {
-                        size: selected.text_size || 22,
-                        color: selected.text_color || TOKENS.ink,
-                        align: a.id,
-                        font: selected.text_font || "handwriting",
-                      })}
-                      style={{
-                        flex: 1, padding: "7px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                        border: (selected.text_align || "left") === a.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
-                        background: "transparent", color: TOKENS.ink,
-                      }}
-                    ><a.icon size={14} /></button>
-                  ))}
-                </div>
-
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>Rang</div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {TEXT_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      title={c}
-                      onClick={() => submitTextStyle(selected.id, {
-                        size: selected.text_size || 22,
-                        color: c,
-                        align: selected.text_align || "left",
-                        font: selected.text_font || "handwriting",
-                      })}
-                      style={{
-                        width: 24, height: 24, borderRadius: "50%", background: c, cursor: "pointer",
-                        border: (selected.text_color || TOKENS.ink) === c ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Caption (tag)</div>
-                <input
-                  value={captionDraft}
-                  onChange={(e) => setCaptionDraft(e.target.value)}
-                  onBlur={() => {
-                    const f = capRef.current; if (!f) return;
-                    f.elements.familySlug.value = familySlug;
-                    f.elements.elementId.value = selected.id;
-                    f.elements.caption.value = captionDraft;
-                    setTimeout(() => f.requestSubmit(), 0);
-                  }}
-                  placeholder="Rasm tagi yozuv..."
-                  style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, fontFamily: "inherit", color: TOKENS.ink }}
-                />
-              </div>
-              <div>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.ink40, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>Joy (location)</div>
-                <input
-                  value={placeDraft}
-                  onChange={(e) => setPlaceDraft(e.target.value)}
-                  onBlur={() => {
-                    const f = placeRef.current; if (!f) return;
-                    f.elements.familySlug.value = familySlug;
-                    f.elements.elementId.value = selected.id;
-                    f.elements.location.value = placeDraft;
-                    setTimeout(() => f.requestSubmit(), 0);
-                  }}
-                  placeholder="Qayerda olingan..."
-                  style={{ width: "100%", padding: "7px 10px", fontSize: 12, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, fontFamily: "inherit", color: TOKENS.ink }}
-                />
-              </div>
-            </div>
-          </div>
-          <div style={{ fontSize: 10.5, color: TOKENS.ink40, lineHeight: 1.5, textAlign: "center" }}>
-            💡 Elementni sichqoncha bilan tortib, erkin joylashtiring. Koordinatalar avtomatik saqlanadi.
-          </div>
-        </div>
+      {canEdit && selected && selected.type === "text" && (
+        <TextStylePanel
+          element={selected}
+          familySlug={familySlug}
+          updateElementTextStyleAction={updateElementTextStyleAction}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+      {canEdit && selected && selected.type === "sticker" && (
+        <StickerStylePanel
+          element={selected}
+          familySlug={familySlug}
+          updateElementStickerColorAction={updateElementStickerColorAction}
+          onClose={() => setSelectedId(null)}
+        />
       )}
     </div>
   );
@@ -1153,6 +1155,7 @@ function AlbumEditor({
   moveElementDownAction,
   updateElementFrameAction,
   updateElementTextStyleAction,
+  updateElementStickerColorAction,
   changePageBackgroundAction,
   addStickerElementAction,
   addTextElementAction,
@@ -1289,23 +1292,27 @@ function AlbumEditor({
               {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
 
               {showStickerPicker && (
-                <div style={{ display: "flex", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
-                  {STICKER_LIST.map((s) => {
-                    const Icon = STICKER_ICONS[s.id];
-                    return (
-                      <form key={s.id} action={stickerFormAction} onSubmit={() => setShowStickerPicker(false)}>
-                        <input type="hidden" name="familySlug" value={familySlug} />
-                        <input type="hidden" name="albumId" value={album.id} />
-                        <input type="hidden" name="pageId" value={targetPage.id} />
-                        <input type="hidden" name="stickerId" value={s.id} />
-                        <button type="submit" disabled={stickerPending} title={s.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px 14px", cursor: stickerPending ? "default" : "pointer" }}>
-                          <Icon size={20} color={TOKENS.teal} />
-                          <span style={{ fontSize: 9.5, color: TOKENS.ink60 }}>{s.name}</span>
-                        </button>
-                      </form>
-                    );
-                  })}
-                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 160 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
+                <div style={{ marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, maxHeight: 260, overflowY: "auto" }}>
+                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
+                  {STICKER_GROUPS.map((group) => (
+                    <div key={group.label} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{group.label}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(64px, 1fr))", gap: 8 }}>
+                        {group.items.map((s) => (
+                          <form key={s.id} action={stickerFormAction} onSubmit={() => setShowStickerPicker(false)}>
+                            <input type="hidden" name="familySlug" value={familySlug} />
+                            <input type="hidden" name="albumId" value={album.id} />
+                            <input type="hidden" name="pageId" value={targetPage.id} />
+                            <input type="hidden" name="stickerId" value={s.id} />
+                            <button type="submit" disabled={stickerPending} title={s.name} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "8px 4px", cursor: stickerPending ? "default" : "pointer" }}>
+                              <StickerPickerPreview stickerId={s.id} kind={s.kind} />
+                              <span style={{ fontSize: 9, color: TOKENS.ink60, textAlign: "center", lineHeight: 1.2 }}>{s.name}</span>
+                            </button>
+                          </form>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
               {stickerState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{stickerState.error}</div>}
@@ -1381,6 +1388,7 @@ function AlbumEditor({
                     moveElementDownAction={moveElementDownAction}
                     updateElementFrameAction={updateElementFrameAction}
                     updateElementTextStyleAction={updateElementTextStyleAction}
+                    updateElementStickerColorAction={updateElementStickerColorAction}
                     backgroundId={currentPage.background_id || "paper"}
                   />
                 </div>
@@ -1414,6 +1422,7 @@ function AlbumEditor({
                       moveElementDownAction={moveElementDownAction}
                       updateElementFrameAction={updateElementFrameAction}
                       updateElementTextStyleAction={updateElementTextStyleAction}
+                      updateElementStickerColorAction={updateElementStickerColorAction}
                       backgroundId={rightPage.background_id || "paper"}
                     />
                   ) : (
@@ -1516,6 +1525,7 @@ export function AlbumsView({
   moveElementDownAction,
   updateElementFrameAction,
   updateElementTextStyleAction,
+  updateElementStickerColorAction,
   changePageBackgroundAction,
   addStickerElementAction,
   addTextElementAction,
@@ -1548,6 +1558,7 @@ export function AlbumsView({
           moveElementDownAction={moveElementDownAction}
           updateElementFrameAction={updateElementFrameAction}
           updateElementTextStyleAction={updateElementTextStyleAction}
+          updateElementStickerColorAction={updateElementStickerColorAction}
           changePageBackgroundAction={changePageBackgroundAction}
           addStickerElementAction={addStickerElementAction}
           addTextElementAction={addTextElementAction}

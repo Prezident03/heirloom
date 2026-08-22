@@ -50,8 +50,10 @@ import {
   updateElementFrame,
   updateElementTextStyle,
   addStickerElement,
+  updateElementStickerColor,
   addTextElement,
   addPhotoElement,
+  STICKERS,
   type LayoutId,
   type BackgroundId,
   type FrameStyle,
@@ -1203,8 +1205,26 @@ export async function addStickerElementAction(_prevState: ActionState, formData:
   const stickerId = String(formData.get("stickerId") || "leaf") as StickerId;
   if (!pageId) return { error: "Page ID kerak." };
 
-  await addStickerElement(pageId, stickerId, { x: 38, y: 38, w: 16, h: 16 });
+  // Washi-lenta uzun-yupqa, boshqalari kvadrat shaklda joylashadi.
+  const kind = STICKERS[stickerId]?.kind;
+  const pos = kind === "tape" ? { x: 32, y: 40, w: 28, h: 8 } : { x: 38, y: 38, w: 16, h: 16 };
+
+  await addStickerElement(pageId, stickerId, pos);
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function updateElementStickerColorAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const color = String(formData.get("color") || "").trim();
+  if (!elementId) return { error: "Element ID kerak." };
+  if (!color) return { error: "Rang kerak." };
+
+  await updateElementStickerColor(elementId, color);
+  return undefined;
 }
 
 export async function addTextElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {

@@ -152,6 +152,7 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS z_index INTEGER DEFAULT 0`, "add z_index");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS frame_style TEXT DEFAULT 'polaroid'`, "add frame_style");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS sticker_id TEXT`, "add sticker_id");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS sticker_color TEXT`, "add sticker_color");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS text_size INTEGER DEFAULT 22`, "add text_size");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS text_color TEXT DEFAULT '#2E362F'`, "add text_color");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS text_align TEXT DEFAULT 'left'`, "add text_align");

@@ -41,6 +41,7 @@ export type PageElement = {
   z_index: number;
   frame_style: "polaroid" | "soft" | "none";
   sticker_id: string | null;
+  sticker_color: string | null;
   text_size: number | null;
   text_color: string | null;
   text_align: "left" | "center" | "right" | null;
@@ -66,12 +67,34 @@ export const FRAMES = {
 export type FrameStyle = keyof typeof FRAMES;
 
 // Stikerlar — dekorativ elementlar, PageEditor'da chizib qo'yiladi.
+// kind: "icon" — lucide ikonka (rang bilan bo'yaladi); "tape" — washi-lenta
+// (rangli chiziq); "shape" — oddiy geometrik shakl (rangli to'ldiriladi).
 export const STICKERS = {
-  leaf: { name: "Barg" },
-  flower: { name: "Gul" },
-  heart: { name: "Yurak" },
-  star: { name: "Yulduz" },
-  sun: { name: "Quyosh" },
+  leaf: { name: "Barg", kind: "icon", defaultColor: "#2F4C48" },
+  flower: { name: "Gul", kind: "icon", defaultColor: "#2F4C48" },
+  heart: { name: "Yurak", kind: "icon", defaultColor: "#A8453A" },
+  star: { name: "Yulduz", kind: "icon", defaultColor: "#B8863B" },
+  sun: { name: "Quyosh", kind: "icon", defaultColor: "#B8863B" },
+  sparkles: { name: "Yulduzcha", kind: "icon", defaultColor: "#B8863B" },
+  moon: { name: "Oy", kind: "icon", defaultColor: "#2F4C48" },
+  cloud: { name: "Bulut", kind: "icon", defaultColor: "#5C7A73" },
+  gift: { name: "Sovg'a", kind: "icon", defaultColor: "#A8453A" },
+  cake: { name: "Tort", kind: "icon", defaultColor: "#A8453A" },
+  party: { name: "Bayram", kind: "icon", defaultColor: "#B8863B" },
+  camera: { name: "Kamera", kind: "icon", defaultColor: "#1E2621" },
+  music: { name: "Musiqa", kind: "icon", defaultColor: "#2F4C48" },
+  crown: { name: "Toj", kind: "icon", defaultColor: "#B8863B" },
+  umbrella: { name: "Soyabon", kind: "icon", defaultColor: "#5C7A73" },
+  snowflake: { name: "Qor kristali", kind: "icon", defaultColor: "#5C7A73" },
+  smile: { name: "Kulgi", kind: "icon", defaultColor: "#B8863B" },
+  feather: { name: "Pat", kind: "icon", defaultColor: "#5C7A73" },
+  "circle-shape": { name: "Doira", kind: "shape", defaultColor: "#D9BC85" },
+  "square-shape": { name: "Kvadrat", kind: "shape", defaultColor: "#5C7A73" },
+  "triangle-shape": { name: "Uchburchak", kind: "shape", defaultColor: "#A8453A" },
+  "tape-gold": { name: "Washi-lenta (oltin)", kind: "tape", defaultColor: "#D9BC85" },
+  "tape-teal": { name: "Washi-lenta (teal)", kind: "tape", defaultColor: "#5C7A73" },
+  "tape-blush": { name: "Washi-lenta (blush)", kind: "tape", defaultColor: "#E6C9BC" },
+  "tape-stripe": { name: "Washi-lenta (chiziqli)", kind: "tape", defaultColor: "#B8863B" },
 } as const;
 export type StickerId = keyof typeof STICKERS;
 
@@ -307,18 +330,26 @@ export async function updateElementTextStyle(
 export async function addStickerElement(
   pageId: string,
   stickerId: StickerId,
-  pos: { x: number; y: number; w: number; h: number }
+  pos: { x: number; y: number; w: number; h: number },
+  color?: string
 ): Promise<string> {
   await ensureSchema();
   const id = randomUUID();
   const now = new Date().toISOString();
   const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
   const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
+  const stickerColor = color || STICKERS[stickerId]?.defaultColor || null;
   await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, sticker_id, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
-    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'sticker', ${stickerId}, ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1})
+    INSERT INTO page_elements (id, page_id, slot_index, type, sticker_id, sticker_color, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
+    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'sticker', ${stickerId}, ${stickerColor}, ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1})
   `;
   return id;
+}
+
+/** Stiker elementining rangini yangilaydi. */
+export async function updateElementStickerColor(elementId: string, color: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE page_elements SET sticker_color = ${color} WHERE id = ${elementId}`;
 }
 
 /** Sahifaga yangi bo'sh matn elementi qo'shadi (erkin joylashuv bilan). */
@@ -382,7 +413,7 @@ export async function duplicateElement(elementId: string, pageId: string): Promi
   const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
   const now = new Date().toISOString();
   await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style, sticker_id)
+    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style, sticker_id, sticker_color, text_size, text_color, text_align, text_font)
     VALUES (
       ${newId},
       ${pageId},
@@ -400,7 +431,12 @@ export async function duplicateElement(elementId: string, pageId: string): Promi
       ${src.rotation ?? 0},
       ${maxZRows[0].m + 1},
       ${src.frame_style ?? "polaroid"},
-      ${src.sticker_id ?? null}
+      ${src.sticker_id ?? null},
+      ${src.sticker_color ?? null},
+      ${src.text_size ?? 22},
+      ${src.text_color ?? "#2E362F"},
+      ${src.text_align ?? "left"},
+      ${src.text_font ?? "handwriting"}
     )
   `;
   return newId;
