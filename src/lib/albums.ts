@@ -148,7 +148,17 @@ const TEAL = "#2F4C48";
 const TEAL_SOFT = "#5C7A73";
 const DANGER = "#A8453A";
 
-export const TEMPLATES = {
+const TEMPLATE_IDS = [
+  "classic-cream", "ikki-esdalik", "uch-lavha", "minimal-oq",
+  "sayohat", "tabiat-sayri",
+  "tugilgan-kun", "yubiley", "bayram-kechasi",
+  "bahor", "qish-ertagi",
+  "romantik-kech",
+  "bolalik-lahzalari",
+] as const;
+export type TemplateId = (typeof TEMPLATE_IDS)[number];
+
+export const TEMPLATES: Record<TemplateId, Template> = {
   "classic-cream": {
     name: "Klassik",
     category: "Oddiy",
@@ -335,8 +345,7 @@ export const TEMPLATES = {
       { stickerId: "star", x: 90, y: 2, w: 8, h: 8, color: GOLD },
     ],
   },
-} as const satisfies Record<string, Template>;
-export type TemplateId = keyof typeof TEMPLATES;
+};
 
 /** Sahifaga tayyor shablonni qo'llaydi — eski elementlar o'chib, shablon
  * bo'yicha fon, rasm/matn slotlari va dekorativ stikerlar yaratiladi. */
