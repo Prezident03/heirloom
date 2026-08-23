@@ -27,6 +27,7 @@ import {
   addAlbumPageAction,
   deleteAlbumPageAction,
   changePageLayoutAction,
+  applyPageTemplateAction,
   updatePageMetaAction,
   updateElementTextAction,
   saveElementPhotoUrlAction,
@@ -200,6 +201,7 @@ export default async function FamilyDashboardPage({
       addAlbumPageAction={addAlbumPageAction}
       deleteAlbumPageAction={deleteAlbumPageAction}
       changePageLayoutAction={changePageLayoutAction}
+      applyPageTemplateAction={applyPageTemplateAction}
       updatePageMetaAction={updatePageMetaAction}
       updateElementTextAction={updateElementTextAction}
       saveElementPhotoUrlAction={saveElementPhotoUrlAction}

@@ -92,6 +92,79 @@ const FRAME_LIST = [
   { id: "none", name: "Ramkasiz" },
 ];
 
+// Tayyor shablonlar — src/lib/albums.ts dagi TEMPLATES bilan qo'lda
+// sinxronlangan (bu client komponent, server-only albums.ts'ni import qila
+// olmaydi). Har biri: fon + rasm/matn slotlari + dekorativ stikerlar.
+const TEMPLATES = {
+  "classic-cream": {
+    name: "Klassik", category: "Oddiy", backgroundId: "paper",
+    slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 58 }, { type: "text", x: 8, y: 70, w: 84, h: 22 }],
+    stickers: [{ stickerId: "tape-gold", kind: "tape", x: 38, y: 3, w: 24, h: 7, color: "#D9BC85" }],
+  },
+  "ikki-esdalik": {
+    name: "Ikki xotira", category: "Oddiy", backgroundId: "sage",
+    slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 68 }, { type: "photo", x: 53, y: 8, w: 41, h: 68 }, { type: "text", x: 6, y: 80, w: 88, h: 14 }],
+    stickers: [{ stickerId: "heart", kind: "icon", x: 46, y: 4, w: 10, h: 10, color: "#A8453A" }, { stickerId: "leaf", kind: "icon", x: 2, y: 2, w: 9, h: 9, color: "#2F4C48" }],
+  },
+  "uch-lavha": {
+    name: "Uch lavha", category: "Oddiy", backgroundId: "slate",
+    slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55 }, { type: "photo", x: 36, y: 10, w: 28, h: 55 }, { type: "photo", x: 67, y: 10, w: 28, h: 55 }, { type: "text", x: 5, y: 70, w: 90, h: 22 }],
+    stickers: [{ stickerId: "cloud", kind: "icon", x: 2, y: 2, w: 10, h: 10, color: "#5C7A73" }, { stickerId: "umbrella", kind: "icon", x: 88, y: 2, w: 10, h: 10, color: "#5C7A73" }],
+  },
+  "minimal-oq": {
+    name: "Minimal", category: "Oddiy", backgroundId: "paper",
+    slots: [{ type: "photo", x: 12, y: 10, w: 76, h: 62 }, { type: "text", x: 12, y: 76, w: 76, h: 16 }],
+    stickers: [{ stickerId: "square-shape", kind: "shape", x: 4, y: 4, w: 7, h: 7, color: "#D9BC85" }],
+  },
+  sayohat: {
+    name: "Sayohat kundaligi", category: "Sayohat", backgroundId: "blush",
+    slots: [{ type: "photo", x: 6, y: 6, w: 60, h: 50 }, { type: "photo", x: 68, y: 6, w: 26, h: 24 }, { type: "photo", x: 68, y: 32, w: 26, h: 24 }, { type: "text", x: 6, y: 60, w: 88, h: 32 }],
+    stickers: [{ stickerId: "camera", kind: "icon", x: 4, y: 58, w: 10, h: 10, color: "#1E2621" }, { stickerId: "sun", kind: "icon", x: 84, y: 4, w: 10, h: 10, color: "#B8863B" }, { stickerId: "tape-blush", kind: "tape", x: 60, y: 2, w: 22, h: 7, color: "#E6C9BC" }],
+  },
+  "tabiat-sayri": {
+    name: "Tabiat sayri", category: "Sayohat", backgroundId: "sage",
+    slots: [{ type: "photo", x: 6, y: 6, w: 60, h: 50 }, { type: "photo", x: 68, y: 6, w: 26, h: 24 }, { type: "photo", x: 68, y: 32, w: 26, h: 24 }, { type: "text", x: 6, y: 60, w: 88, h: 32 }],
+    stickers: [{ stickerId: "leaf", kind: "icon", x: 2, y: 2, w: 10, h: 10, color: "#2F4C48" }, { stickerId: "feather", kind: "icon", x: 90, y: 2, w: 8, h: 8, color: "#5C7A73" }, { stickerId: "cloud", kind: "icon", x: 2, y: 90, w: 9, h: 9, color: "#5C7A73" }],
+  },
+  "tugilgan-kun": {
+    name: "Tug'ilgan kun", category: "Bayram", backgroundId: "paper",
+    slots: [{ type: "photo", x: 10, y: 10, w: 80, h: 55 }, { type: "text", x: 10, y: 68, w: 80, h: 24 }],
+    stickers: [{ stickerId: "cake", kind: "icon", x: 4, y: 4, w: 12, h: 12, color: "#A8453A" }, { stickerId: "party", kind: "icon", x: 84, y: 4, w: 12, h: 12, color: "#B8863B" }, { stickerId: "gift", kind: "icon", x: 4, y: 84, w: 10, h: 10, color: "#2F4C48" }, { stickerId: "sparkles", kind: "icon", x: 86, y: 84, w: 10, h: 10, color: "#B8863B" }],
+  },
+  yubiley: {
+    name: "Yubiley", category: "Bayram", backgroundId: "paper",
+    slots: [{ type: "photo", x: 10, y: 8, w: 80, h: 52 }, { type: "text", x: 10, y: 64, w: 80, h: 26 }],
+    stickers: [{ stickerId: "crown", kind: "icon", x: 4, y: 4, w: 10, h: 10, color: "#B8863B" }, { stickerId: "star", kind: "icon", x: 88, y: 4, w: 9, h: 9, color: "#B8863B" }, { stickerId: "tape-gold", kind: "tape", x: 38, y: 2, w: 24, h: 6, color: "#D9BC85" }, { stickerId: "tape-gold", kind: "tape", x: 38, y: 60, w: 24, h: 6, color: "#D9BC85" }],
+  },
+  "bayram-kechasi": {
+    name: "Bayram kechasi", category: "Bayram", backgroundId: "midnight",
+    slots: [{ type: "photo", x: 5, y: 8, w: 28, h: 50 }, { type: "photo", x: 36, y: 8, w: 28, h: 50 }, { type: "photo", x: 67, y: 8, w: 28, h: 50 }, { type: "text", x: 5, y: 64, w: 90, h: 26 }],
+    stickers: [{ stickerId: "party", kind: "icon", x: 2, y: 2, w: 9, h: 9, color: "#D9BC85" }, { stickerId: "music", kind: "icon", x: 90, y: 2, w: 8, h: 8, color: "#D9BC85" }, { stickerId: "sparkles", kind: "icon", x: 2, y: 92, w: 8, h: 8, color: "#D9BC85" }, { stickerId: "sparkles", kind: "icon", x: 90, y: 92, w: 8, h: 8, color: "#D9BC85" }],
+  },
+  bahor: {
+    name: "Bahor kayfiyati", category: "Fasllar", backgroundId: "sage",
+    slots: [{ type: "photo", x: 8, y: 10, w: 84, h: 56 }, { type: "text", x: 8, y: 70, w: 84, h: 20 }],
+    stickers: [{ stickerId: "flower", kind: "icon", x: 4, y: 4, w: 10, h: 10, color: "#A8453A" }, { stickerId: "leaf", kind: "icon", x: 88, y: 4, w: 9, h: 9, color: "#2F4C48" }, { stickerId: "sun", kind: "icon", x: 4, y: 88, w: 9, h: 9, color: "#B8863B" }],
+  },
+  "qish-ertagi": {
+    name: "Qish ertagi", category: "Fasllar", backgroundId: "midnight",
+    slots: [{ type: "photo", x: 8, y: 10, w: 84, h: 54 }, { type: "text", x: 8, y: 68, w: 84, h: 24 }],
+    stickers: [{ stickerId: "snowflake", kind: "icon", x: 4, y: 4, w: 9, h: 9, color: "#D9BC85" }, { stickerId: "moon", kind: "icon", x: 86, y: 4, w: 9, h: 9, color: "#D9BC85" }, { stickerId: "star", kind: "icon", x: 4, y: 86, w: 8, h: 8, color: "#D9BC85" }, { stickerId: "sparkles", kind: "icon", x: 88, y: 86, w: 8, h: 8, color: "#D9BC85" }],
+  },
+  "romantik-kech": {
+    name: "Romantik kech", category: "Romantik", backgroundId: "midnight",
+    slots: [{ type: "photo", x: 15, y: 8, w: 70, h: 58 }, { type: "text", x: 15, y: 70, w: 70, h: 20 }],
+    stickers: [{ stickerId: "heart", kind: "icon", x: 4, y: 4, w: 9, h: 9, color: "#A8453A" }, { stickerId: "moon", kind: "icon", x: 88, y: 4, w: 9, h: 9, color: "#D9BC85" }, { stickerId: "sparkles", kind: "icon", x: 4, y: 88, w: 8, h: 8, color: "#D9BC85" }],
+  },
+  "bolalik-lahzalari": {
+    name: "Bolalik lahzalari", category: "Oila", backgroundId: "blush",
+    slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 66 }, { type: "photo", x: 53, y: 8, w: 41, h: 66 }, { type: "text", x: 6, y: 78, w: 88, h: 16 }],
+    stickers: [{ stickerId: "smile", kind: "icon", x: 46, y: 3, w: 9, h: 9, color: "#B8863B" }, { stickerId: "crown", kind: "icon", x: 2, y: 2, w: 9, h: 9, color: "#B8863B" }, { stickerId: "star", kind: "icon", x: 90, y: 2, w: 8, h: 8, color: "#B8863B" }],
+  },
+};
+const TEMPLATE_LIST = Object.entries(TEMPLATES).map(([id, t]) => ({ id, ...t }));
+const TEMPLATE_CATEGORIES = [...new Set(TEMPLATE_LIST.map((t) => t.category))];
+
 // Matn stillari — shrift oilalari, tayyor ranglar, tekislash tanlovlari.
 const FONT_FAMILIES = {
   handwriting: "'Caveat', cursive",
@@ -468,6 +541,45 @@ function StickerPickerPreview({ stickerId, kind }) {
   }
   const Icon = STICKER_ICONS[stickerId] || Leaf;
   return <Icon size={20} color={color} />;
+}
+
+function TemplateThumbnail({ template }) {
+  const bg = BACKGROUNDS[template.backgroundId] || BACKGROUNDS.paper;
+  return (
+    <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${bg.from}, ${bg.to})`, borderRadius: 4, overflow: "hidden" }}>
+      {template.slots.map((s, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`,
+            background: s.type === "photo" ? "rgba(255,255,255,0.55)" : "rgba(30,38,33,0.18)",
+            border: s.type === "photo" ? "1px solid rgba(255,255,255,0.8)" : "none",
+            borderRadius: 2,
+          }}
+        />
+      ))}
+      {template.stickers.map((st, i) => {
+        if (st.kind === "icon") {
+          const Icon = STICKER_ICONS[st.stickerId] || Leaf;
+          return (
+            <div key={i} style={{ position: "absolute", left: `${st.x}%`, top: `${st.y}%`, width: `${st.w}%`, height: `${st.h}%`, display: "flex" }}>
+              <Icon size={9} color={st.color} style={{ width: "100%", height: "100%" }} />
+            </div>
+          );
+        }
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute", left: `${st.x}%`, top: `${st.y}%`, width: `${st.w}%`, height: `${st.h}%`,
+              background: st.color, opacity: 0.85,
+              borderRadius: st.kind === "tape" ? 1 : st.kind === "shape" ? 3 : 0,
+            }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 function StickerSlot({ element, canEdit, style, onDragStart, isDragging }) {
@@ -1142,6 +1254,7 @@ function AlbumEditor({
   addAlbumPageAction,
   deleteAlbumPageAction,
   changePageLayoutAction,
+  applyPageTemplateAction,
   saveElementPhotoUrlAction,
   updateElementTextAction,
   reorderElementsAction,
@@ -1167,6 +1280,7 @@ function AlbumEditor({
   const [showLayoutPicker, setShowLayoutPicker] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
 
   const pages = album.pages;
@@ -1175,6 +1289,7 @@ function AlbumEditor({
 
   const [addPageState, addPageFormAction, addPagePending] = useActionState(addAlbumPageAction, undefined);
   const [layoutState, layoutFormAction] = useActionState(changePageLayoutAction, undefined);
+  const [templateState, templateFormAction, templatePending] = useActionState(applyPageTemplateAction, undefined);
   const [deletePageState, deletePageFormAction] = useActionState(deleteAlbumPageAction, undefined);
   const [deleteAlbumState, deleteAlbumFormAction, deleteAlbumPending] = useActionState(deleteAlbumAction, undefined);
   const [bgState, bgFormAction] = useActionState(changePageBackgroundAction, undefined);
@@ -1244,13 +1359,16 @@ function AlbumEditor({
                 </div>
                 {canEdit && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <ChipButton active={showLayoutPicker} onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowBgPicker(false); setShowStickerPicker(false); }}>
+                    <ChipButton active={showTemplatePicker} onClick={() => { setShowTemplatePicker(!showTemplatePicker); setShowLayoutPicker(false); setShowBgPicker(false); setShowStickerPicker(false); }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showTemplatePicker ? undefined : "#F2EDE2" }}><Sparkles size={13} /> Shablon</span>
+                    </ChipButton>
+                    <ChipButton active={showLayoutPicker} onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowBgPicker(false); setShowStickerPicker(false); setShowTemplatePicker(false); }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 5, color: showLayoutPicker ? undefined : "#F2EDE2" }}><LayoutGrid size={13} /> Layout</span>
                     </ChipButton>
-                    <ChipButton active={showStickerPicker} onClick={() => { setShowStickerPicker(!showStickerPicker); setShowBgPicker(false); setShowLayoutPicker(false); }}>
+                    <ChipButton active={showStickerPicker} onClick={() => { setShowStickerPicker(!showStickerPicker); setShowBgPicker(false); setShowLayoutPicker(false); setShowTemplatePicker(false); }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 5, color: showStickerPicker ? undefined : "#F2EDE2" }}><StickerIcon size={13} /> Stiker</span>
                     </ChipButton>
-                    <ChipButton active={showBgPicker} onClick={() => { setShowBgPicker(!showBgPicker); setShowLayoutPicker(false); setShowStickerPicker(false); }}>
+                    <ChipButton active={showBgPicker} onClick={() => { setShowBgPicker(!showBgPicker); setShowLayoutPicker(false); setShowStickerPicker(false); setShowTemplatePicker(false); }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 5, color: showBgPicker ? undefined : "#F2EDE2" }}><Palette size={13} /> Fon</span>
                     </ChipButton>
                     <ChipButton
@@ -1290,6 +1408,34 @@ function AlbumEditor({
               </form>
               {addTextState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addTextState.error}</div>}
               {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
+
+              {showTemplatePicker && (
+                <div style={{ marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, maxHeight: 340, overflowY: "auto" }}>
+                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
+                    Shablon {activeSide === "right" ? "o'ng" : "chap"} sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.
+                  </div>
+                  {TEMPLATE_CATEGORIES.map((cat) => (
+                    <div key={cat} style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{cat}</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
+                        {TEMPLATE_LIST.filter((t) => t.category === cat).map((t) => (
+                          <form key={t.id} action={templateFormAction} onSubmit={() => setShowTemplatePicker(false)}>
+                            <input type="hidden" name="familySlug" value={familySlug} />
+                            <input type="hidden" name="albumId" value={album.id} />
+                            <input type="hidden" name="pageId" value={targetPage.id} />
+                            <input type="hidden" name="templateId" value={t.id} />
+                            <button type="submit" disabled={templatePending} style={{ width: "100%", cursor: templatePending ? "default" : "pointer", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 6, background: "#fff" }}>
+                              <TemplateThumbnail template={t} />
+                              <div style={{ fontSize: 10, color: TOKENS.ink60, textAlign: "center", marginTop: 6 }}>{t.name}</div>
+                            </button>
+                          </form>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {templateState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{templateState.error}</div>}
 
               {showStickerPicker && (
                 <div style={{ marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, maxHeight: 260, overflowY: "auto" }}>
@@ -1512,6 +1658,7 @@ export function AlbumsView({
   addAlbumPageAction,
   deleteAlbumPageAction,
   changePageLayoutAction,
+  applyPageTemplateAction,
   saveElementPhotoUrlAction,
   updateElementTextAction,
   reorderElementsAction,
@@ -1545,6 +1692,7 @@ export function AlbumsView({
           addAlbumPageAction={addAlbumPageAction}
           deleteAlbumPageAction={deleteAlbumPageAction}
           changePageLayoutAction={changePageLayoutAction}
+          applyPageTemplateAction={applyPageTemplateAction}
           saveElementPhotoUrlAction={saveElementPhotoUrlAction}
           updateElementTextAction={updateElementTextAction}
           reorderElementsAction={reorderElementsAction}

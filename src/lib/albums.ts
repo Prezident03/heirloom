@@ -109,6 +109,276 @@ export const LAYOUTS = {
 
 export type LayoutId = keyof typeof LAYOUTS;
 
+// Tayyor shablonlar — bir bosishda butun sahifani (fon + rasm/matn slotlari +
+// dekorativ stikerlar) tayyor kompozitsiya bilan to'ldiradi. Faqat JSON
+// konfiguratsiya sifatida saqlanadi, database'da alohida jadval yo'q —
+// qo'llanganda oddiy page_elements qatorlariga aylantiriladi.
+export type TemplateSlot = {
+  type: "photo" | "text";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  frame?: FrameStyle;
+  textStyle?: { size?: number; color?: string; align?: TextAlign; font?: TextFont };
+};
+
+export type TemplateSticker = {
+  stickerId: StickerId;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color?: string;
+  rotation?: number;
+};
+
+export type Template = {
+  name: string;
+  category: string;
+  backgroundId: BackgroundId;
+  slots: TemplateSlot[];
+  stickers: TemplateSticker[];
+};
+
+const GOLD_SOFT = "#D9BC85";
+const PARCHMENT = "#F2EDE2";
+const GOLD = "#B8863B";
+const TEAL = "#2F4C48";
+const TEAL_SOFT = "#5C7A73";
+const DANGER = "#A8453A";
+
+export const TEMPLATES = {
+  "classic-cream": {
+    name: "Klassik",
+    category: "Oddiy",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 8, y: 8, w: 84, h: 58, frame: "polaroid" },
+      { type: "text", x: 8, y: 70, w: 84, h: 22, textStyle: { font: "serif", align: "center" } },
+    ],
+    stickers: [{ stickerId: "tape-gold", x: 38, y: 3, w: 24, h: 7, rotation: -3 }],
+  },
+  "ikki-esdalik": {
+    name: "Ikki xotira",
+    category: "Oddiy",
+    backgroundId: "sage",
+    slots: [
+      { type: "photo", x: 6, y: 8, w: 41, h: 68 },
+      { type: "photo", x: 53, y: 8, w: 41, h: 68 },
+      { type: "text", x: 6, y: 80, w: 88, h: 14, textStyle: { align: "center" } },
+    ],
+    stickers: [
+      { stickerId: "heart", x: 46, y: 4, w: 10, h: 10, color: DANGER },
+      { stickerId: "leaf", x: 2, y: 2, w: 9, h: 9, color: TEAL, rotation: -10 },
+    ],
+  },
+  "uch-lavha": {
+    name: "Uch lavha",
+    category: "Oddiy",
+    backgroundId: "slate",
+    slots: [
+      { type: "photo", x: 5, y: 10, w: 28, h: 55 },
+      { type: "photo", x: 36, y: 10, w: 28, h: 55 },
+      { type: "photo", x: 67, y: 10, w: 28, h: 55 },
+      { type: "text", x: 5, y: 70, w: 90, h: 22, textStyle: { align: "center" } },
+    ],
+    stickers: [
+      { stickerId: "cloud", x: 2, y: 2, w: 10, h: 10, color: TEAL_SOFT },
+      { stickerId: "umbrella", x: 88, y: 2, w: 10, h: 10, color: TEAL_SOFT },
+    ],
+  },
+  "minimal-oq": {
+    name: "Minimal",
+    category: "Oddiy",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 12, y: 10, w: 76, h: 62, frame: "none" },
+      { type: "text", x: 12, y: 76, w: 76, h: 16, textStyle: { align: "center", font: "sans", size: 16 } },
+    ],
+    stickers: [{ stickerId: "square-shape", x: 4, y: 4, w: 7, h: 7, color: GOLD_SOFT }],
+  },
+  sayohat: {
+    name: "Sayohat kundaligi",
+    category: "Sayohat",
+    backgroundId: "blush",
+    slots: [
+      { type: "photo", x: 6, y: 6, w: 60, h: 50, frame: "soft" },
+      { type: "photo", x: 68, y: 6, w: 26, h: 24 },
+      { type: "photo", x: 68, y: 32, w: 26, h: 24 },
+      { type: "text", x: 6, y: 60, w: 88, h: 32, textStyle: { font: "sans" } },
+    ],
+    stickers: [
+      { stickerId: "camera", x: 4, y: 58, w: 10, h: 10, color: "#1E2621" },
+      { stickerId: "sun", x: 84, y: 4, w: 10, h: 10, color: GOLD },
+      { stickerId: "tape-blush", x: 60, y: 2, w: 22, h: 7, rotation: 4 },
+    ],
+  },
+  "tabiat-sayri": {
+    name: "Tabiat sayri",
+    category: "Sayohat",
+    backgroundId: "sage",
+    slots: [
+      { type: "photo", x: 6, y: 6, w: 60, h: 50 },
+      { type: "photo", x: 68, y: 6, w: 26, h: 24 },
+      { type: "photo", x: 68, y: 32, w: 26, h: 24 },
+      { type: "text", x: 6, y: 60, w: 88, h: 32, textStyle: { font: "sans" } },
+    ],
+    stickers: [
+      { stickerId: "leaf", x: 2, y: 2, w: 10, h: 10, color: TEAL, rotation: -20 },
+      { stickerId: "feather", x: 90, y: 2, w: 8, h: 8, color: TEAL_SOFT, rotation: 15 },
+      { stickerId: "cloud", x: 2, y: 90, w: 9, h: 9, color: TEAL_SOFT },
+    ],
+  },
+  "tugilgan-kun": {
+    name: "Tug'ilgan kun",
+    category: "Bayram",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 10, y: 10, w: 80, h: 55, frame: "polaroid" },
+      { type: "text", x: 10, y: 68, w: 80, h: 24, textStyle: { font: "handwriting", align: "center", size: 26, color: DANGER } },
+    ],
+    stickers: [
+      { stickerId: "cake", x: 4, y: 4, w: 12, h: 12, color: DANGER },
+      { stickerId: "party", x: 84, y: 4, w: 12, h: 12, color: GOLD },
+      { stickerId: "gift", x: 4, y: 84, w: 10, h: 10, color: TEAL },
+      { stickerId: "sparkles", x: 86, y: 84, w: 10, h: 10, color: GOLD },
+    ],
+  },
+  yubiley: {
+    name: "Yubiley",
+    category: "Bayram",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 10, y: 8, w: 80, h: 52, frame: "polaroid" },
+      { type: "text", x: 10, y: 64, w: 80, h: 26, textStyle: { font: "serif", align: "center", size: 24 } },
+    ],
+    stickers: [
+      { stickerId: "crown", x: 4, y: 4, w: 10, h: 10, color: GOLD },
+      { stickerId: "star", x: 88, y: 4, w: 9, h: 9, color: GOLD },
+      { stickerId: "tape-gold", x: 38, y: 2, w: 24, h: 6, rotation: 3 },
+      { stickerId: "tape-gold", x: 38, y: 60, w: 24, h: 6, rotation: -3 },
+    ],
+  },
+  "bayram-kechasi": {
+    name: "Bayram kechasi",
+    category: "Bayram",
+    backgroundId: "midnight",
+    slots: [
+      { type: "photo", x: 5, y: 8, w: 28, h: 50 },
+      { type: "photo", x: 36, y: 8, w: 28, h: 50 },
+      { type: "photo", x: 67, y: 8, w: 28, h: 50 },
+      { type: "text", x: 5, y: 64, w: 90, h: 26, textStyle: { align: "center", color: PARCHMENT } },
+    ],
+    stickers: [
+      { stickerId: "party", x: 2, y: 2, w: 9, h: 9, color: GOLD_SOFT },
+      { stickerId: "music", x: 90, y: 2, w: 8, h: 8, color: GOLD_SOFT },
+      { stickerId: "sparkles", x: 2, y: 92, w: 8, h: 8, color: GOLD_SOFT },
+      { stickerId: "sparkles", x: 90, y: 92, w: 8, h: 8, color: GOLD_SOFT },
+    ],
+  },
+  bahor: {
+    name: "Bahor kayfiyati",
+    category: "Fasllar",
+    backgroundId: "sage",
+    slots: [
+      { type: "photo", x: 8, y: 10, w: 84, h: 56 },
+      { type: "text", x: 8, y: 70, w: 84, h: 20, textStyle: { align: "center", font: "serif", color: TEAL } },
+    ],
+    stickers: [
+      { stickerId: "flower", x: 4, y: 4, w: 10, h: 10, color: DANGER },
+      { stickerId: "leaf", x: 88, y: 4, w: 9, h: 9, color: TEAL, rotation: 15 },
+      { stickerId: "sun", x: 4, y: 88, w: 9, h: 9, color: GOLD },
+    ],
+  },
+  "qish-ertagi": {
+    name: "Qish ertagi",
+    category: "Fasllar",
+    backgroundId: "midnight",
+    slots: [
+      { type: "photo", x: 8, y: 10, w: 84, h: 54, frame: "soft" },
+      { type: "text", x: 8, y: 68, w: 84, h: 24, textStyle: { align: "center", color: PARCHMENT, font: "serif" } },
+    ],
+    stickers: [
+      { stickerId: "snowflake", x: 4, y: 4, w: 9, h: 9, color: GOLD_SOFT },
+      { stickerId: "moon", x: 86, y: 4, w: 9, h: 9, color: GOLD_SOFT },
+      { stickerId: "star", x: 4, y: 86, w: 8, h: 8, color: GOLD_SOFT },
+      { stickerId: "sparkles", x: 88, y: 86, w: 8, h: 8, color: GOLD_SOFT },
+    ],
+  },
+  "romantik-kech": {
+    name: "Romantik kech",
+    category: "Romantik",
+    backgroundId: "midnight",
+    slots: [
+      { type: "photo", x: 15, y: 8, w: 70, h: 58, frame: "polaroid" },
+      { type: "text", x: 15, y: 70, w: 70, h: 20, textStyle: { align: "center", font: "handwriting", color: GOLD_SOFT } },
+    ],
+    stickers: [
+      { stickerId: "heart", x: 4, y: 4, w: 9, h: 9, color: DANGER },
+      { stickerId: "moon", x: 88, y: 4, w: 9, h: 9, color: GOLD_SOFT },
+      { stickerId: "sparkles", x: 4, y: 88, w: 8, h: 8, color: GOLD_SOFT },
+    ],
+  },
+  "bolalik-lahzalari": {
+    name: "Bolalik lahzalari",
+    category: "Oila",
+    backgroundId: "blush",
+    slots: [
+      { type: "photo", x: 6, y: 8, w: 41, h: 66 },
+      { type: "photo", x: 53, y: 8, w: 41, h: 66 },
+      { type: "text", x: 6, y: 78, w: 88, h: 16, textStyle: { align: "center", font: "handwriting" } },
+    ],
+    stickers: [
+      { stickerId: "smile", x: 46, y: 3, w: 9, h: 9, color: GOLD },
+      { stickerId: "crown", x: 2, y: 2, w: 9, h: 9, color: GOLD, rotation: -8 },
+      { stickerId: "star", x: 90, y: 2, w: 8, h: 8, color: GOLD },
+    ],
+  },
+} as const satisfies Record<string, Template>;
+export type TemplateId = keyof typeof TEMPLATES;
+
+/** Sahifaga tayyor shablonni qo'llaydi — eski elementlar o'chib, shablon
+ * bo'yicha fon, rasm/matn slotlari va dekorativ stikerlar yaratiladi. */
+export async function applyPageTemplate(pageId: string, templateId: TemplateId): Promise<void> {
+  await ensureSchema();
+  const tpl = TEMPLATES[templateId];
+  if (!tpl) return;
+
+  await sql`UPDATE album_pages SET background_id = ${tpl.backgroundId} WHERE id = ${pageId}`;
+  await sql`DELETE FROM page_elements WHERE page_id = ${pageId}`;
+
+  const now = new Date().toISOString();
+  let slotIndex = 0;
+
+  for (const slot of tpl.slots) {
+    const id = randomUUID();
+    if (slot.type === "photo") {
+      await sql`
+        INSERT INTO page_elements (id, page_id, slot_index, type, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style)
+        VALUES (${id}, ${pageId}, ${slotIndex}, 'photo', ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, 0, ${slotIndex}, ${slot.frame || "polaroid"})
+      `;
+    } else {
+      const ts = slot.textStyle;
+      await sql`
+        INSERT INTO page_elements (id, page_id, slot_index, type, text_content, created_at, position_x, position_y, position_w, position_h, rotation, z_index, text_size, text_color, text_align, text_font)
+        VALUES (${id}, ${pageId}, ${slotIndex}, 'text', '', ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, 0, ${slotIndex}, ${ts?.size ?? null}, ${ts?.color ?? null}, ${ts?.align ?? null}, ${ts?.font ?? null})
+      `;
+    }
+    slotIndex++;
+  }
+
+  for (const st of tpl.stickers) {
+    const id = randomUUID();
+    const color = st.color || STICKERS[st.stickerId]?.defaultColor || null;
+    await sql`
+      INSERT INTO page_elements (id, page_id, slot_index, type, sticker_id, sticker_color, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
+      VALUES (${id}, ${pageId}, ${slotIndex}, 'sticker', ${st.stickerId}, ${color}, ${now}, ${st.x}, ${st.y}, ${st.w}, ${st.h}, ${st.rotation ?? 0}, ${slotIndex})
+    `;
+    slotIndex++;
+  }
+}
+
 export async function createAlbum(
   familyId: string,
   createdBy: string,

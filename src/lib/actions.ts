@@ -53,6 +53,7 @@ import {
   updateElementStickerColor,
   addTextElement,
   addPhotoElement,
+  applyPageTemplate,
   STICKERS,
   type LayoutId,
   type BackgroundId,
@@ -60,6 +61,7 @@ import {
   type StickerId,
   type TextAlign,
   type TextFont,
+  type TemplateId,
 } from "@/lib/albums";
 import {
   createTimelineEvent,
@@ -617,6 +619,21 @@ export async function changePageLayoutAction(_prevState: ActionState, formData: 
   const pageId = String(formData.get("pageId") || "").trim();
   const layoutId = String(formData.get("layoutId") || "l1") as LayoutId;
   await changePageLayout(pageId, layoutId);
+  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+}
+
+export async function applyPageTemplateAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const templateId = String(formData.get("templateId") || "") as TemplateId;
+  if (!pageId) return { error: "Page ID kerak." };
+  if (!templateId) return { error: "Shablon ID kerak." };
+
+  await applyPageTemplate(pageId, templateId);
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 
