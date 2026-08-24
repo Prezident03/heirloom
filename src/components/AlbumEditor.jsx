@@ -897,6 +897,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const [hoveredId, setHoveredId] = useState(null);
   const canvasRef = useRef(null);
   const dragState = useRef(null);
+  const commitState = useRef(null);
   const [, forceRender] = useState(0);
 
   const submitDuplicate = (elId) => {
@@ -1093,20 +1094,26 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const onPointerUpCanvas = () => {
     const ds = dragState.current;
     if (!ds) return;
+    // Faol tortishni DARHOL to'xtatamiz (dragState.current = null) — aks
+    // holda tugma qo'yib yuborilgandan keyin ham oddiy sichqoncha harakati
+    // (pointermove) "drag" kodi orqali ishlab, element kursor ortidan
+    // sudralib yurishda davom etardi (bu avvalgi urinishdagi bug edi).
+    dragState.current = null;
     if (!ds.moved) {
-      dragState.current = null;
       forceRender(v => v + 1);
       return;
     }
-    // Pointer ko'tarilgan zahoti dragState'ni tozalamaymiz — aks holda React
-    // eski (serverdan hali kelmagan) koordinatalarni bir lahza ko'rsatib,
-    // keyin saqlangan joyga "sakraydi" (flash/snap-back). Buning o'rniga oxirgi
-    // tortilgan qiymatlarni "committing" overlay sifatida saqlab qolamiz —
-    // pastdagi useEffect serverdan yangilangan `page` kelganda va u shu
-    // qiymatlarga mos kelganda overlay'ni tozalaydi, shu bilan hech qanday
-    // vizual sakrash bo'lmaydi.
-    ds.committing = true;
-    ds.committedAt = Date.now();
+    // Vizual "flash"ni (serverga saqlanmaguncha eski joyga bir lahza
+    // qaytib, keyin sakrab to'g'ri joyga borishni) oldini olish uchun,
+    // oxirgi tortilgan qiymatlarni ALOHIDA commitState ref'ida saqlab
+    // qolamiz — bu faqat render uchun ishlatiladi, pointermove'ga
+    // umuman ta'sir qilmaydi. Pastdagi useEffect serverdan yangilangan
+    // `page` shu qiymatlarga mos kelganda uni tozalaydi.
+    commitState.current = {
+      id: ds.id,
+      lastX: ds.lastX, lastY: ds.lastY, lastW: ds.lastW, lastH: ds.lastH, lastR: ds.lastR,
+      committedAt: Date.now(),
+    };
     forceRender(v => v + 1);
     if (ds.mode === "move") {
       submitPosition(ds.id, ds.lastX, ds.lastY, ds.startW, ds.startH, undefined, undefined);
@@ -1122,23 +1129,23 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   // (masalan action xato bergan) hech qachon mos kelmasa, 4 soniyadan keyin
   // baribir tozalaymiz — overlay abadiy "muzlab" qolmasligi uchun.
   useEffect(() => {
-    const ds = dragState.current;
-    if (!ds || !ds.committing) return;
-    const el = elements.find((e) => e.id === ds.id);
+    const cs = commitState.current;
+    if (!cs) return;
+    const el = elements.find((e) => e.id === cs.id);
     if (!el) {
-      dragState.current = null;
+      commitState.current = null;
       return;
     }
     const i = elements.indexOf(el);
     const box = getElBox(el, i);
     const matches =
-      Math.abs(box.x - ds.lastX) < 0.5 &&
-      Math.abs(box.y - ds.lastY) < 0.5 &&
-      Math.abs(box.w - ds.lastW) < 0.5 &&
-      Math.abs(box.h - ds.lastH) < 0.5 &&
-      Math.abs(box.r - ds.lastR) < 0.5;
-    if (matches || Date.now() - ds.committedAt > 4000) {
-      dragState.current = null;
+      Math.abs(box.x - cs.lastX) < 0.5 &&
+      Math.abs(box.y - cs.lastY) < 0.5 &&
+      Math.abs(box.w - cs.lastW) < 0.5 &&
+      Math.abs(box.h - cs.lastH) < 0.5 &&
+      Math.abs(box.r - cs.lastR) < 0.5;
+    if (matches || Date.now() - cs.committedAt > 4000) {
+      commitState.current = null;
       forceRender((v) => v + 1);
     }
   });
@@ -1215,18 +1222,18 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
         </form>
         {elements.map((el, i) => {
           const live = dragState.current?.id === el.id;
+          const committing = !live && commitState.current?.id === el.id;
           const box = getElBox(el, i);
-          // Tortish/o'lchamni o'zgartirish/burish paytida (yoki serverga
-          // saqlanishi kutilayotgan "committing" oraliqda) barcha 5 ta
-          // qiymatni (x, y, w, h, r) dragState'dan olamiz — avval faqat x/y
-          // jonli edi, shu sabab resize/rotate paytida element ekranda
-          // darhol o'zgarmasdi, faqat qo'yib yuborgandan keyin sakrab
-          // to'g'ri holatga kelardi.
-          const x = live ? dragState.current.lastX : box.x;
-          const y = live ? dragState.current.lastY : box.y;
-          const w = live ? dragState.current.lastW : box.w;
-          const h = live ? dragState.current.lastH : box.h;
-          const r = live ? dragState.current.lastR : box.r;
+          // Tortish/o'lchamni o'zgartirish/burish faol bo'lsa — dragState'dan,
+          // endigina qo'yib yuborilgan va serverga saqlanishi kutilayotgan
+          // bo'lsa — commitState (frozen overlay)'dan, aks holda serverdagi
+          // (props orqali kelgan) qiymatlardan olamiz.
+          const src = live ? dragState.current : committing ? commitState.current : null;
+          const x = src ? src.lastX : box.x;
+          const y = src ? src.lastY : box.y;
+          const w = src ? src.lastW : box.w;
+          const h = src ? src.lastH : box.h;
+          const r = src ? src.lastR : box.r;
           const isSelected = selectedId === el.id;
           const isHovered = hoveredId === el.id && !isSelected && !dragState.current;
           const style = {
