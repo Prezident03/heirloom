@@ -9,7 +9,7 @@ import {
   Leaf, Flower2, Heart, Star, Sun, Palette, Sticker as StickerIcon, Frame,
   AlignLeft, AlignCenter, AlignRight,
   Sparkles, Moon, Cloud, Gift, Cake, PartyPopper, Camera, Music, Crown, Umbrella,
-  Snowflake, Smile, Feather,
+  Snowflake, Smile, Feather, Type,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
@@ -204,10 +204,22 @@ function LeafDoodle({ style, flip }) {
   );
 }
 
-function ChipButton({ children, active, onClick }) {
+function RailButton({ icon: Icon, label, active, onClick }) {
   return (
-    <button onClick={onClick} type="button" style={{ fontSize: 12, fontWeight: 600, padding: "7px 14px", borderRadius: 20, border: active ? "none" : `1px solid ${TOKENS.parchmentDeep}`, background: active ? TOKENS.ink : "transparent", color: active ? TOKENS.parchment : TOKENS.ink60, cursor: "pointer", whiteSpace: "nowrap" }}>
-      {children}
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      style={{
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5,
+        width: "100%", padding: "12px 4px", background: active ? "rgba(184,134,59,0.22)" : "transparent",
+        border: "none", borderLeft: active ? `3px solid ${TOKENS.gold}` : "3px solid transparent",
+        cursor: "pointer", color: active ? TOKENS.goldSoft : "rgba(242,237,226,0.68)", transition: "background 0.15s ease, color 0.15s ease",
+      }}
+      className="fm-rail-btn"
+    >
+      <Icon size={19} />
+      <span style={{ fontSize: 9.5, fontWeight: 600, lineHeight: 1 }}>{label}</span>
     </button>
   );
 }
@@ -837,21 +849,86 @@ function StickerStylePanel({ element, familySlug, updateElementStickerColorActio
   );
 }
 
+function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete, busy }) {
+  return (
+    <div
+      className="fm-element-toolbar"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: "absolute", left: "50%", bottom: "calc(100% + 10px)", transform: "translateX(-50%)",
+        display: "flex", alignItems: "center", gap: 2, background: TOKENS.ink, borderRadius: 9,
+        padding: 4, boxShadow: "0 6px 16px rgba(30,26,15,0.3)", zIndex: 70, whiteSpace: "nowrap",
+      }}
+    >
+      <button type="button" className="fm-toolbar-btn" title="Nusxalash" disabled={busy} onClick={onDuplicate}>
+        <Copy size={14} />
+      </button>
+      <button type="button" className="fm-toolbar-btn" title="Tepaga chiqarish" onClick={onLayerUp}>
+        <ChevronUp size={16} />
+      </button>
+      <button type="button" className="fm-toolbar-btn" title="Pastga tushirish" onClick={onLayerDown}>
+        <ChevronDown size={16} />
+      </button>
+      <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.18)", margin: "0 2px" }} />
+      <button type="button" className="fm-toolbar-btn danger" title="O'chirish" onClick={onDelete}>
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+}
+
 function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction, updateElementFrameAction, updateElementTextStyleAction, updateElementStickerColorAction, backgroundId }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dropIndex, setDropIndex] = useState(null);
   const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
   const [posState, posFormAction, posPending] = useActionState(updateElementPositionAction, undefined);
   const [delState, delFormAction, delPending] = useActionState(deleteElementAction, undefined);
+  const [dupState, dupFormAction, dupPending] = useActionState(duplicateElementAction, undefined);
+  const [zState, zFormAction] = useActionState(changeZIndexAction, undefined);
 
   const reorderRef = useRef(null);
   const posRef = useRef(null);
   const delRef = useRef(null);
+  const dupRef = useRef(null);
+  const zRef = useRef(null);
 
   const [selectedId, setSelectedId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
   const canvasRef = useRef(null);
   const dragState = useRef(null);
   const [, forceRender] = useState(0);
+
+  const submitDuplicate = (elId) => {
+    const f = dupRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.albumId.value = albumId;
+    f.elements.elementId.value = elId;
+    setTimeout(() => f.requestSubmit(), 0);
+  };
+
+  const submitZIndex = (elId, direction) => {
+    const f = zRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.elementId.value = elId;
+    f.elements.direction.value = direction;
+    setTimeout(() => f.requestSubmit(), 0);
+  };
+
+  const submitDelete = (elId) => {
+    const f = delRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.albumId.value = albumId;
+    f.elements.elementId.value = elId;
+    setTimeout(() => f.requestSubmit(), 0);
+    setSelectedId(null);
+  };
 
   const selected = page.elements?.find(e => e.id === selectedId) || null;
 
@@ -1084,22 +1161,36 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
           <input type="hidden" name="elementId" />
           <input type="hidden" name="albumId" />
         </form>
+        <form ref={dupRef} action={dupFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="albumId" />
+        </form>
+        <form ref={zRef} action={zFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="direction" />
+        </form>
         {elements.map((el, i) => {
           const live = dragState.current?.id === el.id;
           const box = getElBox(el, i);
           const x = live ? dragState.current.lastX : box.x;
           const y = live ? dragState.current.lastY : box.y;
+          const isSelected = selectedId === el.id;
+          const isHovered = hoveredId === el.id && !isSelected && !dragState.current;
           const style = {
             left: `${x}%`,
             top: `${y}%`,
             width: `${box.w}%`,
             height: `${box.h}%`,
             transform: `rotate(${box.r}deg)`,
-            zIndex: box.z,
+            zIndex: isSelected ? 500 : box.z,
             position: "absolute",
-            border: selectedId === el.id ? `2px solid ${TOKENS.gold}` : "1px solid transparent",
+            border: isSelected ? `2px solid ${TOKENS.gold}` : isHovered ? `2px solid ${TOKENS.gold}88` : "1px solid transparent",
             borderRadius: 4,
-            boxShadow: selectedId === el.id ? `0 0 0 3px ${TOKENS.gold}33` : "none",
+            boxShadow: isSelected ? `0 0 0 3px ${TOKENS.gold}33` : "none",
             transition: live ? "none" : "border 0.15s, box-shadow 0.15s",
           };
           const slot = layout.slots[i];
@@ -1114,6 +1205,8 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
               onDragEnter={() => setDropIndex(i)}
               onPointerDown={(e) => onPointerDownElement(e, el)}
               onClick={(e) => e.stopPropagation()}
+              onMouseEnter={() => setHoveredId(el.id)}
+              onMouseLeave={() => setHoveredId((h) => (h === el.id ? null : h))}
               style={style}
             >
               {isSticker ? (
@@ -1158,58 +1251,47 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
                     <div
                       key={corner}
                       onPointerDown={(e) => onPointerDownHandle(e, el, `resize-${corner}`)}
+                      className="fm-resize-handle"
                       style={{
                         position: "absolute",
-                        width: 12, height: 12, borderRadius: "50%",
-                        background: TOKENS.gold, border: "2px solid #fff",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
-                        top: corner[0] === "n" ? -6 : "auto",
-                        bottom: corner[0] === "s" ? -6 : "auto",
-                        left: corner[1] === "w" ? -6 : "auto",
-                        right: corner[1] === "e" ? -6 : "auto",
+                        width: 16, height: 16, borderRadius: "50%",
+                        background: "#fff", border: `2.5px solid ${TOKENS.gold}`,
+                        boxShadow: "0 2px 5px rgba(30,26,15,0.35)",
+                        top: corner[0] === "n" ? -8 : "auto",
+                        bottom: corner[0] === "s" ? -8 : "auto",
+                        left: corner[1] === "w" ? -8 : "auto",
+                        right: corner[1] === "e" ? -8 : "auto",
                         cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize",
                         touchAction: "none",
                         zIndex: 60,
+                        transition: "transform 0.1s",
                       }}
                     />
                   ))}
                   <div
                     onPointerDown={(e) => onPointerDownHandle(e, el, "rotate")}
                     title="Burish"
+                    className="fm-resize-handle"
                     style={{
-                      position: "absolute", left: "50%", top: -28, width: 12, height: 12, borderRadius: "50%",
-                      background: TOKENS.teal, border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
+                      position: "absolute", left: "50%", top: -34, width: 18, height: 18, borderRadius: "50%",
+                      background: TOKENS.teal, border: "2.5px solid #fff", boxShadow: "0 2px 5px rgba(30,26,15,0.35)",
                       transform: "translateX(-50%)", cursor: "grab", touchAction: "none", zIndex: 60,
                     }}
                   />
                   <div
                     aria-hidden
-                    style={{ position: "absolute", left: "50%", top: -18, width: 1, height: 18, background: TOKENS.teal, transform: "translateX(-50%)", pointerEvents: "none" }}
+                    style={{ position: "absolute", left: "50%", top: -20, width: 1.5, height: 20, background: `${TOKENS.teal}99`, transform: "translateX(-50%)", pointerEvents: "none" }}
                   />
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                  <ElementFloatingToolbar
+                    onDuplicate={() => submitDuplicate(el.id)}
+                    onLayerUp={() => submitZIndex(el.id, "up")}
+                    onLayerDown={() => submitZIndex(el.id, "down")}
+                    onDelete={() => {
                       if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
-                      const f = delRef.current; if (!f) return;
-                      f.elements.familySlug.value = familySlug;
-                      f.elements.pageId.value = page.id;
-                      f.elements.albumId.value = albumId;
-                      f.elements.elementId.value = el.id;
-                      setTimeout(() => f.requestSubmit(), 0);
-                      setSelectedId(null);
+                      submitDelete(el.id);
                     }}
-                    title="O'chirish"
-                    style={{
-                      position: "absolute", top: -10, right: -10, width: 22, height: 22, borderRadius: "50%",
-                      background: TOKENS.danger, border: "2px solid #fff", boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
-                      color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                      padding: 0, zIndex: 61,
-                    }}
-                  >
-                    <X size={13} />
-                  </button>
+                    busy={dupPending}
+                  />
                 </>
               )}
             </div>
@@ -1277,10 +1359,7 @@ function AlbumEditor({
 }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [activeSide, setActiveSide] = useState("left"); // "left" | "right" — Layout/Stiker/Fon shu tomonga ta'sir qiladi
-  const [showLayoutPicker, setShowLayoutPicker] = useState(false);
-  const [showBgPicker, setShowBgPicker] = useState(false);
-  const [showStickerPicker, setShowStickerPicker] = useState(false);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [activePanel, setActivePanel] = useState(null); // null | "template" | "layout" | "sticker" | "bg"
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
 
   const pages = album.pages;
@@ -1300,7 +1379,7 @@ function AlbumEditor({
   const addPhotoRef = useRef(null);
 
   return (
-    <div style={{ padding: "22px clamp(16px, 4vw, 40px) 60px", maxWidth: 1100, margin: "0 auto" }}>
+    <div style={{ padding: "22px clamp(16px, 4vw, 48px) 60px", maxWidth: 1680, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.ink60, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           <ChevronLeft size={16} /> Albomlarga qaytish
@@ -1357,44 +1436,6 @@ function AlbumEditor({
                     </div>
                   )}
                 </div>
-                {canEdit && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <ChipButton active={showTemplatePicker} onClick={() => { setShowTemplatePicker(!showTemplatePicker); setShowLayoutPicker(false); setShowBgPicker(false); setShowStickerPicker(false); }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showTemplatePicker ? undefined : "#F2EDE2" }}><Sparkles size={13} /> Shablon</span>
-                    </ChipButton>
-                    <ChipButton active={showLayoutPicker} onClick={() => { setShowLayoutPicker(!showLayoutPicker); setShowBgPicker(false); setShowStickerPicker(false); setShowTemplatePicker(false); }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showLayoutPicker ? undefined : "#F2EDE2" }}><LayoutGrid size={13} /> Layout</span>
-                    </ChipButton>
-                    <ChipButton active={showStickerPicker} onClick={() => { setShowStickerPicker(!showStickerPicker); setShowBgPicker(false); setShowLayoutPicker(false); setShowTemplatePicker(false); }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showStickerPicker ? undefined : "#F2EDE2" }}><StickerIcon size={13} /> Stiker</span>
-                    </ChipButton>
-                    <ChipButton active={showBgPicker} onClick={() => { setShowBgPicker(!showBgPicker); setShowLayoutPicker(false); setShowStickerPicker(false); setShowTemplatePicker(false); }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: showBgPicker ? undefined : "#F2EDE2" }}><Palette size={13} /> Fon</span>
-                    </ChipButton>
-                    <ChipButton
-                      onClick={() => {
-                        const f = addTextRef.current; if (!f) return;
-                        f.elements.familySlug.value = familySlug;
-                        f.elements.albumId.value = album.id;
-                        f.elements.pageId.value = targetPage.id;
-                        setTimeout(() => f.requestSubmit(), 0);
-                      }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#F2EDE2" }}>+ Matn</span>
-                    </ChipButton>
-                    <ChipButton
-                      onClick={() => {
-                        const f = addPhotoRef.current; if (!f) return;
-                        f.elements.familySlug.value = familySlug;
-                        f.elements.albumId.value = album.id;
-                        f.elements.pageId.value = targetPage.id;
-                        setTimeout(() => f.requestSubmit(), 0);
-                      }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, color: "#F2EDE2" }}>+ Rasm</span>
-                    </ChipButton>
-                  </div>
-                )}
               </div>
               <form ref={addTextRef} action={addTextFormAction} style={{ display: "none" }}>
                 <input type="hidden" name="familySlug" />
@@ -1409,102 +1450,145 @@ function AlbumEditor({
               {addTextState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addTextState.error}</div>}
               {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
 
-              {showTemplatePicker && (
-                <div style={{ marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, maxHeight: 340, overflowY: "auto" }}>
-                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
-                    Shablon {activeSide === "right" ? "o'ng" : "chap"} sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.
+              <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+                {canEdit && (
+                  <div style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "rgba(0,0,0,0.16)", borderRadius: 10, overflow: "hidden", paddingBottom: 4 }}>
+                    <RailButton icon={Sparkles} label="Shablon" active={activePanel === "template"} onClick={() => setActivePanel((p) => (p === "template" ? null : "template"))} />
+                    <RailButton icon={LayoutGrid} label="Layout" active={activePanel === "layout"} onClick={() => setActivePanel((p) => (p === "layout" ? null : "layout"))} />
+                    <RailButton icon={StickerIcon} label="Stiker" active={activePanel === "sticker"} onClick={() => setActivePanel((p) => (p === "sticker" ? null : "sticker"))} />
+                    <RailButton icon={Palette} label="Fon" active={activePanel === "bg"} onClick={() => setActivePanel((p) => (p === "bg" ? null : "bg"))} />
+                    <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "4px 10px" }} />
+                    <RailButton
+                      icon={Type}
+                      label="Matn"
+                      onClick={() => {
+                        const f = addTextRef.current; if (!f) return;
+                        f.elements.familySlug.value = familySlug;
+                        f.elements.albumId.value = album.id;
+                        f.elements.pageId.value = targetPage.id;
+                        setTimeout(() => f.requestSubmit(), 0);
+                      }}
+                    />
+                    <RailButton
+                      icon={ImagePlus}
+                      label="Rasm"
+                      onClick={() => {
+                        const f = addPhotoRef.current; if (!f) return;
+                        f.elements.familySlug.value = familySlug;
+                        f.elements.albumId.value = album.id;
+                        f.elements.pageId.value = targetPage.id;
+                        setTimeout(() => f.requestSubmit(), 0);
+                      }}
+                    />
                   </div>
-                  {TEMPLATE_CATEGORIES.map((cat) => (
-                    <div key={cat} style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{cat}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
-                        {TEMPLATE_LIST.filter((t) => t.category === cat).map((t) => (
-                          <form key={t.id} action={templateFormAction} onSubmit={() => setShowTemplatePicker(false)}>
-                            <input type="hidden" name="familySlug" value={familySlug} />
-                            <input type="hidden" name="albumId" value={album.id} />
-                            <input type="hidden" name="pageId" value={targetPage.id} />
-                            <input type="hidden" name="templateId" value={t.id} />
-                            <button type="submit" disabled={templatePending} style={{ width: "100%", cursor: templatePending ? "default" : "pointer", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 6, background: "#fff" }}>
-                              <TemplateThumbnail template={t} />
-                              <div style={{ fontSize: 10, color: TOKENS.ink60, textAlign: "center", marginTop: 6 }}>{t.name}</div>
-                            </button>
-                          </form>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {templateState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{templateState.error}</div>}
+                )}
 
-              {showStickerPicker && (
-                <div style={{ marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, maxHeight: 260, overflowY: "auto" }}>
-                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
-                  {STICKER_GROUPS.map((group) => (
-                    <div key={group.label} style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{group.label}</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(64px, 1fr))", gap: 8 }}>
-                        {group.items.map((s) => (
-                          <form key={s.id} action={stickerFormAction} onSubmit={() => setShowStickerPicker(false)}>
-                            <input type="hidden" name="familySlug" value={familySlug} />
-                            <input type="hidden" name="albumId" value={album.id} />
-                            <input type="hidden" name="pageId" value={targetPage.id} />
-                            <input type="hidden" name="stickerId" value={s.id} />
-                            <button type="submit" disabled={stickerPending} title={s.name} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "8px 4px", cursor: stickerPending ? "default" : "pointer" }}>
-                              <StickerPickerPreview stickerId={s.id} kind={s.kind} />
-                              <span style={{ fontSize: 9, color: TOKENS.ink60, textAlign: "center", lineHeight: 1.2 }}>{s.name}</span>
-                            </button>
-                          </form>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {stickerState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{stickerState.error}</div>}
-
-              {showBgPicker && (
-                <div style={{ display: "flex", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
-                  {BACKGROUND_LIST.map((b) => (
-                    <form key={b.id} action={bgFormAction} onSubmit={() => setShowBgPicker(false)}>
-                      <input type="hidden" name="familySlug" value={familySlug} />
-                      <input type="hidden" name="albumId" value={album.id} />
-                      <input type="hidden" name="pageId" value={targetPage.id} />
-                      <input type="hidden" name="backgroundId" value={b.id} />
-                      <button type="submit" title={b.name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "transparent", border: (targetPage.background_id || "paper") === b.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 6, cursor: "pointer" }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 6, background: `linear-gradient(180deg, ${b.from}, ${b.to})` }} />
-                        <span style={{ fontSize: 9.5, color: TOKENS.ink60 }}>{b.name}</span>
-                      </button>
-                    </form>
-                  ))}
-                  <div style={{ fontSize: 10.5, color: TOKENS.ink40, alignSelf: "center", maxWidth: 150 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaning foniga qo'llanadi.</div>
-                </div>
-              )}
-              {bgState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{bgState.error}</div>}
-
-              {showLayoutPicker && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 18, background: TOKENS.card, padding: 14, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}` }}>
-                  {LAYOUTS.map((l) => (
-                    <form key={l.id} action={layoutFormAction} onSubmit={() => setShowLayoutPicker(false)}>
-                      <input type="hidden" name="familySlug" value={familySlug} />
-                      <input type="hidden" name="albumId" value={album.id} />
-                      <input type="hidden" name="pageId" value={targetPage.id} />
-                      <input type="hidden" name="layoutId" value={l.id} />
-                      <button
-                        type="submit"
-                        style={{ width: "100%", cursor: "pointer", border: targetLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
-                      >
-                        <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
-                          {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
+                {canEdit && activePanel && (
+                  <div className="fm-flyout-panel" style={{ width: 250, flexShrink: 0, background: TOKENS.card, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, padding: 12, maxHeight: 560, overflowY: "auto" }}>
+                    {activePanel === "template" && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
+                          Shablon {activeSide === "right" ? "o'ng" : "chap"} sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.
                         </div>
-                        <div style={{ fontSize: 10, color: TOKENS.ink60, textAlign: "center" }}>{l.name}</div>
-                      </button>
-                    </form>
-                  ))}
-                </div>
-              )}
-              {layoutState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{layoutState.error}</div>}
+                        {TEMPLATE_CATEGORIES.map((cat) => (
+                          <div key={cat} style={{ marginBottom: 14 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{cat}</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                              {TEMPLATE_LIST.filter((t) => t.category === cat).map((t) => (
+                                <form key={t.id} action={templateFormAction} onSubmit={() => setActivePanel(null)}>
+                                  <input type="hidden" name="familySlug" value={familySlug} />
+                                  <input type="hidden" name="albumId" value={album.id} />
+                                  <input type="hidden" name="pageId" value={targetPage.id} />
+                                  <input type="hidden" name="templateId" value={t.id} />
+                                  <button type="submit" disabled={templatePending} style={{ width: "100%", cursor: templatePending ? "default" : "pointer", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 6, background: "#fff" }}>
+                                    <TemplateThumbnail template={t} />
+                                    <div style={{ fontSize: 9.5, color: TOKENS.ink60, textAlign: "center", marginTop: 6 }}>{t.name}</div>
+                                  </button>
+                                </form>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        {templateState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{templateState.error}</div>}
+                      </div>
+                    )}
 
+                    {activePanel === "layout" && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifa uchun joylashuv.</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                          {LAYOUTS.map((l) => (
+                            <form key={l.id} action={layoutFormAction} onSubmit={() => setActivePanel(null)}>
+                              <input type="hidden" name="familySlug" value={familySlug} />
+                              <input type="hidden" name="albumId" value={album.id} />
+                              <input type="hidden" name="pageId" value={targetPage.id} />
+                              <input type="hidden" name="layoutId" value={l.id} />
+                              <button
+                                type="submit"
+                                style={{ width: "100%", cursor: "pointer", border: targetLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
+                              >
+                                <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
+                                  {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
+                                </div>
+                                <div style={{ fontSize: 9.5, color: TOKENS.ink60, textAlign: "center" }}>{l.name}</div>
+                              </button>
+                            </form>
+                          ))}
+                        </div>
+                        {layoutState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginTop: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{layoutState.error}</div>}
+                      </div>
+                    )}
+
+                    {activePanel === "sticker" && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
+                        {STICKER_GROUPS.map((group) => (
+                          <div key={group.label} style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{group.label}</div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                              {group.items.map((s) => (
+                                <form key={s.id} action={stickerFormAction} onSubmit={() => setActivePanel(null)}>
+                                  <input type="hidden" name="familySlug" value={familySlug} />
+                                  <input type="hidden" name="albumId" value={album.id} />
+                                  <input type="hidden" name="pageId" value={targetPage.id} />
+                                  <input type="hidden" name="stickerId" value={s.id} />
+                                  <button type="submit" disabled={stickerPending} title={s.name} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "8px 4px", cursor: stickerPending ? "default" : "pointer" }}>
+                                    <StickerPickerPreview stickerId={s.id} kind={s.kind} />
+                                    <span style={{ fontSize: 9, color: TOKENS.ink60, textAlign: "center", lineHeight: 1.2 }}>{s.name}</span>
+                                  </button>
+                                </form>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        {stickerState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{stickerState.error}</div>}
+                      </div>
+                    )}
+
+                    {activePanel === "bg" && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaning foniga qo'llanadi.</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                          {BACKGROUND_LIST.map((b) => (
+                            <form key={b.id} action={bgFormAction} onSubmit={() => setActivePanel(null)}>
+                              <input type="hidden" name="familySlug" value={familySlug} />
+                              <input type="hidden" name="albumId" value={album.id} />
+                              <input type="hidden" name="pageId" value={targetPage.id} />
+                              <input type="hidden" name="backgroundId" value={b.id} />
+                              <button type="submit" title={b.name} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: "transparent", border: (targetPage.background_id || "paper") === b.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, cursor: "pointer" }}>
+                                <div style={{ width: 34, height: 34, borderRadius: 6, background: `linear-gradient(180deg, ${b.from}, ${b.to})` }} />
+                                <span style={{ fontSize: 9.5, color: TOKENS.ink60 }}>{b.name}</span>
+                              </button>
+                            </form>
+                          ))}
+                        </div>
+                        {bgState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginTop: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{bgState.error}</div>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ flex: 1, minWidth: 0 }}>
               {/* Two-page spread */}
               <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative" }}>
                 <div
@@ -1584,6 +1668,8 @@ function AlbumEditor({
                       )}
                     </div>
                   )}
+                </div>
+              </div>
                 </div>
               </div>
 

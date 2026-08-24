@@ -92,6 +92,17 @@ function GlobalStyle() {
       .fm-panel-enter { animation: fm-slide-in 0.28s ease; }
       @keyframes fm-fade-in { from { opacity: 0; } to { opacity: 1; } }
       @keyframes fm-slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+      .fm-resize-handle:hover { transform: scale(1.25); }
+      .fm-resize-handle:active { transform: scale(1.1); }
+      .fm-element-toolbar { animation: fm-toolbar-in 0.15s ease; }
+      @keyframes fm-toolbar-in { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
+      .fm-toolbar-btn { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: transparent; border: none; color: rgba(255,255,255,0.92); cursor: pointer; transition: background 0.12s ease; }
+      .fm-toolbar-btn:hover { background: rgba(255,255,255,0.16); }
+      .fm-toolbar-btn:disabled { opacity: 0.4; cursor: default; }
+      .fm-toolbar-btn.danger:hover { background: rgba(231,167,155,0.28); }
+      .fm-rail-btn:hover { background: rgba(255,255,255,0.08) !important; color: #F2EDE2 !important; }
+      .fm-flyout-panel { animation: fm-flyout-in 0.16s ease; }
+      @keyframes fm-flyout-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
       @media (prefers-reduced-motion: reduce) {
         .fm-polaroid, .fm-album-card, .fm-person, .fm-fade, .fm-panel-enter { transition: none !important; animation: none !important; }
       }
