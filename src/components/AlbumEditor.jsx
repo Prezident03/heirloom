@@ -1093,8 +1093,21 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const onPointerUpCanvas = () => {
     const ds = dragState.current;
     if (!ds) return;
-    dragState.current = null;
-    if (!ds.moved) return;
+    if (!ds.moved) {
+      dragState.current = null;
+      forceRender(v => v + 1);
+      return;
+    }
+    // Pointer ko'tarilgan zahoti dragState'ni tozalamaymiz — aks holda React
+    // eski (serverdan hali kelmagan) koordinatalarni bir lahza ko'rsatib,
+    // keyin saqlangan joyga "sakraydi" (flash/snap-back). Buning o'rniga oxirgi
+    // tortilgan qiymatlarni "committing" overlay sifatida saqlab qolamiz —
+    // pastdagi useEffect serverdan yangilangan `page` kelganda va u shu
+    // qiymatlarga mos kelganda overlay'ni tozalaydi, shu bilan hech qanday
+    // vizual sakrash bo'lmaydi.
+    ds.committing = true;
+    ds.committedAt = Date.now();
+    forceRender(v => v + 1);
     if (ds.mode === "move") {
       submitPosition(ds.id, ds.lastX, ds.lastY, ds.startW, ds.startH, undefined, undefined);
     } else if (ds.mode.startsWith("resize-")) {
@@ -1103,6 +1116,32 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
       submitPosition(ds.id, ds.startX, ds.startY, ds.startW, ds.startH, undefined, ds.lastR);
     }
   };
+
+  // Server (revalidatsiyalangan `page` prop) commit qilingan qiymatlarga
+  // yetib kelganda optimistik overlay'ni tozalaydi. Agar biror sababga ko'ra
+  // (masalan action xato bergan) hech qachon mos kelmasa, 4 soniyadan keyin
+  // baribir tozalaymiz — overlay abadiy "muzlab" qolmasligi uchun.
+  useEffect(() => {
+    const ds = dragState.current;
+    if (!ds || !ds.committing) return;
+    const el = elements.find((e) => e.id === ds.id);
+    if (!el) {
+      dragState.current = null;
+      return;
+    }
+    const i = elements.indexOf(el);
+    const box = getElBox(el, i);
+    const matches =
+      Math.abs(box.x - ds.lastX) < 0.5 &&
+      Math.abs(box.y - ds.lastY) < 0.5 &&
+      Math.abs(box.w - ds.lastW) < 0.5 &&
+      Math.abs(box.h - ds.lastH) < 0.5 &&
+      Math.abs(box.r - ds.lastR) < 0.5;
+    if (matches || Date.now() - ds.committedAt > 4000) {
+      dragState.current = null;
+      forceRender((v) => v + 1);
+    }
+  });
 
   const elements = page.elements || [];
 
@@ -1177,16 +1216,25 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
         {elements.map((el, i) => {
           const live = dragState.current?.id === el.id;
           const box = getElBox(el, i);
+          // Tortish/o'lchamni o'zgartirish/burish paytida (yoki serverga
+          // saqlanishi kutilayotgan "committing" oraliqda) barcha 5 ta
+          // qiymatni (x, y, w, h, r) dragState'dan olamiz — avval faqat x/y
+          // jonli edi, shu sabab resize/rotate paytida element ekranda
+          // darhol o'zgarmasdi, faqat qo'yib yuborgandan keyin sakrab
+          // to'g'ri holatga kelardi.
           const x = live ? dragState.current.lastX : box.x;
           const y = live ? dragState.current.lastY : box.y;
+          const w = live ? dragState.current.lastW : box.w;
+          const h = live ? dragState.current.lastH : box.h;
+          const r = live ? dragState.current.lastR : box.r;
           const isSelected = selectedId === el.id;
           const isHovered = hoveredId === el.id && !isSelected && !dragState.current;
           const style = {
             left: `${x}%`,
             top: `${y}%`,
-            width: `${box.w}%`,
-            height: `${box.h}%`,
-            transform: `rotate(${box.r}deg)`,
+            width: `${w}%`,
+            height: `${h}%`,
+            transform: `rotate(${r}deg)`,
             zIndex: isSelected ? 500 : box.z,
             position: "absolute",
             border: isSelected ? `2px solid ${TOKENS.gold}` : isHovered ? `2px solid ${TOKENS.gold}88` : "1px solid transparent",
