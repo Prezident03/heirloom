@@ -120,6 +120,7 @@ export type TemplateSlot = {
   w: number;
   h: number;
   frame?: FrameStyle;
+  rotation?: number;
   textStyle?: { size?: number; color?: string; align?: TextAlign; font?: TextFont };
 };
 
@@ -164,7 +165,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Oddiy",
     backgroundId: "paper",
     slots: [
-      { type: "photo", x: 8, y: 8, w: 84, h: 58, frame: "polaroid" },
+      { type: "photo", x: 8, y: 8, w: 84, h: 58, frame: "polaroid", rotation: -2 },
       { type: "text", x: 8, y: 70, w: 84, h: 22, textStyle: { font: "serif", align: "center" } },
     ],
     stickers: [{ stickerId: "tape-gold", x: 38, y: 3, w: 24, h: 7, rotation: -3 }],
@@ -174,8 +175,8 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Oddiy",
     backgroundId: "sage",
     slots: [
-      { type: "photo", x: 6, y: 8, w: 41, h: 68 },
-      { type: "photo", x: 53, y: 8, w: 41, h: 68 },
+      { type: "photo", x: 4, y: 10, w: 44, h: 64, rotation: -4 },
+      { type: "photo", x: 46, y: 13, w: 44, h: 64, rotation: 3 },
       { type: "text", x: 6, y: 80, w: 88, h: 14, textStyle: { align: "center" } },
     ],
     stickers: [
@@ -188,9 +189,9 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Oddiy",
     backgroundId: "slate",
     slots: [
-      { type: "photo", x: 5, y: 10, w: 28, h: 55 },
-      { type: "photo", x: 36, y: 10, w: 28, h: 55 },
-      { type: "photo", x: 67, y: 10, w: 28, h: 55 },
+      { type: "photo", x: 4, y: 13, w: 30, h: 53, rotation: -6 },
+      { type: "photo", x: 33, y: 8, w: 30, h: 55, rotation: 3 },
+      { type: "photo", x: 62, y: 14, w: 30, h: 53, rotation: -4 },
       { type: "text", x: 5, y: 70, w: 90, h: 22, textStyle: { align: "center" } },
     ],
     stickers: [
@@ -213,9 +214,9 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Sayohat",
     backgroundId: "blush",
     slots: [
-      { type: "photo", x: 6, y: 6, w: 60, h: 50, frame: "soft" },
-      { type: "photo", x: 68, y: 6, w: 26, h: 24 },
-      { type: "photo", x: 68, y: 32, w: 26, h: 24 },
+      { type: "photo", x: 6, y: 6, w: 58, h: 50, frame: "soft", rotation: -1 },
+      { type: "photo", x: 65, y: 4, w: 29, h: 26, rotation: 4 },
+      { type: "photo", x: 65, y: 30, w: 29, h: 26, rotation: -3 },
       { type: "text", x: 6, y: 60, w: 88, h: 32, textStyle: { font: "sans" } },
     ],
     stickers: [
@@ -229,9 +230,9 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Sayohat",
     backgroundId: "sage",
     slots: [
-      { type: "photo", x: 6, y: 6, w: 60, h: 50 },
-      { type: "photo", x: 68, y: 6, w: 26, h: 24 },
-      { type: "photo", x: 68, y: 32, w: 26, h: 24 },
+      { type: "photo", x: 6, y: 6, w: 58, h: 50, rotation: -2 },
+      { type: "photo", x: 65, y: 4, w: 29, h: 26, rotation: 3 },
+      { type: "photo", x: 65, y: 30, w: 29, h: 26, rotation: -4 },
       { type: "text", x: 6, y: 60, w: 88, h: 32, textStyle: { font: "sans" } },
     ],
     stickers: [
@@ -245,7 +246,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Bayram",
     backgroundId: "paper",
     slots: [
-      { type: "photo", x: 10, y: 10, w: 80, h: 55, frame: "polaroid" },
+      { type: "photo", x: 10, y: 10, w: 80, h: 55, frame: "polaroid", rotation: -2 },
       { type: "text", x: 10, y: 68, w: 80, h: 24, textStyle: { font: "handwriting", align: "center", size: 26, color: DANGER } },
     ],
     stickers: [
@@ -260,7 +261,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Bayram",
     backgroundId: "paper",
     slots: [
-      { type: "photo", x: 10, y: 8, w: 80, h: 52, frame: "polaroid" },
+      { type: "photo", x: 10, y: 8, w: 80, h: 52, frame: "polaroid", rotation: 2 },
       { type: "text", x: 10, y: 64, w: 80, h: 26, textStyle: { font: "serif", align: "center", size: 24 } },
     ],
     stickers: [
@@ -275,9 +276,9 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Bayram",
     backgroundId: "midnight",
     slots: [
-      { type: "photo", x: 5, y: 8, w: 28, h: 50 },
-      { type: "photo", x: 36, y: 8, w: 28, h: 50 },
-      { type: "photo", x: 67, y: 8, w: 28, h: 50 },
+      { type: "photo", x: 4, y: 10, w: 30, h: 48, rotation: -5 },
+      { type: "photo", x: 33, y: 6, w: 30, h: 50, rotation: 3 },
+      { type: "photo", x: 62, y: 12, w: 30, h: 48, rotation: -3 },
       { type: "text", x: 5, y: 64, w: 90, h: 26, textStyle: { align: "center", color: PARCHMENT } },
     ],
     stickers: [
@@ -292,7 +293,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Fasllar",
     backgroundId: "sage",
     slots: [
-      { type: "photo", x: 8, y: 10, w: 84, h: 56 },
+      { type: "photo", x: 8, y: 10, w: 84, h: 56, rotation: -2 },
       { type: "text", x: 8, y: 70, w: 84, h: 20, textStyle: { align: "center", font: "serif", color: TEAL } },
     ],
     stickers: [
@@ -306,7 +307,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Fasllar",
     backgroundId: "midnight",
     slots: [
-      { type: "photo", x: 8, y: 10, w: 84, h: 54, frame: "soft" },
+      { type: "photo", x: 8, y: 10, w: 84, h: 54, frame: "soft", rotation: 2 },
       { type: "text", x: 8, y: 68, w: 84, h: 24, textStyle: { align: "center", color: PARCHMENT, font: "serif" } },
     ],
     stickers: [
@@ -321,7 +322,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Romantik",
     backgroundId: "midnight",
     slots: [
-      { type: "photo", x: 15, y: 8, w: 70, h: 58, frame: "polaroid" },
+      { type: "photo", x: 15, y: 8, w: 70, h: 58, frame: "polaroid", rotation: -3 },
       { type: "text", x: 15, y: 70, w: 70, h: 20, textStyle: { align: "center", font: "handwriting", color: GOLD_SOFT } },
     ],
     stickers: [
@@ -335,8 +336,8 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     category: "Oila",
     backgroundId: "blush",
     slots: [
-      { type: "photo", x: 6, y: 8, w: 41, h: 66 },
-      { type: "photo", x: 53, y: 8, w: 41, h: 66 },
+      { type: "photo", x: 4, y: 9, w: 44, h: 62, rotation: -4 },
+      { type: "photo", x: 46, y: 12, w: 44, h: 62, rotation: 3 },
       { type: "text", x: 6, y: 78, w: 88, h: 16, textStyle: { align: "center", font: "handwriting" } },
     ],
     stickers: [
@@ -365,7 +366,7 @@ export async function applyPageTemplate(pageId: string, templateId: TemplateId):
     if (slot.type === "photo") {
       await sql`
         INSERT INTO page_elements (id, page_id, slot_index, type, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style)
-        VALUES (${id}, ${pageId}, ${slotIndex}, 'photo', ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, 0, ${slotIndex}, ${slot.frame || "polaroid"})
+        VALUES (${id}, ${pageId}, ${slotIndex}, 'photo', ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, ${slot.rotation ?? 0}, ${slotIndex}, ${slot.frame || "polaroid"})
       `;
     } else {
       const ts = slot.textStyle;
