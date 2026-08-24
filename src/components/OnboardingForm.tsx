@@ -29,7 +29,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        minHeight: "100%",
+        minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -52,6 +52,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           font-family: "Fraunces", serif;
           color: ${TOKENS.ink};
           outline: none;
+          transition: border-color 0.2s;
         }
         .fm-input:focus { border-color: ${TOKENS.gold}; }
         .fm-submit {
@@ -67,8 +68,10 @@ function Shell({ children }: { children: React.ReactNode }) {
           text-align: center;
           text-decoration: none;
           display: block;
+          transition: opacity 0.2s;
         }
-        .fm-submit:disabled { opacity: 0.6; cursor: default; }
+        .fm-submit:hover { opacity: 0.9; }
+        .fm-submit:disabled { opacity: 0.6; cursor: not-allowed; }
         .fm-skip {
           width: 100%;
           background: none;
@@ -78,6 +81,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           font-weight: 600;
           padding: 12px;
           cursor: pointer;
+          transition: color 0.2s;
         }
         .fm-skip:hover { color: ${TOKENS.ink}; }
         .fm-step-enter { animation: fm-step-in 0.3s ease; }
@@ -117,7 +121,7 @@ function StepFamilyName({
 
   useEffect(() => {
     if (state?.ok && state.familySlug) {
-      onDone(state.familySlug, state.mePersonId || "", name);
+      onDone(state.familySlug, state.mePersonId || "", state.familyName || name);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
@@ -131,7 +135,7 @@ function StepFamilyName({
         Oilangiz hikoyasini quring
       </h1>
       <p style={{ fontSize: 13.5, color: TOKENS.ink60, margin: "0 0 26px", lineHeight: 1.6 }}>
-        Bu — sizning shaxsiy, xususiy oilaviy arxivingiz. Tayyor namuna yo&apos;q — hammasini o&apos;zingiz quramiz. Boshlash uchun oilangizga bir nom bering.
+        Bu — sizning shaxsiy, xususiy oilaviy arxivingiz. Tayyor namuna yo&apos;q — hammasini o&apos;zingiz qurasiz. Boshlash uchun oilangizga bir nom bering.
       </p>
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <input
@@ -176,7 +180,6 @@ function StepAddMember({
 
   return (
     <div className="fm-step-enter">
-      <ProgressDots step={1} />
       <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 8px", textAlign: "center" }}>
         Birinchi oila a&apos;zosini qo&apos;shing
       </h2>
@@ -228,7 +231,6 @@ function StepCreateAlbum({ familySlug, onNext }: { familySlug: string; onNext: (
 
   return (
     <div className="fm-step-enter">
-      <ProgressDots step={2} />
       <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 8px", textAlign: "center" }}>
         Birinchi albomingizni yarating
       </h2>
@@ -262,7 +264,6 @@ function StepCreateAlbum({ familySlug, onNext }: { familySlug: string; onNext: (
 function StepDone({ familyName, familySlug }: { familyName: string; familySlug: string }) {
   return (
     <div className="fm-step-enter" style={{ textAlign: "center" }}>
-      <ProgressDots step={3} />
       <div style={{ fontSize: 36, marginBottom: 12 }}>❤️</div>
       <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 23, fontWeight: 500, margin: "0 0 10px" }}>
         {familyName || "Oilangiz"} hikoyasi boshlandi
@@ -285,19 +286,17 @@ export default function OnboardingForm({ userName }: { userName: string }) {
 
   return (
     <Shell>
+      <ProgressDots step={step} />
       {step === 0 && (
-        <>
-          <ProgressDots step={0} />
-          <StepFamilyName
-            userName={userName}
-            onDone={(slug, personId, name) => {
-              setFamilySlug(slug);
-              setMePersonId(personId);
-              setFamilyName(name);
-              setStep(1);
-            }}
-          />
-        </>
+        <StepFamilyName
+          userName={userName}
+          onDone={(slug, personId, name) => {
+            setFamilySlug(slug);
+            setMePersonId(personId);
+            setFamilyName(name);
+            setStep(1);
+          }}
+        />
       )}
       {step === 1 && <StepAddMember familySlug={familySlug} mePersonId={mePersonId} onNext={() => setStep(2)} />}
       {step === 2 && <StepCreateAlbum familySlug={familySlug} onNext={() => setStep(3)} />}
