@@ -145,25 +145,49 @@ export async function registerAction(_prevState: ActionState, formData: FormData
   }
 }
 
-export async function loginAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+export async function createFamilyAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  let targetSlug = "";
+
   try {
-    const email = String(formData.get("email") || "").trim();
-    const password = String(formData.get("password") || "");
-    const inviteCode = String(formData.get("inviteCode") || "").trim();
+    const session = await getSession();
+    if (!session) redirect("/login");
 
-    const user = await findUserByEmail(email);
-    if (!user) {
-      return { error: "Email yoki parol noto'g'ri." };
-    }
-    const valid = await verifyPassword(password, user.password_hash);
-    if (!valid) {
-      return { error: "Email yoki parol noto'g'ri." };
+    const familyName = String(formData.get("familyName") || "").trim();
+    if (!familyName) {
+      return { error: "Oila nomini kiriting." };
     }
 
-    const sessionResult = await createSession(user.id);
-    if (!sessionResult.ok) {
-      return { error: "Session yaratishda xato. Qaytadan urinib ko'ring." };
-    }
+    // 1. Oilani yaratamiz
+    const family = await createFamily(familyName, session.id);
+    targetSlug = family.slug;
+
+    // 2. Ism bilan bog'liq xatolik kelib chiqmasligi uchun xavfsiz ajratamiz
+    const rawName = session.name || "Foydalanuvchi";
+    const [firstName, ...rest] = rawName.trim().split(" ");
+
+    // 3. Foydalanuvchining o'zini Shaxs (Person) sifatida qo'shamiz
+    await createPerson(
+      family.id,
+      { 
+        firstName: firstName || rawName, 
+        lastName: rest.join(" ") || undefined 
+      },
+      session.id,
+      session.id
+    );
+
+    // 4. Keshni yangilaymiz
+    revalidatePath(`/${family.slug}/dashboard`);
+
+  } catch (e) {
+    if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+    console.error("[createFamilyAction] error:", e);
+    return { error: "Oila yaratishda xato. Qaytadan urinib ko'ring." };
+  }
+
+  // 5. Muaffaqiyatli yaratilgach dashboard'ga yo'naltiramiz
+  redirect(`/${targetSlug}/dashboard`);
+}
 
     if (inviteCode) {
       try {
