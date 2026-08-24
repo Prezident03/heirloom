@@ -145,6 +145,49 @@ export async function registerAction(_prevState: ActionState, formData: FormData
   }
 }
 
+export async function loginAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const email = String(formData.get("email") || "").trim();
+    const password = String(formData.get("password") || "");
+    const inviteCode = String(formData.get("inviteCode") || "").trim();
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return { error: "Email yoki parol noto'g'ri." };
+    }
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) {
+      return { error: "Email yoki parol noto'g'ri." };
+    }
+
+    const sessionResult = await createSession(user.id);
+    if (!sessionResult.ok) {
+      return { error: "Session yaratishda xato. Qaytadan urinib ko'ring." };
+    }
+
+    if (inviteCode) {
+      try {
+        const result = await acceptInvite(inviteCode, user.id);
+        if ("family" in result) redirect(`/${result.family.slug}/dashboard`);
+        return { error: result.error };
+      } catch (e) {
+        if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+        return { error: "Taklifni qabul qilishda xato." };
+      }
+    }
+
+    const families = await getFamiliesForUser(user.id);
+    if (families.length === 0) {
+      redirect("/onboarding");
+    }
+    redirect(`/${families[0].slug}/dashboard`);
+  } catch (e) {
+    if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+    console.error("[loginAction] error:", e);
+    return { error: "Xatolik yuz berdi. Qaytadan urinib ko'ring." };
+  }
+}
+
 export async function createFamilyAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   let targetSlug = "";
 
@@ -157,15 +200,12 @@ export async function createFamilyAction(_prevState: ActionState, formData: Form
       return { error: "Oila nomini kiriting." };
     }
 
-    // 1. Oilani yaratamiz
     const family = await createFamily(familyName, session.id);
     targetSlug = family.slug;
 
-    // 2. Ism bilan bog'liq xatolik kelib chiqmasligi uchun xavfsiz ajratamiz
     const rawName = session.name || "Foydalanuvchi";
     const [firstName, ...rest] = rawName.trim().split(" ");
 
-    // 3. Foydalanuvchining o'zini Shaxs (Person) sifatida qo'shamiz
     await createPerson(
       family.id,
       { 
@@ -175,6 +215,19 @@ export async function createFamilyAction(_prevState: ActionState, formData: Form
       session.id,
       session.id
     );
+
+    revalidatePath(`/${family.slug}/dashboard`);
+  } catch (e) {
+    if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
+    console.error("[createFamilyAction] error:", e);
+    return { error: "Oila yaratishda xato. Qaytadan urinib ko'ring." };
+  }
+
+  redirect(`/${targetSlug}/dashboard`);
+}
+
+export async function logoutAction() {
+... (shu yerdan pastki logoutAction va qolgan barcha kodlar o'z holicha qolaversin)
 
     // 4. Keshni yangilaymiz
     revalidatePath(`/${family.slug}/dashboard`);
