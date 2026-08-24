@@ -121,7 +121,7 @@ function StepFamilyName({
 
   useEffect(() => {
     if (state?.ok && state.familySlug) {
-      onDone(state.familySlug, state.mePersonId || "", state.familyName || name);
+      onDone(state.familySlug, state.mePersonId || "", name);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
