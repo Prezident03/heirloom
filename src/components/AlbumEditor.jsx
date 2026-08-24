@@ -33,6 +33,10 @@ const BACKGROUNDS = {
 };
 const BACKGROUND_LIST = Object.entries(BACKGROUNDS).map(([id, v]) => ({ id, ...v }));
 
+// Yengil qog'oz texturasi — SVG fractal-noise, data-URI sifatida (tashqi rasm shart emas).
+const PAPER_TEXTURE_URL =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
 // Stikerlar — src/lib/albums.ts dagi STICKERS bilan mos id'lar/kind'lar.
 const STICKER_ICONS = {
   leaf: Leaf, flower: Flower2, heart: Heart, star: Star, sun: Sun,
@@ -1130,7 +1134,8 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
         onClick={() => setSelectedId(null)}
         style={{
           flex: 1, minWidth: 0, aspectRatio: "4/3", borderRadius: 3, position: "relative",
-          background: `radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).from}, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).to})`,
+          background: `${PAPER_TEXTURE_URL}, radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).from}, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).to})`,
+          backgroundSize: "220px 220px, cover, cover",
           boxShadow: `inset 0 0 40px ${TOKENS.paperShadow}, 0 2px 6px rgba(30,38,33,0.08)`,
           opacity: saving ? 0.7 : 1, transition: "opacity 0.2s", touchAction: "none", overflow: "hidden",
         }}
