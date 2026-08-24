@@ -1446,3 +1446,11 @@ export async function deletePlaceAction(_prevState: ActionState, formData: FormD
     return { error: "Joy o'chirishda xato: " + String(e) };
   }
 }
+// AlbumEditor.jsx ulanishi uchun kerakli action nomlari
+export const addPhotoToPageAction = addPhotoElementAction;
+export const addStickerToPageAction = addStickerElementAction;
+
+export async function addTextToPageAction(...args: any[]) { return { success: false }; }
+export async function createPageAction(...args: any[]) { return { success: false }; }
+export async function deletePageAction(...args: any[]) { return { success: false }; }
+export async function updatePageBackgroundAction(...args: any[]) { return { success: false }; }
