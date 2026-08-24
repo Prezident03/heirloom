@@ -1053,30 +1053,63 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
       ds.moved = true;
     } else if (ds.mode.startsWith("resize-")) {
       const corner = ds.mode.slice("resize-".length); // nw | ne | sw | se
-      const x2 = ds.startX + ds.startW;
-      const y2 = ds.startY + ds.startH;
-      let newX = ds.startX, newY = ds.startY, newW = ds.startW, newH = ds.startH;
-      if (corner === "se") {
-        newW = Math.max(MIN_SIZE, px - ds.startX);
-        newH = Math.max(MIN_SIZE, py - ds.startY);
-      } else if (corner === "nw") {
-        newX = Math.min(px, x2 - MIN_SIZE);
-        newY = Math.min(py, y2 - MIN_SIZE);
-        newW = x2 - newX;
-        newH = y2 - newY;
-      } else if (corner === "ne") {
-        newY = Math.min(py, y2 - MIN_SIZE);
-        newW = Math.max(MIN_SIZE, px - ds.startX);
-        newH = y2 - newY;
-      } else if (corner === "sw") {
-        newX = Math.min(px, x2 - MIN_SIZE);
-        newW = x2 - newX;
-        newH = Math.max(MIN_SIZE, py - ds.startY);
+      // MUHIM: element `rotate(r deg)` bilan burilgan bo'lishi mumkin, va
+      // canvas kvadrat emas (4:3) — shu sabab hisoblashni % emas, PIKSEL
+      // fazosida va sichqoncha nuqtasini elementning "local" (burilmagan)
+      // koordinata tizimiga teskari aylantirib olib borishimiz kerak.
+      // Aks holda burilgan elementni tortib kattalashtirish sichqoncha
+      // harakatiga mos kelmay "sirg'anib" ketaveradi.
+      const rad = (ds.startR || 0) * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+
+      const sxPx = ds.startX / 100 * rect.width;
+      const syPx = ds.startY / 100 * rect.height;
+      const swPx = ds.startW / 100 * rect.width;
+      const shPx = ds.startH / 100 * rect.height;
+      const cxPx = sxPx + swPx / 2;
+      const cyPx = syPx + shPx / 2;
+
+      const mxPx = e.clientX - rect.left;
+      const myPx = e.clientY - rect.top;
+      const dx = mxPx - cxPx, dy = myPx - cyPx;
+      // Markazga nisbatan sichqoncha nuqtasini -rad ga aylantirib, elementning
+      // o'z (burilmagan) koordinata tizimidagi holatini topamiz.
+      const lx = dx * cos + dy * sin;
+      const ly = -dx * sin + dy * cos;
+
+      const halfW = swPx / 2, halfH = shPx / 2;
+      // Tortilayotgan burchakning diagonal qarama-qarshisi (anchor) — local
+      // fazoda o'zgarmas turadi (rezayz paytida shu nuqta joyida qoladi).
+      const anchor = {
+        nw: { x: halfW, y: halfH },
+        ne: { x: -halfW, y: halfH },
+        sw: { x: halfW, y: -halfH },
+        se: { x: -halfW, y: -halfH },
+      }[corner];
+
+      const minWPx = MIN_SIZE / 100 * rect.width;
+      const minHPx = MIN_SIZE / 100 * rect.height;
+      let dragX = lx, dragY = ly;
+      if (Math.abs(dragX - anchor.x) < minWPx) {
+        dragX = anchor.x + (Math.sign(dragX - anchor.x) || 1) * minWPx;
       }
-      newX = Math.max(0, newX);
-      newY = Math.max(0, newY);
-      newW = Math.min(newW, 100 - newX);
-      newH = Math.min(newH, 100 - newY);
+      if (Math.abs(dragY - anchor.y) < minHPx) {
+        dragY = anchor.y + (Math.sign(dragY - anchor.y) || 1) * minHPx;
+      }
+
+      const newWPx = Math.abs(dragX - anchor.x);
+      const newHPx = Math.abs(dragY - anchor.y);
+      const localCx = (anchor.x + dragX) / 2;
+      const localCy = (anchor.y + dragY) / 2;
+      // Yangi (local) markazni orqaga — canvas piksel fazosiga — aylantiramiz.
+      const newCxPx = cxPx + (localCx * cos - localCy * sin);
+      const newCyPx = cyPx + (localCx * sin + localCy * cos);
+
+      const newX = (newCxPx - newWPx / 2) / rect.width * 100;
+      const newY = (newCyPx - newHPx / 2) / rect.height * 100;
+      const newW = newWPx / rect.width * 100;
+      const newH = newHPx / rect.height * 100;
+
       ds.lastX = newX; ds.lastY = newY; ds.lastW = newW; ds.lastH = newH;
       ds.moved = true;
     } else if (ds.mode === "rotate") {
@@ -1310,13 +1343,13 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
                       className="fm-resize-handle"
                       style={{
                         position: "absolute",
-                        width: 16, height: 16, borderRadius: "50%",
+                        width: 20, height: 20, borderRadius: "50%",
                         background: "#fff", border: `2.5px solid ${TOKENS.gold}`,
                         boxShadow: "0 2px 5px rgba(30,26,15,0.35)",
-                        top: corner[0] === "n" ? -8 : "auto",
-                        bottom: corner[0] === "s" ? -8 : "auto",
-                        left: corner[1] === "w" ? -8 : "auto",
-                        right: corner[1] === "e" ? -8 : "auto",
+                        top: corner[0] === "n" ? -10 : "auto",
+                        bottom: corner[0] === "s" ? -10 : "auto",
+                        left: corner[1] === "w" ? -10 : "auto",
+                        right: corner[1] === "e" ? -10 : "auto",
                         cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize",
                         touchAction: "none",
                         zIndex: 60,
