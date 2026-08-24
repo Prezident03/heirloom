@@ -849,6 +849,66 @@ function StickerStylePanel({ element, familySlug, updateElementStickerColorActio
   );
 }
 
+function FramePreviewSwatch({ frameId }) {
+  if (frameId === "polaroid") {
+    return (
+      <div style={{ width: 30, height: 30, background: "#fff", borderRadius: 2, padding: "3px 3px 6px", boxShadow: "0 2px 5px rgba(30,26,15,0.22)", boxSizing: "border-box" }}>
+        <div style={{ width: "100%", height: "100%", background: TOKENS.parchmentDeep, borderRadius: 1 }} />
+      </div>
+    );
+  }
+  if (frameId === "soft") {
+    return <div style={{ width: 30, height: 30, borderRadius: 6, background: TOKENS.parchmentDeep, boxShadow: "0 4px 10px rgba(30,26,15,0.25)" }} />;
+  }
+  return <div style={{ width: 30, height: 30, borderRadius: 2, background: TOKENS.parchmentDeep, border: `1px dashed ${TOKENS.ink40}` }} />;
+}
+
+function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameAction, onClose }) {
+  const [, formAction] = useActionState(updateElementFrameAction, undefined);
+  const formRef = useRef(null);
+
+  const submit = (frameId) => {
+    const f = formRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.albumId.value = albumId;
+    f.elements.elementId.value = element.id;
+    f.elements.frameStyle.value = frameId;
+    f.requestSubmit();
+  };
+
+  const current = element.frame_style || "polaroid";
+
+  return (
+    <StylePanelShell title="Rasm ramkasi" onClose={onClose}>
+      <form ref={formRef} action={formAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="albumId" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="frameStyle" />
+      </form>
+      <div style={PANEL_LABEL_STYLE}>Ramka</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {FRAME_LIST.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => submit(f.id)}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 7, cursor: "pointer",
+              border: `1px solid ${current === f.id ? TOKENS.gold : TOKENS.parchmentDeep}`,
+              background: current === f.id ? TOKENS.parchmentDeep : "transparent",
+            }}
+          >
+            <FramePreviewSwatch frameId={f.id} />
+            <span style={{ fontSize: 12, color: TOKENS.ink, fontWeight: current === f.id ? 600 : 400 }}>{f.name}</span>
+          </button>
+        ))}
+      </div>
+    </StylePanelShell>
+  );
+}
+
 function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete, busy }) {
   return (
     <div
@@ -1410,6 +1470,15 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
           element={selected}
           familySlug={familySlug}
           updateElementStickerColorAction={updateElementStickerColorAction}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
+      {canEdit && selected && selected.type === "photo" && (
+        <PhotoStylePanel
+          element={selected}
+          familySlug={familySlug}
+          albumId={albumId}
+          updateElementFrameAction={updateElementFrameAction}
           onClose={() => setSelectedId(null)}
         />
       )}
