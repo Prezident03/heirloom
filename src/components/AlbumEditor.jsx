@@ -450,8 +450,6 @@ function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAc
   return (
     <div
       style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s" }}
-      draggable={canEdit}
-      onDragStart={onDragStart}
     >
       <div
         style={{
@@ -648,8 +646,6 @@ function StickerSlot({ element, canEdit, style, onDragStart, isDragging }) {
   return (
     <div
       style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s", cursor: canEdit ? "grab" : "default" }}
-      draggable={canEdit}
-      onDragStart={onDragStart}
     >
       <div style={{ width: "100%", height: "100%", transform: `rotate(${rot}deg)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
         {inner}
