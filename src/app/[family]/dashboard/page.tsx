@@ -158,7 +158,7 @@ export default async function FamilyDashboardPage({
       userName={session!.name.split(" ")[0]}
       userEmail={session!.email}
       familyName={family!.name}
-      familySince={new Date(family!.created_at).getFullYear()}
+      familySince={new Date(family!.created_at).getFullYear() as any}
       familySlug={family!.slug}
       people={people as any}
       relationships={relationships as any}
@@ -171,7 +171,7 @@ export default async function FamilyDashboardPage({
       stories={stories as any}
       places={places as any}
       stats={stats as any}
-      activeAlbumId={activeAlbumId ?? null}
+      activeAlbumId={activeAlbumId ?? (null as any)}
       canEdit={membership!.role !== "viewer"}
       isOwner={membership!.role === "owner"}
       canInvite={membership!.role === "owner" || membership!.role === "editor"}
