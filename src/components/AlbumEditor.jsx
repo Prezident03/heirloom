@@ -18,10 +18,6 @@ import {
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
 
-// ============================================================
-// KONFIGURATSIYALAR
-// ============================================================
-
 const LAYOUTS = [
   { id: "l1", name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
   { id: "l2", name: "Ikkita yonma-yon", slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 70 }, { type: "photo", x: 53, y: 8, w: 41, h: 70 }, { type: "text", x: 6, y: 82, w: 88, h: 12 }] },
@@ -187,10 +183,6 @@ const ALIGN_LIST = [
   { id: "right", name: "O'ng", icon: AlignRight },
 ];
 
-// ============================================================
-// YORDAMCHI FUNKSIYALAR
-// ============================================================
-
 function seeded(id, salt = 0) {
   const str = String(id || "x") + "-" + salt;
   let h = 0;
@@ -226,10 +218,6 @@ function RailButton({ icon: Icon, label, active, onClick }) {
     </button>
   );
 }
-
-// ============================================================
-// YANGI: Properties Panel
-// ============================================================
 
 function PropertiesPanel({ element, onUpdate, onClose }) {
   if (!element) return null;
@@ -311,10 +299,6 @@ function PropertiesPanel({ element, onUpdate, onClose }) {
     </div>
   );
 }
-
-// ============================================================
-// TransformableElement
-// ============================================================
 
 function TransformableElement({
   element,
@@ -569,10 +553,6 @@ function TransformableElement({
   );
 }
 
-// ============================================================
-// ElementFloatingToolbar
-// ============================================================
-
 function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete }) {
   return (
     <div
@@ -610,10 +590,6 @@ function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete 
     </div>
   );
 }
-
-// ============================================================
-// PageCanvas
-// ============================================================
 
 function PageCanvas({
   page,
@@ -909,10 +885,6 @@ function PageCanvas({
   );
 }
 
-// ============================================================
-// PhotoSlotContent
-// ============================================================
-
 function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, deleteElementAction, canEdit }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -1070,10 +1042,6 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
   );
 }
 
-// ============================================================
-// TextSlotContent
-// ============================================================
-
 function TextSlotContent({ element, familySlug, albumId, updateElementTextAction, canEdit }) {
   const [state, formAction] = useActionState(updateElementTextAction, undefined);
   const [value, setValue] = useState(element.text_content || "");
@@ -1120,10 +1088,6 @@ function TextSlotContent({ element, familySlug, albumId, updateElementTextAction
     </div>
   );
 }
-
-// ============================================================
-// StickerSlotContent
-// ============================================================
 
 function StickerSlotContent({ element, canEdit }) {
   const stickerId = element.sticker_id || "leaf";
@@ -1188,10 +1152,6 @@ function StickerSlotContent({ element, canEdit }) {
     </div>
   );
 }
-
-// ============================================================
-// EmptyAlbums, CreateAlbumModal, UploadPhotosModal, AlbumGrid
-// ============================================================
 
 function EmptyAlbums({ onCreate }) {
   return (
@@ -1352,10 +1312,6 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
     </div>
   );
 }
-
-// ============================================================
-// Style Panels (TextStylePanel, StickerStylePanel, PhotoStylePanel)
-// ============================================================
 
 const PANEL_LABEL_STYLE = { fontSize: 10.5, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
 
@@ -1575,10 +1531,6 @@ function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameActio
   );
 }
 
-// ============================================================
-// StickerPickerPreview, TemplateThumbnail
-// ============================================================
-
 function StickerPickerPreview({ stickerId, kind }) {
   const color = STICKER_DEFAULT_COLORS[stickerId] || TOKENS.teal;
   if (kind === "tape") {
@@ -1640,10 +1592,6 @@ function TemplateThumbnail({ template }) {
     </div>
   );
 }
-
-// ============================================================
-// Export
-// ============================================================
 
 function waitFrames(n = 2) {
   return new Promise((resolve) => {
@@ -1728,9 +1676,7 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
     let pdf = null;
     for (let i = 0; i < pages.length; i += 1) {
       setPageIndex(i);
-      // eslint-disable-next-line no-await-in-loop
       await waitFrames(3);
-      // eslint-disable-next-line no-await-in-loop
       const canvas = await captureNodeToCanvas(pageNodeRef.current);
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       const orientation = canvas.width >= canvas.height ? "landscape" : "portrait";
@@ -1792,10 +1738,6 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
   );
 }
 
-// ============================================================
-// AlbumEditor
-// ============================================================
-
 function AlbumEditor({
   album,
   onBack,
@@ -1824,6 +1766,8 @@ function AlbumEditor({
   addTextElementAction,
   addPhotoElementAction,
   deleteAlbumAction,
+  reorderAlbumPagesAction,
+  duplicateAlbumPageAction,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [activeSide, setActiveSide] = useState("left");
@@ -1834,8 +1778,8 @@ function AlbumEditor({
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
+  const [draggedPageIndex, setDraggedPageIndex] = useState(null);
 
-  // ===== Autosave =====
   const [saveStatus, setSaveStatus] = useState("saved");
   const saveTimeoutRef = useRef(null);
 
@@ -1843,19 +1787,16 @@ function AlbumEditor({
     setSaveStatus("saving");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      // Serverga saqlash
       setSaveStatus("saved");
     }, 3000);
   }, []);
 
-  // ===== Zoom =====
   const ZOOM_MIN = 0.5, ZOOM_MAX = 2, ZOOM_STEP = 0.1;
   const [zoom, setZoom] = useState(1);
   const zoomIn = () => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100));
   const zoomOut = () => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100));
   const zoomFit = () => setZoom(1);
 
-  // ===== Undo/Redo =====
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const [, forceHistoryRender] = useState(0);
@@ -2002,7 +1943,6 @@ function AlbumEditor({
 
   return (
     <div style={{ padding: "22px clamp(16px, 4vw, 48px) 60px", maxWidth: 1680, margin: "0 auto" }}>
-      {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.ink60, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           <ChevronLeft size={16} /> Albomlarga qaytish
@@ -2052,7 +1992,6 @@ function AlbumEditor({
 
           return (
             <div style={{ background: `linear-gradient(180deg, ${TOKENS.bookCoverSoft}, ${TOKENS.bookCover})`, borderRadius: 18, padding: "18px 18px 20px" }}>
-              {/* Book toolbar */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "0 6px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   <button onClick={() => { setPageIndex(Math.max(0, pageIndex - 2)); setActiveSide("left"); }} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex === 0 ? 0.3 : 0.85 }}><ChevronLeft size={20} /></button>
@@ -2331,17 +2270,48 @@ function AlbumEditor({
                 {pages.map((p, i) => {
                   const firstPhoto = p.elements.find((e) => e.type === "photo" && e.photo_url);
                   const inSpread = i === pageIndex || i === pageIndex + 1;
+                  const isDragging = draggedPageIndex === i;
+                  
                   return (
                     <div
                       key={p.id}
-                      onClick={() => { setPageIndex(i % 2 === 0 ? i : i - 1); setActiveSide(i % 2 === 0 ? "left" : "right"); }}
-                      title={`Sahifa ${i + 1}`}
-                      style={{
-                        width: 72, aspectRatio: "4/3", flexShrink: 0, borderRadius: 4, background: "#fff",
-                        border: inSpread ? `2px solid ${TOKENS.gold}` : "1px solid rgba(242,237,226,0.18)",
-                        cursor: "pointer", position: "relative", overflow: "hidden",
-                        boxShadow: inSpread ? `0 0 0 2px rgba(184,134,59,0.25)` : "none",
+                      draggable={effectiveCanEdit}
+                      onDragStart={() => effectiveCanEdit && setDraggedPageIndex(i)}
+                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (!effectiveCanEdit || draggedPageIndex === null || draggedPageIndex === i) return;
+                        const newPages = [...pages];
+                        const [dragged] = newPages.splice(draggedPageIndex, 1);
+                        newPages.splice(i, 0, dragged);
+                        const pageIds = newPages.map(p => p.id).join(",");
+                        const fd = new FormData();
+                        fd.append("familySlug", familySlug);
+                        fd.append("albumId", album.id);
+                        fd.append("pageIds", pageIds);
+                        reorderAlbumPagesAction(undefined, fd);
+                        setDraggedPageIndex(null);
                       }}
+                      style={{
+                        width: 72,
+                        aspectRatio: "4/3",
+                        flexShrink: 0,
+                        borderRadius: 4,
+                        background: "#fff",
+                        border: inSpread ? `2px solid ${TOKENS.gold}` : "1px solid rgba(242,237,226,0.18)",
+                        cursor: "pointer",
+                        position: "relative",
+                        overflow: "hidden",
+                        boxShadow: inSpread ? `0 0 0 2px rgba(184,134,59,0.25)` : "none",
+                        opacity: isDragging ? 0.4 : 1,
+                        transform: isDragging ? "scale(0.9)" : "scale(1)",
+                        transition: "opacity 0.2s, transform 0.2s",
+                      }}
+                      onClick={() => {
+                        setPageIndex(i % 2 === 0 ? i : i - 1);
+                        setActiveSide(i % 2 === 0 ? "left" : "right");
+                      }}
+                      title={`Sahifa ${i + 1}`}
                     >
                       {firstPhoto ? (
                         <div style={{ position: "absolute", inset: 3, backgroundImage: `url(${firstPhoto.photo_url})`, backgroundSize: "cover", borderRadius: 2 }} />
@@ -2349,6 +2319,37 @@ function AlbumEditor({
                         <div style={{ position: "absolute", inset: 0, background: TOKENS.parchment }} />
                       )}
                       <div style={{ position: "absolute", bottom: 2, right: 3, fontSize: 8.5, color: "#fff", background: "rgba(0,0,0,0.5)", borderRadius: 3, padding: "0 3px" }}>{i + 1}</div>
+                      
+                      {effectiveCanEdit && (
+                        <div style={{ position: "absolute", top: 2, right: 2, display: "flex", gap: 2 }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const fd = new FormData();
+                              fd.append("familySlug", familySlug);
+                              fd.append("albumId", album.id);
+                              fd.append("pageId", p.id);
+                              duplicateAlbumPageAction(undefined, fd);
+                            }}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: "50%",
+                              background: "rgba(0,0,0,0.6)",
+                              border: "none",
+                              color: "#fff",
+                              cursor: "pointer",
+                              fontSize: 10,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                            title="Nusxalash"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -2368,12 +2369,10 @@ function AlbumEditor({
         })()
       )}
 
-      {/* Properties Panel */}
       {selectedElement && (
         <PropertiesPanel
           element={selectedElement}
           onUpdate={(updated) => {
-            // Elementni yangilash logikasi
             console.log("Element yangilandi:", updated);
           }}
           onClose={() => setSelectedElementId(null)}
@@ -2382,10 +2381,6 @@ function AlbumEditor({
     </div>
   );
 }
-
-// ============================================================
-// AlbumsView
-// ============================================================
 
 export function AlbumsView({
   albums,
@@ -2418,6 +2413,8 @@ export function AlbumsView({
   addStickerElementAction,
   addTextElementAction,
   addPhotoElementAction,
+  reorderAlbumPagesAction,
+  duplicateAlbumPageAction,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
   const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
@@ -2453,6 +2450,8 @@ export function AlbumsView({
           addTextElementAction={addTextElementAction}
           addPhotoElementAction={addPhotoElementAction}
           deleteAlbumAction={deleteAlbumAction}
+          reorderAlbumPagesAction={reorderAlbumPagesAction}
+          duplicateAlbumPageAction={duplicateAlbumPageAction}
         />
       ) : (
         <AlbumGrid albums={albums} onOpen={(a) => setOpenAlbumId(a.id)} canEdit={canEdit} createAlbumAction={createAlbumAction} familySlug={familySlug} />

@@ -63,6 +63,8 @@ import {
   addStickerElementAction,
   addTextElementAction,
   addPhotoElementAction,
+  reorderAlbumPagesAction,
+  duplicateAlbumPageAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -237,6 +239,8 @@ export default async function FamilyDashboardPage({
       updateStoryAction={updateStoryAction}
       updateStoryPhotoAction={updateStoryPhotoAction}
       deleteStoryAction={deleteStoryAction}
+      reorderAlbumPagesAction={reorderAlbumPagesAction}
+      duplicateAlbumPageAction={duplicateAlbumPageAction}
     />
   );
 }

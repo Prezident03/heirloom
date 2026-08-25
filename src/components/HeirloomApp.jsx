@@ -109,7 +109,6 @@ function GlobalStyle() {
         .fm-polaroid, .fm-album-card, .fm-person, .fm-fade, .fm-panel-enter { transition: none !important; animation: none !important; }
       }
 
-      /* ---- Mobile: app-like bottom nav + top bar (360px'dan boshlab) ---- */
       .fm-mobile-topbar {
         display: none;
         align-items: center; justify-content: space-between;
@@ -182,8 +181,6 @@ function Sidebar({ current, onNavigate, onLogout, familySlug }) {
   );
 }
 
-/* ---------------- Mobile top bar + bottom nav ---------------- */
-
 function MobileTopBar({ familyName, familySlug, onLogout }) {
   return (
     <div className="fm-mobile-topbar">
@@ -227,159 +224,23 @@ function MobileBottomNav({ current, onNavigate }) {
   );
 }
 
-
-
-/* ---------------- Root app ---------------- */
-
-/**
- * @param {{
- *   userName?: string,
- *   userEmail?: string,
- *   familyName?: string,
- *   familySince?: number | null,
- *   familySlug?: string,
- *   people?: any[],
- *   relationships?: any[],
- *   albums?: any[],
- *   members?: any[],
- *   invites?: any[],
- *   timelineEvents?: any[],
- *   memories?: any[],
- *   activeAlbumId?: string | null,
- *   canEdit?: boolean,
- *   isOwner?: boolean,
- *   canInvite?: boolean,
- *   mePersonId?: string | null,
- *   initialView?: string,
- *   onLogout?: any,
- *   updateFamilyNameAction?: any,
- *   updateMemberRoleAction?: any,
- *   removeMemberAction?: any,
- *   createInviteAction?: any,
- *   revokeInviteAction?: any,
- *   addPersonAction?: any,
- *   linkPersonAction?: any,
- *   editPersonAction?: any,
- *   deletePersonAction?: any,
- *   uploadPersonPhotoAction?: any,
- *   createAlbumAction?: any,
- *   deleteAlbumAction?: any,
- *   addAlbumPageAction?: any,
- *   deleteAlbumPageAction?: any,
- *   changePageLayoutAction?: any,
- *   applyPageTemplateAction?: any,
- *   updatePageMetaAction?: any,
- *   updateElementTextAction?: any,
- *   saveElementPhotoUrlAction?: any,
- *   bulkUploadPhotosAction?: any,
- *   createTimelineEventAction?: any,
- *   updateTimelineEventAction?: any,
- *   deleteTimelineEventAction?: any,
- *   uploadTimelineEventPhotoAction?: any,
- *   createMemoryAction?: any,
- *   updateMemoryAction?: any,
- *   updateMemoryPhotoAction?: any,
- *   deleteMemoryAction?: any,
- * }} props
- */
-/**
- * @typedef {Object} HeirloomAppProps
- * @property {string} [userName]
- * @property {string} [userEmail]
- * @property {string} [familyName]
- * @property {number | null} [familySince]
- * @property {string} [familySlug]
- * @property {any[]} [people]
- * @property {any[]} [relationships]
- * @property {any[]} [albums]
- * @property {any[]} [members]
- * @property {any[]} [invites]
- * @property {any[]} [timelineEvents]
- * @property {any[]} [memories]
- * @property {any[]} [onThisDayMemories]
- * @property {any[]} [stories]
- * @property {any[]} [places]
- * @property {{peopleCount:number,albumsCount:number,pagesCount:number,photosCount:number,memoriesCount:number,storiesCount:number,eventsCount:number,placesCount:number,generationsCount:number}} [stats]
- * @property {string | null} [activeAlbumId]
- * @property {boolean} [canEdit]
- * @property {boolean} [isOwner]
- * @property {boolean} [canInvite]
- * @property {string | null} [mePersonId]
- * @property {string} [initialView]
- * @property {Function} [onLogout]
- * @property {Function} [updateFamilyNameAction]
- * @property {Function} [updateMemberRoleAction]
- * @property {Function} [removeMemberAction]
- * @property {Function} [createInviteAction]
- * @property {Function} [revokeInviteAction]
- * @property {Function} [addPersonAction]
- * @property {Function} [linkPersonAction]
- * @property {Function} [editPersonAction]
- * @property {Function} [deletePersonAction]
- * @property {Function} [uploadPersonPhotoAction]
- * @property {Function} [createAlbumAction]
- * @property {Function} [deleteAlbumAction]
- * @property {Function} [addAlbumPageAction]
- * @property {Function} [deleteAlbumPageAction]
- * @property {Function} [changePageLayoutAction]
- * @property {Function} [applyPageTemplateAction]
- * @property {Function} [updatePageMetaAction]
- * @property {Function} [updateElementTextAction]
- * @property {Function} [saveElementPhotoUrlAction]
- * @property {Function} [deleteElementAction]
- * @property {Function} [reorderElementsAction]
- * @property {Function} [updateElementPositionAction]
- * @property {Function} [updateElementCaptionAction]
- * @property {Function} [updateElementPlaceAction]
- * @property {Function} [changeZIndexAction]
- * @property {Function} [duplicateElementAction]
- * @property {Function} [moveElementUpAction]
- * @property {Function} [moveElementDownAction]
- * @property {Function} [changePageBackgroundAction]
- * @property {Function} [updateElementFrameAction]
- * @property {Function} [updateElementTextStyleAction]
- * @property {Function} [updateElementStickerColorAction]
- * @property {Function} [addStickerElementAction]
- * @property {Function} [addTextElementAction]
- * @property {Function} [addPhotoElementAction]
- * @property {Function} [bulkUploadPhotosAction]
- * @property {Function} [createPlaceAction]
- * @property {Function} [updatePlaceAction]
- * @property {Function} [deletePlaceAction]
- * @property {Function} [createTimelineEventAction]
- * @property {Function} [updateTimelineEventAction]
- * @property {Function} [deleteTimelineEventAction]
- * @property {Function} [uploadTimelineEventPhotoAction]
- * @property {Function} [createMemoryAction]
- * @property {Function} [updateMemoryAction]
- * @property {Function} [updateMemoryPhotoAction]
- * @property {Function} [deleteMemoryAction]
- * @property {Function} [createStoryAction]
- * @property {Function} [updateStoryAction]
- * @property {Function} [updateStoryPhotoAction]
- * @property {Function} [deleteStoryAction]
- */
-
-/**
- * @param {HeirloomAppProps} props
- */
 export default function HeirloomApp({
   userName = "Foydalanuvchi",
   userEmail = "",
   familyName = "Mening oilam",
   familySince = null,
   familySlug = "",
-  people = /** @type {any[]} */ ([]),
-  relationships = /** @type {any[]} */ ([]),
-  albums = /** @type {any[]} */ ([]),
-  members = /** @type {any[]} */ ([]),
-  invites = /** @type {any[]} */ ([]),
-  timelineEvents = /** @type {any[]} */ ([]),
-  memories = /** @type {any[]} */ ([]),
-  onThisDayMemories = /** @type {any[]} */ ([]),
-  stories = /** @type {any[]} */ ([]),
-  places = /** @type {any[]} */ ([]),
-  stats = /** @type {{peopleCount:number,albumsCount:number,pagesCount:number,photosCount:number,memoriesCount:number,storiesCount:number,eventsCount:number,placesCount:number,generationsCount:number}} */ ({peopleCount:0,albumsCount:0,pagesCount:0,photosCount:0,memoriesCount:0,storiesCount:0,eventsCount:0,placesCount:0,generationsCount:0}),
+  people = [],
+  relationships = [],
+  albums = [],
+  members = [],
+  invites = [],
+  timelineEvents = [],
+  memories = [],
+  onThisDayMemories = [],
+  stories = [],
+  places = [],
+  stats = {peopleCount:0,albumsCount:0,pagesCount:0,photosCount:0,memoriesCount:0,storiesCount:0,eventsCount:0,placesCount:0,generationsCount:0},
   activeAlbumId = null,
   canEdit = true,
   isOwner = false,
@@ -438,6 +299,8 @@ export default function HeirloomApp({
   updateStoryAction,
   updateStoryPhotoAction,
   deleteStoryAction,
+  reorderAlbumPagesAction,
+  duplicateAlbumPageAction,
 }) {
   const [view, setView] = useState(
     initialView === "tree" ? VIEWS.TREE
@@ -451,9 +314,7 @@ export default function HeirloomApp({
       : VIEWS.DASHBOARD
   );
   const [openAlbumId, setOpenAlbumId] = useState(null);
-  // Dashboard'dagi "+ Yangi" menyusi qaysi view'da bo'lishidan qat'i nazar
-  // ishlashi uchun, create modallarini root darajasida boshqaramiz.
-  const [globalModal, setGlobalModal] = useState(/** @type {null | "addPerson" | "createAlbum" | "uploadPhotos" | "addEvent" | "addMemory" | "addStory" | "addPlace"} */ (null));
+  const [globalModal, setGlobalModal] = useState(null);
 
   const navigate = (target) => {
     if (target === VIEWS.ALBUMS) setOpenAlbumId(null);
@@ -542,6 +403,8 @@ export default function HeirloomApp({
                 addStickerElementAction={addStickerElementAction}
                 addTextElementAction={addTextElementAction}
                 addPhotoElementAction={addPhotoElementAction}
+                reorderAlbumPagesAction={reorderAlbumPagesAction}
+                duplicateAlbumPageAction={duplicateAlbumPageAction}
               />
             )}
             {view === VIEWS.PEOPLE && (

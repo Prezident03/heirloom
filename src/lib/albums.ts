@@ -48,7 +48,6 @@ export type PageElement = {
   text_font: "handwriting" | "serif" | "sans" | null;
 };
 
-// Fon (page background) tanlovlari — id + gradient ranglar.
 export const BACKGROUNDS = {
   paper: { name: "Qog'oz", from: "#F4EDDD", to: "#ECE2C8" },
   sage: { name: "Sage", from: "#E7EDE3", to: "#D3DECB" },
@@ -58,7 +57,6 @@ export const BACKGROUNDS = {
 } as const;
 export type BackgroundId = keyof typeof BACKGROUNDS;
 
-// Ramka (photo frame) uslublari.
 export const FRAMES = {
   polaroid: { name: "Polaroid" },
   soft: { name: "Yumshoq soya" },
@@ -66,9 +64,6 @@ export const FRAMES = {
 } as const;
 export type FrameStyle = keyof typeof FRAMES;
 
-// Stikerlar — dekorativ elementlar, PageEditor'da chizib qo'yiladi.
-// kind: "icon" — lucide ikonka (rang bilan bo'yaladi); "tape" — washi-lenta
-// (rangli chiziq); "shape" — oddiy geometrik shakl (rangli to'ldiriladi).
 export const STICKERS = {
   leaf: { name: "Barg", kind: "icon", defaultColor: "#2F4C48" },
   flower: { name: "Gul", kind: "icon", defaultColor: "#2F4C48" },
@@ -98,21 +93,14 @@ export const STICKERS = {
 } as const;
 export type StickerId = keyof typeof STICKERS;
 
-// Sahifa shablonlari — bular faqat vizual joylashuv, database'da saqlanmaydi.
-// Har bir slot: { type, x, y, w, h } (foiz asosida joylashuv).
 export const LAYOUTS = {
   l1: { name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
   l2: { name: "Ikkita yonma-yon", slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 70 }, { type: "photo", x: 53, y: 8, w: 41, h: 70 }, { type: "text", x: 6, y: 82, w: 88, h: 12 }] },
   l3: { name: "Katta + ikkita kichik", slots: [{ type: "photo", x: 6, y: 6, w: 60, h: 50 }, { type: "photo", x: 68, y: 6, w: 26, h: 24 }, { type: "photo", x: 68, y: 32, w: 26, h: 24 }, { type: "text", x: 6, y: 60, w: 88, h: 32 }] },
   l4: { name: "Uchtasi qatorda", slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55 }, { type: "photo", x: 36, y: 10, w: 28, h: 55 }, { type: "photo", x: 67, y: 10, w: 28, h: 55 }, { type: "text", x: 5, y: 70, w: 90, h: 22 }] },
 } as const;
-
 export type LayoutId = keyof typeof LAYOUTS;
 
-// Tayyor shablonlar — bir bosishda butun sahifani (fon + rasm/matn slotlari +
-// dekorativ stikerlar) tayyor kompozitsiya bilan to'ldiradi. Faqat JSON
-// konfiguratsiya sifatida saqlanadi, database'da alohida jadval yo'q —
-// qo'llanganda oddiy page_elements qatorlariga aylantiriladi.
 export type TemplateSlot = {
   type: "photo" | "text";
   x: number;
@@ -141,13 +129,6 @@ export type Template = {
   slots: TemplateSlot[];
   stickers: TemplateSticker[];
 };
-
-const GOLD_SOFT = "#D9BC85";
-const PARCHMENT = "#F2EDE2";
-const GOLD = "#B8863B";
-const TEAL = "#2F4C48";
-const TEAL_SOFT = "#5C7A73";
-const DANGER = "#A8453A";
 
 const TEMPLATE_IDS = [
   "classic-cream", "ikki-esdalik", "uch-lavha", "minimal-oq",
@@ -180,8 +161,8 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { type: "text", x: 6, y: 80, w: 88, h: 14, textStyle: { align: "center" } },
     ],
     stickers: [
-      { stickerId: "heart", x: 46, y: 4, w: 10, h: 10, color: DANGER, rotation: 8 },
-      { stickerId: "leaf", x: 2, y: 2, w: 9, h: 9, color: TEAL, rotation: -10 },
+      { stickerId: "heart", x: 46, y: 4, w: 10, h: 10, color: "#A8453A", rotation: 8 },
+      { stickerId: "leaf", x: 2, y: 2, w: 9, h: 9, color: "#2F4C48", rotation: -10 },
     ],
   },
   "uch-lavha": {
@@ -195,8 +176,8 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { type: "text", x: 5, y: 70, w: 90, h: 22, textStyle: { align: "center" } },
     ],
     stickers: [
-      { stickerId: "cloud", x: 2, y: 2, w: 10, h: 10, color: TEAL_SOFT, rotation: 8 },
-      { stickerId: "umbrella", x: 88, y: 2, w: 10, h: 10, color: TEAL_SOFT, rotation: -8 },
+      { stickerId: "cloud", x: 2, y: 2, w: 10, h: 10, color: "#5C7A73", rotation: 8 },
+      { stickerId: "umbrella", x: 88, y: 2, w: 10, h: 10, color: "#5C7A73", rotation: -8 },
     ],
   },
   "minimal-oq": {
@@ -207,7 +188,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { type: "photo", x: 12, y: 10, w: 76, h: 62, frame: "none" },
       { type: "text", x: 12, y: 76, w: 76, h: 16, textStyle: { align: "center", font: "sans", size: 16 } },
     ],
-    stickers: [{ stickerId: "square-shape", x: 4, y: 4, w: 7, h: 7, color: GOLD_SOFT, rotation: 8 }],
+    stickers: [{ stickerId: "square-shape", x: 4, y: 4, w: 7, h: 7, color: "#D9BC85", rotation: 8 }],
   },
   sayohat: {
     name: "Sayohat kundaligi",
@@ -221,7 +202,7 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     ],
     stickers: [
       { stickerId: "camera", x: 4, y: 58, w: 10, h: 10, color: "#1E2621", rotation: -6 },
-      { stickerId: "sun", x: 84, y: 4, w: 10, h: 10, color: GOLD },
+      { stickerId: "sun", x: 84, y: 4, w: 10, h: 10, color: "#B8863B" },
       { stickerId: "tape-blush", x: 60, y: 2, w: 22, h: 7, rotation: 4 },
     ],
   },
@@ -236,9 +217,9 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { type: "text", x: 6, y: 60, w: 88, h: 32, textStyle: { font: "sans" } },
     ],
     stickers: [
-      { stickerId: "leaf", x: 2, y: 2, w: 10, h: 10, color: TEAL, rotation: -20 },
-      { stickerId: "feather", x: 90, y: 2, w: 8, h: 8, color: TEAL_SOFT, rotation: 15 },
-      { stickerId: "cloud", x: 2, y: 90, w: 9, h: 9, color: TEAL_SOFT, rotation: 8 },
+      { stickerId: "leaf", x: 2, y: 2, w: 10, h: 10, color: "#2F4C48", rotation: -20 },
+      { stickerId: "feather", x: 90, y: 2, w: 8, h: 8, color: "#5C7A73", rotation: 15 },
+      { stickerId: "cloud", x: 2, y: 90, w: 9, h: 9, color: "#5C7A73", rotation: 8 },
     ],
   },
   "tugilgan-kun": {
@@ -247,13 +228,13 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     backgroundId: "paper",
     slots: [
       { type: "photo", x: 10, y: 10, w: 80, h: 55, frame: "polaroid", rotation: -2 },
-      { type: "text", x: 10, y: 68, w: 80, h: 24, textStyle: { font: "handwriting", align: "center", size: 26, color: DANGER } },
+      { type: "text", x: 10, y: 68, w: 80, h: 24, textStyle: { font: "handwriting", align: "center", size: 26, color: "#A8453A" } },
     ],
     stickers: [
-      { stickerId: "cake", x: 4, y: 4, w: 12, h: 12, color: DANGER, rotation: -6 },
-      { stickerId: "party", x: 84, y: 4, w: 12, h: 12, color: GOLD, rotation: 8 },
-      { stickerId: "gift", x: 4, y: 84, w: 10, h: 10, color: TEAL, rotation: 6 },
-      { stickerId: "sparkles", x: 86, y: 84, w: 10, h: 10, color: GOLD, rotation: -8 },
+      { stickerId: "cake", x: 4, y: 4, w: 12, h: 12, color: "#A8453A", rotation: -6 },
+      { stickerId: "party", x: 84, y: 4, w: 12, h: 12, color: "#B8863B", rotation: 8 },
+      { stickerId: "gift", x: 4, y: 84, w: 10, h: 10, color: "#2F4C48", rotation: 6 },
+      { stickerId: "sparkles", x: 86, y: 84, w: 10, h: 10, color: "#B8863B", rotation: -8 },
     ],
   },
   yubiley: {
@@ -265,8 +246,8 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { type: "text", x: 10, y: 64, w: 80, h: 26, textStyle: { font: "serif", align: "center", size: 24 } },
     ],
     stickers: [
-      { stickerId: "crown", x: 4, y: 4, w: 10, h: 10, color: GOLD, rotation: -6 },
-      { stickerId: "star", x: 88, y: 4, w: 9, h: 9, color: GOLD, rotation: 8 },
+      { stickerId: "crown", x: 4, y: 4, w: 10, h: 10, color: "#B8863B", rotation: -6 },
+      { stickerId: "star", x: 88, y: 4, w: 9, h: 9, color: "#B8863B", rotation: 8 },
       { stickerId: "tape-gold", x: 38, y: 2, w: 24, h: 6, rotation: 3 },
       { stickerId: "tape-gold", x: 38, y: 60, w: 24, h: 6, rotation: -3 },
     ],
@@ -279,13 +260,13 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { type: "photo", x: 2, y: 12, w: 33, h: 48, rotation: -7 },
       { type: "photo", x: 29, y: 4, w: 33, h: 52, rotation: 4 },
       { type: "photo", x: 57, y: 14, w: 33, h: 48, rotation: -6 },
-      { type: "text", x: 5, y: 64, w: 90, h: 26, textStyle: { align: "center", color: PARCHMENT } },
+      { type: "text", x: 5, y: 64, w: 90, h: 26, textStyle: { align: "center", color: "#F2EDE2" } },
     ],
     stickers: [
-      { stickerId: "party", x: 2, y: 2, w: 9, h: 9, color: GOLD_SOFT, rotation: 10 },
-      { stickerId: "music", x: 90, y: 2, w: 8, h: 8, color: GOLD_SOFT, rotation: -8 },
-      { stickerId: "sparkles", x: 2, y: 92, w: 8, h: 8, color: GOLD_SOFT, rotation: 8 },
-      { stickerId: "sparkles", x: 90, y: 92, w: 8, h: 8, color: GOLD_SOFT, rotation: -10 },
+      { stickerId: "party", x: 2, y: 2, w: 9, h: 9, color: "#D9BC85", rotation: 10 },
+      { stickerId: "music", x: 90, y: 2, w: 8, h: 8, color: "#D9BC85", rotation: -8 },
+      { stickerId: "sparkles", x: 2, y: 92, w: 8, h: 8, color: "#D9BC85", rotation: 8 },
+      { stickerId: "sparkles", x: 90, y: 92, w: 8, h: 8, color: "#D9BC85", rotation: -10 },
     ],
   },
   bahor: {
@@ -294,12 +275,12 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     backgroundId: "sage",
     slots: [
       { type: "photo", x: 8, y: 10, w: 84, h: 56, rotation: -2 },
-      { type: "text", x: 8, y: 70, w: 84, h: 20, textStyle: { align: "center", font: "serif", color: TEAL } },
+      { type: "text", x: 8, y: 70, w: 84, h: 20, textStyle: { align: "center", font: "serif", color: "#2F4C48" } },
     ],
     stickers: [
-      { stickerId: "flower", x: 4, y: 4, w: 10, h: 10, color: DANGER, rotation: -8 },
-      { stickerId: "leaf", x: 88, y: 4, w: 9, h: 9, color: TEAL, rotation: 15 },
-      { stickerId: "sun", x: 4, y: 88, w: 9, h: 9, color: GOLD, rotation: 10 },
+      { stickerId: "flower", x: 4, y: 4, w: 10, h: 10, color: "#A8453A", rotation: -8 },
+      { stickerId: "leaf", x: 88, y: 4, w: 9, h: 9, color: "#2F4C48", rotation: 15 },
+      { stickerId: "sun", x: 4, y: 88, w: 9, h: 9, color: "#B8863B", rotation: 10 },
     ],
   },
   "qish-ertagi": {
@@ -308,13 +289,13 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     backgroundId: "midnight",
     slots: [
       { type: "photo", x: 8, y: 10, w: 84, h: 54, frame: "soft", rotation: 2 },
-      { type: "text", x: 8, y: 68, w: 84, h: 24, textStyle: { align: "center", color: PARCHMENT, font: "serif" } },
+      { type: "text", x: 8, y: 68, w: 84, h: 24, textStyle: { align: "center", color: "#F2EDE2", font: "serif" } },
     ],
     stickers: [
-      { stickerId: "snowflake", x: 4, y: 4, w: 9, h: 9, color: GOLD_SOFT, rotation: 10 },
-      { stickerId: "moon", x: 86, y: 4, w: 9, h: 9, color: GOLD_SOFT, rotation: -8 },
-      { stickerId: "star", x: 4, y: 86, w: 8, h: 8, color: GOLD_SOFT, rotation: 12 },
-      { stickerId: "sparkles", x: 88, y: 86, w: 8, h: 8, color: GOLD_SOFT, rotation: -10 },
+      { stickerId: "snowflake", x: 4, y: 4, w: 9, h: 9, color: "#D9BC85", rotation: 10 },
+      { stickerId: "moon", x: 86, y: 4, w: 9, h: 9, color: "#D9BC85", rotation: -8 },
+      { stickerId: "star", x: 4, y: 86, w: 8, h: 8, color: "#D9BC85", rotation: 12 },
+      { stickerId: "sparkles", x: 88, y: 86, w: 8, h: 8, color: "#D9BC85", rotation: -10 },
     ],
   },
   "romantik-kech": {
@@ -323,12 +304,12 @@ export const TEMPLATES: Record<TemplateId, Template> = {
     backgroundId: "midnight",
     slots: [
       { type: "photo", x: 15, y: 8, w: 70, h: 58, frame: "polaroid", rotation: -3 },
-      { type: "text", x: 15, y: 70, w: 70, h: 20, textStyle: { align: "center", font: "handwriting", color: GOLD_SOFT } },
+      { type: "text", x: 15, y: 70, w: 70, h: 20, textStyle: { align: "center", font: "handwriting", color: "#D9BC85" } },
     ],
     stickers: [
-      { stickerId: "heart", x: 4, y: 4, w: 9, h: 9, color: DANGER, rotation: -8 },
-      { stickerId: "moon", x: 88, y: 4, w: 9, h: 9, color: GOLD_SOFT, rotation: 6 },
-      { stickerId: "sparkles", x: 4, y: 88, w: 8, h: 8, color: GOLD_SOFT, rotation: 10 },
+      { stickerId: "heart", x: 4, y: 4, w: 9, h: 9, color: "#A8453A", rotation: -8 },
+      { stickerId: "moon", x: 88, y: 4, w: 9, h: 9, color: "#D9BC85", rotation: 6 },
+      { stickerId: "sparkles", x: 4, y: 88, w: 8, h: 8, color: "#D9BC85", rotation: 10 },
     ],
   },
   "bolalik-lahzalari": {
@@ -341,15 +322,13 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { type: "text", x: 6, y: 78, w: 88, h: 16, textStyle: { align: "center", font: "handwriting" } },
     ],
     stickers: [
-      { stickerId: "smile", x: 46, y: 3, w: 9, h: 9, color: GOLD, rotation: -6 },
-      { stickerId: "crown", x: 2, y: 2, w: 9, h: 9, color: GOLD, rotation: -8 },
-      { stickerId: "star", x: 90, y: 2, w: 8, h: 8, color: GOLD, rotation: 8 },
+      { stickerId: "smile", x: 46, y: 3, w: 9, h: 9, color: "#B8863B", rotation: -6 },
+      { stickerId: "crown", x: 2, y: 2, w: 9, h: 9, color: "#B8863B", rotation: -8 },
+      { stickerId: "star", x: 90, y: 2, w: 8, h: 8, color: "#B8863B", rotation: 8 },
     ],
   },
 };
 
-/** Sahifaga tayyor shablonni qo'llaydi — eski elementlar o'chib, shablon
- * bo'yicha fon, rasm/matn slotlari va dekorativ stikerlar yaratiladi. */
 export async function applyPageTemplate(pageId: string, templateId: TemplateId): Promise<void> {
   await ensureSchema();
   const tpl = TEMPLATES[templateId];
@@ -404,7 +383,6 @@ export async function createAlbum(
     VALUES (${id}, ${familyId}, ${title}, ${input.description?.trim() || null}, ${input.dateLabel?.trim() || null}, ${input.location?.trim() || null}, ${createdBy}, ${createdAt})
   `;
 
-  // Har bir yangi albom bo'sh birinchi sahifa bilan boshlanadi.
   await createAlbumPage(id, "l1");
 
   return {
@@ -449,7 +427,6 @@ export async function getElementsForPages(pageIds: string[]): Promise<PageElemen
   return (await sql`SELECT * FROM page_elements WHERE page_id = ANY(${pageIds})`) as PageElement[];
 }
 
-/** Berilgan layout bo'yicha bo'sh slotlar bilan yangi sahifa yaratadi. */
 export async function createAlbumPage(albumId: string, layoutId: LayoutId): Promise<AlbumPage> {
   await ensureSchema();
   const existing = (await sql`SELECT COUNT(*)::int AS c FROM album_pages WHERE album_id = ${albumId}`) as { c: number }[];
@@ -474,7 +451,6 @@ async function createEmptyElements(pageId: string, layoutId: LayoutId): Promise<
   }
 }
 
-/** Sahifaning layoutini o'zgartiradi — eski elementlar o'chib, yangi bo'sh slotlar yaratiladi. */
 export async function changePageLayout(pageId: string, layoutId: LayoutId): Promise<void> {
   await ensureSchema();
   await sql`UPDATE album_pages SET layout_id = ${layoutId} WHERE id = ${pageId}`;
@@ -593,7 +569,6 @@ export async function updateElementFrame(elementId: string, frameStyle: FrameSty
 export type TextAlign = "left" | "center" | "right";
 export type TextFont = "handwriting" | "serif" | "sans";
 
-/** Matn elementining shrift o'lchami, rangi, tekislash va shrift oilasini yangilaydi. */
 export async function updateElementTextStyle(
   elementId: string,
   style: { size: number; color: string; align: TextAlign; font: TextFont }
@@ -606,7 +581,6 @@ export async function updateElementTextStyle(
   `;
 }
 
-/** Sahifaga yangi dekorativ stiker elementi qo'shadi (erkin joylashuv bilan). */
 export async function addStickerElement(
   pageId: string,
   stickerId: StickerId,
@@ -626,13 +600,11 @@ export async function addStickerElement(
   return id;
 }
 
-/** Stiker elementining rangini yangilaydi. */
 export async function updateElementStickerColor(elementId: string, color: string): Promise<void> {
   await ensureSchema();
   await sql`UPDATE page_elements SET sticker_color = ${color} WHERE id = ${elementId}`;
 }
 
-/** Sahifaga yangi bo'sh matn elementi qo'shadi (erkin joylashuv bilan). */
 export async function addTextElement(
   pageId: string,
   pos: { x: number; y: number; w: number; h: number }
@@ -649,7 +621,6 @@ export async function addTextElement(
   return id;
 }
 
-/** Sahifaga yangi bo'sh rasm elementi qo'shadi (erkin joylashuv bilan). */
 export async function addPhotoElement(
   pageId: string,
   pos: { x: number; y: number; w: number; h: number }
@@ -720,4 +691,53 @@ export async function duplicateElement(elementId: string, pageId: string): Promi
     )
   `;
   return newId;
+}
+
+// ============================================================
+// 🆕 YANGI: Sahifalarni boshqarish funksiyalari
+// ============================================================
+
+export async function reorderAlbumPages(albumId: string, pageIds: string[]): Promise<void> {
+  await ensureSchema();
+  for (let i = 0; i < pageIds.length; i++) {
+    await sql`UPDATE album_pages SET page_order = ${i} WHERE id = ${pageIds[i]} AND album_id = ${albumId}`;
+  }
+}
+
+export async function duplicateAlbumPage(pageId: string, albumId: string): Promise<string> {
+  await ensureSchema();
+  
+  const pages = await sql`SELECT * FROM album_pages WHERE id = ${pageId} AND album_id = ${albumId}` as AlbumPage[];
+  const page = pages[0];
+  if (!page) throw new Error("Sahifa topilmadi");
+  
+  const newPageId = randomUUID();
+  const now = new Date().toISOString();
+  
+  const existing = (await sql`SELECT COUNT(*)::int AS c FROM album_pages WHERE album_id = ${albumId}`) as { c: number }[];
+  const order = existing[0]?.c ?? 0;
+  
+  await sql`
+    INSERT INTO album_pages (id, album_id, page_order, layout_id, date_label, location, background_id)
+    VALUES (${newPageId}, ${albumId}, ${order}, ${page.layout_id}, ${page.date_label}, ${page.location}, ${page.background_id})
+  `;
+  
+  const elements = await sql`SELECT * FROM page_elements WHERE page_id = ${pageId}` as PageElement[];
+  for (const el of elements) {
+    await sql`
+      INSERT INTO page_elements (
+        id, page_id, slot_index, type, photo_url, text_content, caption, location,
+        created_at, position_x, position_y, position_w, position_h, rotation, z_index,
+        frame_style, sticker_id, sticker_color, text_size, text_color, text_align, text_font
+      ) VALUES (
+        ${randomUUID()}, ${newPageId}, ${el.slot_index}, ${el.type}, ${el.photo_url}, ${el.text_content},
+        ${el.caption}, ${el.location}, ${now}, ${el.position_x}, ${el.position_y},
+        ${el.position_w}, ${el.position_h}, ${el.rotation}, ${el.z_index},
+        ${el.frame_style}, ${el.sticker_id}, ${el.sticker_color},
+        ${el.text_size}, ${el.text_color}, ${el.text_align}, ${el.text_font}
+      )
+    `;
+  }
+  
+  return newPageId;
 }
