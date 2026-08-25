@@ -958,7 +958,45 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   const canvasRef = useRef(null);
   const dragState = useRef(null);
   const commitState = useRef(null);
+  const snapGuide = useRef(null); // { vx?: number, hy?: number } — faol snap chiziqlari (% koordinatada)
   const [, forceRender] = useState(0);
+
+  // Elementni (id bo'yicha) surayotganda unga eng yaqin snap-nishonlarni
+  // (sahifa markazi/chetlari + boshqa elementlarning cheti/markazi) topadi.
+  // threshX/threshY — % birlikda, taxminan bir necha piksel ekvivalenti.
+  const findSnap = (movingId, x, y, w, h, threshX, threshY) => {
+    const targetsX = [0, 50, 100]; // sahifa: chap chet, markaz, o'ng chet
+    const targetsY = [0, 50, 100];
+    elements.forEach((el, i) => {
+      if (el.id === movingId) return;
+      const b = getElBox(el, i);
+      targetsX.push(b.x, b.x + b.w / 2, b.x + b.w);
+      targetsY.push(b.y, b.y + b.h / 2, b.y + b.h);
+    });
+    const edgesX = [x, x + w / 2, x + w]; // chap, markaz, o'ng
+    const edgesY = [y, y + h / 2, y + h]; // yuqori, markaz, past
+    let bestX = null, bestXDist = threshX;
+    let bestY = null, bestYDist = threshY;
+    for (const edge of edgesX) {
+      for (const t of targetsX) {
+        const d = Math.abs(edge - t);
+        if (d < bestXDist) { bestXDist = d; bestX = { edge, target: t }; }
+      }
+    }
+    for (const edge of edgesY) {
+      for (const t of targetsY) {
+        const d = Math.abs(edge - t);
+        if (d < bestYDist) { bestYDist = d; bestY = { edge, target: t }; }
+      }
+    }
+    const snappedX = bestX ? x + (bestX.target - bestX.edge) : x;
+    const snappedY = bestY ? y + (bestY.target - bestY.edge) : y;
+    return {
+      x: snappedX, y: snappedY,
+      vx: bestX ? bestX.target : null,
+      hy: bestY ? bestY.target : null,
+    };
+  };
 
   const submitDuplicate = (elId) => {
     const f = dupRef.current;
@@ -1108,8 +1146,17 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
     const py = (e.clientY - rect.top) / rect.height * 100;
 
     if (ds.mode === "move") {
-      ds.lastX = Math.max(0, Math.min(100 - ds.startW, px - ds.offsetX));
-      ds.lastY = Math.max(0, Math.min(100 - ds.startH, py - ds.offsetY));
+      let nx = Math.max(0, Math.min(100 - ds.startW, px - ds.offsetX));
+      let ny = Math.max(0, Math.min(100 - ds.startH, py - ds.offsetY));
+      // Snap/align — sichqoncha bilan qo'lda surishda sahifa markazi/chetiga
+      // yoki boshqa elementlarning cheti/markaziga "yopishadi" (~6px chegara ichida).
+      const threshX = 6 / rect.width * 100;
+      const threshY = 6 / rect.height * 100;
+      const snap = findSnap(ds.id, nx, ny, ds.startW, ds.startH, threshX, threshY);
+      nx = snap.x; ny = snap.y;
+      snapGuide.current = (snap.vx != null || snap.hy != null) ? { vx: snap.vx, hy: snap.hy } : null;
+      ds.lastX = nx;
+      ds.lastY = ny;
       ds.moved = true;
     } else if (ds.mode.startsWith("resize-")) {
       const corner = ds.mode.slice("resize-".length); // nw | ne | sw | se
@@ -1172,6 +1219,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
 
       ds.lastX = newX; ds.lastY = newY; ds.lastW = newW; ds.lastH = newH;
       ds.moved = true;
+      snapGuide.current = null; // rezayzda snap chizig'i chizilmaydi — faqat surishda
     } else if (ds.mode === "rotate") {
       // Aylanish burchagini piksellarda hisoblaymiz (canvas kvadrat emas, 4:3),
       // aks holda % koordinatalar bo'yicha burchak noto'g'ri chiqadi.
@@ -1192,6 +1240,7 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
     // (pointermove) "drag" kodi orqali ishlab, element kursor ortidan
     // sudralib yurishda davom etardi (bu avvalgi urinishdagi bug edi).
     dragState.current = null;
+    snapGuide.current = null;
     if (!ds.moved) {
       forceRender(v => v + 1);
       return;
@@ -1278,6 +1327,12 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
       >
         <LeafDoodle style={{ bottom: 6, right: 8 }} flip />
         <LeafDoodle style={{ top: 4, left: 6, opacity: 0.28 }} />
+        {dragState.current && snapGuide.current?.vx != null && (
+          <div style={{ position: "absolute", left: `${snapGuide.current.vx}%`, top: 0, bottom: 0, width: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 400 }} />
+        )}
+        {dragState.current && snapGuide.current?.hy != null && (
+          <div style={{ position: "absolute", top: `${snapGuide.current.hy}%`, left: 0, right: 0, height: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 400 }} />
+        )}
         <form ref={reorderRef} action={reorderFormAction} style={{ display: "none" }}>
           <input type="hidden" name="familySlug" />
           <input type="hidden" name="albumId" />
@@ -1519,6 +1574,7 @@ function AlbumEditor({
   const [activeSide, setActiveSide] = useState("left"); // "left" | "right" — Layout/Stiker/Fon shu tomonga ta'sir qiladi
   const [activePanel, setActivePanel] = useState(null); // null | "template" | "layout" | "sticker" | "bg"
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false); // true bo'lsa — tahrirlash chrome'i yashiriladi, faqat sahifa ko'rinishi
 
   const pages = album.pages;
   const currentPage = pages[Math.min(pageIndex, pages.length - 1)];
@@ -1578,6 +1634,7 @@ function AlbumEditor({
           const spreadNum = Math.floor(pageIndex / 2) + 1;
           const targetPage = activeSide === "right" && rightPage ? rightPage : currentPage;
           const targetLayout = activeSide === "right" && rightLayout ? rightLayout : currentLayout;
+          const effectiveCanEdit = canEdit && !previewMode; // Preview rejimida tahrirlash chrome'i butunlay yashiriladi
 
           return (
             <div style={{ background: `linear-gradient(180deg, ${TOKENS.bookCoverSoft}, ${TOKENS.bookCover})`, borderRadius: 18, padding: "18px 18px 20px" }}>
@@ -1587,13 +1644,26 @@ function AlbumEditor({
                   <button onClick={() => { setPageIndex(Math.max(0, pageIndex - 2)); setActiveSide("left"); }} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex === 0 ? 0.3 : 0.85 }}><ChevronLeft size={20} /></button>
                   <span style={{ fontSize: 12.5, color: "rgba(242,237,226,0.75)", fontWeight: 500 }}>Sahifa {spreadNum} / {totalSpreads}</span>
                   <button onClick={() => { setPageIndex(Math.min(pages.length - (pages.length % 2 === 0 ? 2 : 1), pageIndex + 2)); setActiveSide("left"); }} disabled={pageIndex + 2 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 2 >= pages.length ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex + 2 >= pages.length ? 0.3 : 0.85 }}><ChevronRight size={20} /></button>
-                  {canEdit && rightPage && (
+                  {effectiveCanEdit && rightPage && (
                     <div style={{ display: "flex", gap: 4, marginLeft: 6, background: "rgba(255,255,255,0.08)", borderRadius: 20, padding: 3 }}>
                       <button onClick={() => setActiveSide("left")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "left" ? TOKENS.gold : "transparent", color: activeSide === "left" ? "#fff" : "rgba(242,237,226,0.6)" }}>Chap</button>
                       <button onClick={() => setActiveSide("right")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "right" ? TOKENS.gold : "transparent", color: activeSide === "right" ? "#fff" : "rgba(242,237,226,0.6)" }}>O'ng</button>
                     </div>
                   )}
                 </div>
+                {canEdit && (
+                  <button
+                    onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
+                      background: previewMode ? TOKENS.gold : "rgba(255,255,255,0.08)",
+                      color: previewMode ? "#fff" : "rgba(242,237,226,0.85)",
+                      border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer",
+                    }}
+                  >
+                    {previewMode ? <><X size={14} /> Tahrirlashga qaytish</> : "Ko'rish"}
+                  </button>
+                )}
               </div>
               <form ref={addTextRef} action={addTextFormAction} style={{ display: "none" }}>
                 <input type="hidden" name="familySlug" />
@@ -1609,7 +1679,7 @@ function AlbumEditor({
               {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
 
               <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
-                {canEdit && (
+                {effectiveCanEdit && (
                   <div style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "rgba(0,0,0,0.16)", borderRadius: 10, overflow: "hidden", paddingBottom: 4 }}>
                     <RailButton icon={Sparkles} label="Shablon" active={activePanel === "template"} onClick={() => setActivePanel((p) => (p === "template" ? null : "template"))} />
                     <RailButton icon={LayoutGrid} label="Layout" active={activePanel === "layout"} onClick={() => setActivePanel((p) => (p === "layout" ? null : "layout"))} />
@@ -1641,7 +1711,7 @@ function AlbumEditor({
                   </div>
                 )}
 
-                {canEdit && activePanel && (
+                {effectiveCanEdit && activePanel && (
                   <div className="fm-flyout-panel" style={{ width: 250, flexShrink: 0, background: TOKENS.card, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, padding: 12, maxHeight: 560, overflowY: "auto" }}>
                     {activePanel === "template" && (
                       <div>
@@ -1750,11 +1820,11 @@ function AlbumEditor({
               {/* Two-page spread */}
               <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative" }}>
                 <div
-                  onMouseDownCapture={() => canEdit && setActiveSide("left")}
+                  onMouseDownCapture={() => effectiveCanEdit && setActiveSide("left")}
                   style={{
                     flex: 1, position: "relative",
-                    boxShadow: canEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
-                    zIndex: canEdit && rightPage && activeSide === "left" ? 2 : 1,
+                    boxShadow: effectiveCanEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
+                    zIndex: effectiveCanEdit && rightPage && activeSide === "left" ? 2 : 1,
                   }}
                 >
                   <PageCanvas
@@ -1762,7 +1832,7 @@ function AlbumEditor({
                     layout={currentLayout}
                     familySlug={familySlug}
                     albumId={album.id}
-                    canEdit={canEdit}
+                    canEdit={effectiveCanEdit}
                     saveElementPhotoUrlAction={saveElementPhotoUrlAction}
                     updateElementTextAction={updateElementTextAction}
                     reorderElementsAction={reorderElementsAction}
@@ -1783,11 +1853,11 @@ function AlbumEditor({
                 {/* Spine shadow between pages */}
                 <div style={{ width: 22, marginLeft: -11, marginRight: -11, zIndex: 5, background: "linear-gradient(90deg, transparent, rgba(30,26,15,0.22) 45%, rgba(30,26,15,0.22) 55%, transparent)", pointerEvents: "none" }} />
                 <div
-                  onMouseDownCapture={() => canEdit && rightPage && setActiveSide("right")}
+                  onMouseDownCapture={() => effectiveCanEdit && rightPage && setActiveSide("right")}
                   style={{
                     flex: 1, position: "relative",
-                    boxShadow: canEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
-                    zIndex: canEdit && rightPage && activeSide === "right" ? 2 : 1,
+                    boxShadow: effectiveCanEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
+                    zIndex: effectiveCanEdit && rightPage && activeSide === "right" ? 2 : 1,
                   }}
                 >
                   {rightPage ? (
@@ -1796,7 +1866,7 @@ function AlbumEditor({
                       layout={rightLayout}
                       familySlug={familySlug}
                       albumId={album.id}
-                      canEdit={canEdit}
+                      canEdit={effectiveCanEdit}
                       saveElementPhotoUrlAction={saveElementPhotoUrlAction}
                       updateElementTextAction={updateElementTextAction}
                       reorderElementsAction={reorderElementsAction}
@@ -1815,7 +1885,7 @@ function AlbumEditor({
                     />
                   ) : (
                     <div style={{ width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)` }}>
-                      {canEdit && (
+                      {effectiveCanEdit && (
                         <form action={addPageFormAction} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <input type="hidden" name="familySlug" value={familySlug} />
                           <input type="hidden" name="albumId" value={album.id} />
@@ -1831,7 +1901,7 @@ function AlbumEditor({
                 </div>
               </div>
 
-              {canEdit && (
+              {effectiveCanEdit && (
                 <div style={{ textAlign: "center", marginTop: 14 }}>
                   <form action={deletePageFormAction} style={{ display: "inline" }}>
                     <input type="hidden" name="familySlug" value={familySlug} />
@@ -1871,7 +1941,7 @@ function AlbumEditor({
                     </div>
                   );
                 })}
-                {canEdit && (
+                {effectiveCanEdit && (
                   <form action={addPageFormAction}>
                     <input type="hidden" name="familySlug" value={familySlug} />
                     <input type="hidden" name="albumId" value={album.id} />
