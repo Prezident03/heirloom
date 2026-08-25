@@ -240,7 +240,7 @@ export default function HeirloomApp({
   onThisDayMemories = [],
   stories = [],
   places = [],
-  stats = {peopleCount:0,albumsCount:0,pagesCount:0,photosCount:0,memoriesCount:0,storiesCount:0,eventsCount:0,placesCount:0,generationsCount:0},
+  stats = { peopleCount: 0, albumsCount: 0, pagesCount: 0, photosCount: 0, memoriesCount: 0, storiesCount: 0, eventsCount: 0, placesCount: 0, generationsCount: 0 },
   activeAlbumId = null,
   canEdit = true,
   isOwner = false,
