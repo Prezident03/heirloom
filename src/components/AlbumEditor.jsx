@@ -13,11 +13,11 @@ import {
   Sparkles, Moon, Cloud, Gift, Cake, PartyPopper,
   Camera, Music, Crown, Umbrella,
   Snowflake, Smile, Feather, Type, Download,
-  Loader2, Undo2, Redo2, Lock, Unlock,
+  Loader2, Undo2, Redo2, Lock, Unlock, Share2, Link2,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
-import { updatePageBackgroundImageAction, addPhotoWithUrlAction } from "@/lib/actions";
+import { updatePageBackgroundImageAction, addPhotoWithUrlAction, renameAlbumAction } from "@/lib/actions";
 
 const LAYOUTS = [
   { id: "l1", name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
@@ -208,9 +208,9 @@ function RailButton({ icon: Icon, label, active, onClick }) {
       title={label}
       style={{
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5,
-        width: "100%", padding: "12px 4px", background: active ? "rgba(184,134,59,0.22)" : "transparent",
+        width: "100%", padding: "12px 4px", background: active ? "rgba(184,134,59,0.16)" : "transparent",
         border: "none", borderLeft: active ? `3px solid ${TOKENS.gold}` : "3px solid transparent",
-        cursor: "pointer", color: active ? TOKENS.goldSoft : "rgba(242,237,226,0.68)", transition: "background 0.15s ease, color 0.15s ease",
+        cursor: "pointer", color: active ? TOKENS.gold : TOKENS.ink60, transition: "background 0.15s ease, color 0.15s ease",
       }}
       className="fm-rail-btn"
     >
@@ -351,10 +351,13 @@ function ElementsPanel({ onAddElement }) {
 }
 
 function PropertiesPanel({ element, onUpdate, onClose }) {
-  if (!element) return null;
+  // Hooks must run unconditionally (before any early return) to comply
+  // with the Rules of Hooks — otherwise the number of hooks would change
+  // between renders whenever `element` toggles between null and a value.
+  const [opacity, setOpacity] = useState(element?.opacity !== undefined ? element.opacity : 100);
+  const [locked, setLocked] = useState(element?.locked || false);
 
-  const [opacity, setOpacity] = useState(element.opacity !== undefined ? element.opacity : 100);
-  const [locked, setLocked] = useState(element.locked || false);
+  if (!element) return null;
 
   const handleChange = (field, value) => {
     onUpdate({ ...element, [field]: value });
@@ -1943,8 +1946,8 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
         disabled={exporting}
         style={{
           display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
-          background: "rgba(255,255,255,0.08)", color: "rgba(242,237,226,0.85)",
-          border: "none", borderRadius: 8, padding: "7px 12px", cursor: exporting ? "default" : "pointer",
+          background: "#F4F2ED", color: TOKENS.ink,
+          border: "none", borderRadius: 8, padding: "8px 12px", cursor: exporting ? "default" : "pointer",
         }}
       >
         {exporting ? <Loader2 size={14} className="fm-spin" /> : <Download size={14} />}
@@ -2025,6 +2028,7 @@ function AlbumEditor({
   const pageNodeRef = useRef(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [draggedPageIndex, setDraggedPageIndex] = useState(null);
+  const router = useRouter();
 
   const [saveStatus, setSaveStatus] = useState("saved");
   const saveTimeoutRef = useRef(null);
@@ -2189,6 +2193,50 @@ function AlbumEditor({
 
   const selectedElement = currentPage?.elements?.find(e => e.id === selectedElementId) || null;
 
+  // ── Canva-style editable album title + Share ──
+  const [titleDraft, setTitleDraft] = useState(album.title);
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const titleSaveTimerRef = useRef(null);
+  const lastSavedTitleRef = useRef(album.title);
+
+  useEffect(() => { setTitleDraft(album.title); }, [album.title]);
+  useEffect(() => () => { if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current); }, []);
+
+  const handleTitleSave = useCallback(async (value) => {
+    const trimmed = (value || "").trim();
+    if (!trimmed || trimmed === lastSavedTitleRef.current) return;
+    setTitleSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append("familySlug", familySlug);
+      fd.append("albumId", album.id);
+      fd.append("title", trimmed);
+      const res = await renameAlbumAction(null, fd);
+      if (res && "error" in res && res.error) {
+        console.error("Albom nomini saqlashda xatolik:", res.error);
+      } else {
+        lastSavedTitleRef.current = trimmed;
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("Albom nomini saqlashda xatolik:", err);
+    }
+    setTitleSaving(false);
+  }, [familySlug, album.id]);
+
+  const handleTitleInputChange = (e) => {
+    setTitleDraft(e.target.value);
+    if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
+    titleSaveTimerRef.current = setTimeout(() => handleTitleSave(e.target.value), 900);
+  };
+
+  const handleTitleCommit = () => {
+    if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
+    handleTitleSave(titleDraft);
+  };
+
   const handleDropPhoto = async (url, x, y) => {
     const rightPage = pages[pageIndex + 1] || null;
     const dropTargetPage = (activeSide === "right" && rightPage) ? rightPage : currentPage;
@@ -2211,41 +2259,80 @@ function AlbumEditor({
   };
 
   return (
-    <div style={{ padding: "22px clamp(16px, 4vw, 48px) 60px", maxWidth: 1680, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.ink60, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          <ChevronLeft size={16} /> Albomlarga qaytish
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", background: "#EDEAE4" }}>
+      {/* ── Canva-style top toolbar ── */}
+      <div style={{ position: "sticky", top: 0, zIndex: 60, display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: "#fff", borderBottom: "1px solid #DFDBD2", boxShadow: "0 1px 4px rgba(30,26,15,0.06)", flexWrap: "wrap" }}>
+        <button onClick={onBack} title="Albomlarga qaytish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, background: "transparent", border: "none", borderRadius: 8, color: TOKENS.ink60, cursor: "pointer" }}>
+          <ChevronLeft size={18} />
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 11, color: saveStatus === "saving" ? TOKENS.gold : TOKENS.teal }}>
-            {saveStatus === "saving" ? "💾 Saqlanmoqda..." : "✅ Saqlandi"}
-          </span>
-          {canEdit && (
-            !confirmDeleteAlbum ? (
-              <button onClick={() => setConfirmDeleteAlbum(true)} style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.danger, background: "transparent", border: `1px solid ${TOKENS.danger}`, borderRadius: 8, padding: "8px 14px", cursor: "pointer" }}>
-                Albomni o'chirish
-              </button>
-            ) : (
-              <form action={deleteAlbumFormAction} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type="hidden" name="familySlug" value={familySlug} />
-                <input type="hidden" name="albumId" value={album.id} />
-                <span style={{ fontSize: 11.5, color: TOKENS.danger }}>Rostdan ham?</span>
-                <button type="submit" disabled={deleteAlbumPending} style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: TOKENS.danger, border: "none", borderRadius: 6, padding: "7px 12px", cursor: "pointer" }}>
-                  Ha, o'chirish
-                </button>
-                <button type="button" onClick={() => setConfirmDeleteAlbum(false)} style={{ fontSize: 12, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "7px 12px", cursor: "pointer" }}>
-                  Bekor qilish
-                </button>
-              </form>
-            )
+
+        {canEdit && !previewMode ? (
+          <input value={titleDraft} onChange={handleTitleInputChange} onBlur={handleTitleCommit} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} title="Albom nomini tahrirlash" aria-label="Albom nomi" style={{ fontSize: 15, fontWeight: 600, color: TOKENS.ink, background: "transparent", border: "none", borderBottom: "1px dashed " + (titleSaving ? TOKENS.gold : "rgba(30,26,15,0.3)"), outline: "none", padding: "6px 2px", width: 300, maxWidth: "38vw" }} />
+        ) : (
+          <span style={{ fontSize: 15, fontWeight: 600, color: TOKENS.ink, maxWidth: 340, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{album.title}</span>
+        )}
+
+        <span style={{ fontSize: 11.5, color: TOKENS.ink40, whiteSpace: "nowrap" }}>{[album.date_label, album.location].filter(Boolean).join(" · ") || "Oilaviy albom"}</span>
+
+        <span style={{ fontSize: 11.5, color: (saveStatus === "saving" || titleSaving) ? TOKENS.gold : TOKENS.teal, whiteSpace: "nowrap" }}>{(saveStatus === "saving" || titleSaving) ? "💾 Saqlanmoqda..." : "✅ Saqlandi"}</span>
+
+        <div style={{ flex: 1 }} />
+
+        {!previewMode && canEdit && (
+          <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#F4F2ED", borderRadius: 8, padding: 3 }}>
+            <button type="button" onClick={handleUndo} disabled={undoStackRef.current.length === 0} title="Bekor qilish (Ctrl+Z)" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28, background: "transparent", border: "none", borderRadius: 6, color: undoStackRef.current.length === 0 ? "#C9C4BA" : TOKENS.ink, cursor: undoStackRef.current.length === 0 ? "default" : "pointer" }}><Undo2 size={15} /></button>
+            <button type="button" onClick={handleRedo} disabled={redoStackRef.current.length === 0} title="Qaytarish (Ctrl+Shift+Z)" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28, background: "transparent", border: "none", borderRadius: 6, color: redoStackRef.current.length === 0 ? "#C9C4BA" : TOKENS.ink, cursor: redoStackRef.current.length === 0 ? "default" : "pointer" }}><Redo2 size={15} /></button>
+          </div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#F4F2ED", borderRadius: 8, padding: 3 }}>
+          <button type="button" onClick={zoomOut} disabled={zoom <= ZOOM_MIN} title="Kichraytirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 5, color: zoom <= ZOOM_MIN ? "#C9C4BA" : TOKENS.ink60, cursor: zoom <= ZOOM_MIN ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>−</button>
+          <button type="button" onClick={zoomFit} title="Ekranga moslash" style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: "none", cursor: "pointer", padding: "0 8px", minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</button>
+          <button type="button" onClick={zoomIn} disabled={zoom >= ZOOM_MAX} title="Kattalashtirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 5, color: zoom >= ZOOM_MAX ? "#C9C4BA" : TOKENS.ink60, cursor: zoom >= ZOOM_MAX ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>+</button>
+        </div>
+
+      <button onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: previewMode ? "#fff" : TOKENS.ink, background: previewMode ? TOKENS.gold : "#F4F2ED", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>
+          {previewMode ? <><X size={13} /> Tahrirlash</> : "Ko'rish"}
+        </button>
+
+        <div style={{ position: "relative" }}>
+          <button onClick={() => { setShareOpen((v) => !v); setShareCopied(false); }} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, color: "#fff", background: "#2B5CFF", border: "none", borderRadius: 8, padding: "8px 15px", cursor: "pointer", boxShadow: "0 1px 8px rgba(43,92,255,0.35)" }}>
+            <Share2 size={14} /> Ulashish
+          </button>
+          {shareOpen && (
+            <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 300, zIndex: 70, background: "#fff", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, boxShadow: "0 12px 28px rgba(30,26,15,0.25)", padding: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: TOKENS.ink, marginBottom: 6 }}>Albom havolasi</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input readOnly value={typeof window !== "undefined" ? `${window.location.origin}/${familySlug}/dashboard?view=albums&album=${album.id}` : ""} style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: TOKENS.ink60, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "7px 8px", background: "#F7F5F0" }} />
+                <button onClick={() => { const url = `${window.location.origin}/${familySlug}/dashboard?view=albums&album=${album.id}`; navigator.clipboard?.writeText(url).then(() => setShareCopied(true)).catch(() => setShareCopied(true)); }} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#fff", background: "#2B5CFF", border: "none", borderRadius: 6, padding: "0 12px", cursor: "pointer", whiteSpace: "nowrap" }}><Link2 size={14} /> Nusxalash</button>
+              </div>
+              <div style={{ fontSize: 10.5, color: shareCopied ? TOKENS.teal : TOKENS.ink40, marginTop: 7 }}>{shareCopied ? "✅ Havola nusxalandi!" : "Bu havola oila a'zolaringizga albomni ochish uchun (tizimga kirish talab qilinadi)."}</div>
+              <button onClick={() => setShareOpen(false)} style={{ position: "absolute", top: 6, right: 6, background: "transparent", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={14} /></button>
+            </div>
           )}
         </div>
-      </div>
 
-      <div style={{ marginBottom: 26 }}>
-        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 27, fontWeight: 500, margin: 0 }}>{album.title}</h1>
-        <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 4 }}>{[album.date_label, album.location].filter(Boolean).join(" · ")}</div>
+        <ExportMenu album={album} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} pageNodeRef={pageNodeRef} previewMode={previewMode} setPreviewMode={setPreviewMode} activePanel={activePanel} setActivePanel={setActivePanel} pages={pages} pageIndex={pageIndex} setPageIndex={setPageIndex} />
+
+        {canEdit && (
+          !confirmDeleteAlbum ? (
+            <button onClick={() => setConfirmDeleteAlbum(true)} title="Albomni o'chirish" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: TOKENS.danger, background: "transparent", border: `1px solid ${TOKENS.danger}`, borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>
+              <Trash2 size={14} /> O'chirish
+            </button>
+          ) : (
+            <form action={deleteAlbumFormAction} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input type="hidden" name="familySlug" value={familySlug} />
+              <input type="hidden" name="albumId" value={album.id} />
+              <span style={{ fontSize: 11.5, color: TOKENS.danger }}>Rostdan ham?</span>
+              <button type="submit" disabled={deleteAlbumPending} style={{ fontSize: 12, fontWeight: 600, color: "#fff", background: TOKENS.danger, border: "none", borderRadius: 6, padding: "7px 12px", cursor: "pointer" }}>Ha</button>
+              <button type="button" onClick={() => setConfirmDeleteAlbum(false)} style={{ fontSize: 12, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "7px 12px", cursor: "pointer" }}>Bekor</button>
+            </form>
+          )
+        )}
       </div>
+      {exportError && <div style={{ fontSize: 11.5, color: "#C0392B", background: "#fff1f0", padding: "7px 16px", textAlign: "right" }}>{exportError}</div>}
+
+      <div style={{ flex: 1, minHeight: 0 }}>
 
       {pages.length === 0 || !currentPage ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: TOKENS.ink60, fontSize: 13.5 }}>Bu albomda hali sahifa yo'q.</div>
@@ -2265,40 +2352,18 @@ function AlbumEditor({
           const effectiveCanEdit = canEdit && !previewMode;
 
           return (
-            <div style={{ background: `linear-gradient(180deg, ${TOKENS.bookCoverSoft}, ${TOKENS.bookCover})`, borderRadius: 18, padding: "18px 18px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "0 6px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <button onClick={() => { setPageIndex(Math.max(0, pageIndex - 2)); setActiveSide("left"); }} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex === 0 ? 0.3 : 0.85 }}><ChevronLeft size={20} /></button>
-                  <span style={{ fontSize: 12.5, color: "rgba(242,237,226,0.75)", fontWeight: 500 }}>Sahifa {spreadNum} / {totalSpreads}</span>
-                  <button onClick={() => { setPageIndex(Math.min(pages.length - (pages.length % 2 === 0 ? 2 : 1), pageIndex + 2)); setActiveSide("left"); }} disabled={pageIndex + 2 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 2 >= pages.length ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex + 2 >= pages.length ? 0.3 : 0.85 }}><ChevronRight size={20} /></button>
-                  {effectiveCanEdit && rightPage && (
-                    <div style={{ display: "flex", gap: 4, marginLeft: 6, background: "rgba(255,255,255,0.08)", borderRadius: 20, padding: 3 }}>
-                      <button onClick={() => setActiveSide("left")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "left" ? TOKENS.gold : "transparent", color: activeSide === "left" ? "#fff" : "rgba(242,237,226,0.6)" }}>Chap</button>
-                      <button onClick={() => setActiveSide("right")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "right" ? TOKENS.gold : "transparent", color: activeSide === "right" ? "#fff" : "rgba(242,237,226,0.6)" }}>O'ng</button>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", alignItems: "center", gap: 2, marginLeft: 6, background: "rgba(255,255,255,0.08)", borderRadius: 8, padding: 3 }}>
-                    <button type="button" onClick={zoomOut} disabled={zoom <= ZOOM_MIN} title="Kichraytirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, background: "transparent", border: "none", borderRadius: 5, color: zoom <= ZOOM_MIN ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: zoom <= ZOOM_MIN ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>−</button>
-                    <button type="button" onClick={zoomFit} title="Ekranga moslash" style={{ fontSize: 10.5, fontWeight: 600, color: "rgba(242,237,226,0.75)", background: "transparent", border: "none", cursor: "pointer", padding: "0 6px", minWidth: 40, textAlign: "center" }}>{Math.round(zoom * 100)}%</button>
-                    <button type="button" onClick={zoomIn} disabled={zoom >= ZOOM_MAX} title="Kattalashtirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, background: "transparent", border: "none", borderRadius: 5, color: zoom >= ZOOM_MAX ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: zoom >= ZOOM_MAX ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>+</button>
-                  </div>
-                </div>
-                {canEdit && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {!previewMode && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 2, background: "rgba(255,255,255,0.08)", borderRadius: 8, padding: 3 }}>
-                        <button type="button" onClick={handleUndo} disabled={undoStackRef.current.length === 0} title="Bekor qilish (Ctrl+Z)" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 26, background: "transparent", border: "none", borderRadius: 6, color: undoStackRef.current.length === 0 ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: undoStackRef.current.length === 0 ? "default" : "pointer" }}><Undo2 size={15} /></button>
-                        <button type="button" onClick={handleRedo} disabled={redoStackRef.current.length === 0} title="Qaytarish (Ctrl+Shift+Z)" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 26, background: "transparent", border: "none", borderRadius: 6, color: redoStackRef.current.length === 0 ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: redoStackRef.current.length === 0 ? "default" : "pointer" }}><Redo2 size={15} /></button>
-                      </div>
-                    )}
-                    <ExportMenu album={album} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} pageNodeRef={pageNodeRef} previewMode={previewMode} setPreviewMode={setPreviewMode} activePanel={activePanel} setActivePanel={setActivePanel} pages={pages} pageIndex={pageIndex} setPageIndex={setPageIndex} />
-                    <button onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, background: previewMode ? TOKENS.gold : "rgba(255,255,255,0.08)", color: previewMode ? "#fff" : "rgba(242,237,226,0.85)", border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer" }}>
-                      {previewMode ? <><X size={14} /> Tahrirlashga qaytish</> : "Ko'rish"}
-                    </button>
+            <div style={{ background: "#EDEAE4", borderRadius: 0, padding: "24px 28px 36px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18, padding: "0 4px" }}>
+                <button onClick={() => { setPageIndex(Math.max(0, pageIndex - 2)); setActiveSide("left"); }} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex === 0 ? 0.35 : 0.9 }}><ChevronLeft size={20} /></button>
+                <span style={{ fontSize: 12.5, color: TOKENS.ink60, fontWeight: 500 }}>Sahifa {spreadNum} / {totalSpreads}</span>
+                <button onClick={() => { setPageIndex(Math.min(pages.length - (pages.length % 2 === 0 ? 2 : 1), pageIndex + 2)); setActiveSide("left"); }} disabled={pageIndex + 2 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 2 >= pages.length ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex + 2 >= pages.length ? 0.35 : 0.9 }}><ChevronRight size={20} /></button>
+                {effectiveCanEdit && rightPage && (
+                  <div style={{ display: "flex", gap: 4, marginLeft: 6, background: "#fff", boxShadow: "0 1px 3px rgba(30,26,15,0.12)", borderRadius: 20, padding: 3 }}>
+                    <button onClick={() => setActiveSide("left")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "left" ? TOKENS.gold : "transparent", color: activeSide === "left" ? "#fff" : TOKENS.ink60 }}>Chap</button>
+                    <button onClick={() => setActiveSide("right")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "right" ? TOKENS.gold : "transparent", color: activeSide === "right" ? "#fff" : TOKENS.ink60 }}>O'ng</button>
                   </div>
                 )}
               </div>
-              {exportError && <div style={{ fontSize: 11.5, color: "#E7A79B", marginBottom: 10, textAlign: "right" }}>{exportError}</div>}
 
               <form ref={addTextRef} action={addTextFormAction} style={{ display: "none" }}>
                 <input type="hidden" name="familySlug" />
@@ -2351,7 +2416,7 @@ function AlbumEditor({
 
               <div style={{ display: "flex", gap: 12, alignItems: "stretch", overflowX: zoom > 1 ? "auto" : "visible" }}>
                 {effectiveCanEdit && (
-                  <div style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "rgba(0,0,0,0.16)", borderRadius: 10, overflow: "hidden", paddingBottom: 4 }}>
+                  <div style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "#F4F2ED", borderRadius: 10, overflow: "hidden", paddingBottom: 4, boxShadow: "inset 0 0 0 1px rgba(30,26,15,0.05)" }}>
                     <RailButton icon={Sparkles} label="Shablon" active={activePanel === "template"} onClick={() => setActivePanel((p) => (p === "template" ? null : "template"))} />
                     <RailButton icon={LayoutGrid} label="Layout" active={activePanel === "layout"} onClick={() => setActivePanel((p) => (p === "layout" ? null : "layout"))} />
                     <RailButton icon={StickerIcon} label="Stiker" active={activePanel === "sticker"} onClick={() => setActivePanel((p) => (p === "sticker" ? null : "sticker"))} />
@@ -2538,7 +2603,7 @@ function AlbumEditor({
                 )}
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease" }}>
+                  <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 10px rgba(30,26,15,0.22)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease" }}>
                     <div ref={pageNodeRef} onMouseDownCapture={() => effectiveCanEdit && setActiveSide("left")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "left" ? 2 : 1 }}>
                       <PageCanvas
                         page={currentPage}
@@ -2616,13 +2681,13 @@ function AlbumEditor({
                     <input type="hidden" name="familySlug" value={familySlug} />
                     <input type="hidden" name="albumId" value={album.id} />
                     <input type="hidden" name="pageId" value={targetPage.id} />
-                    <button type="submit" disabled={pages.length <= 1} style={{ fontSize: 11.5, color: pages.length <= 1 ? "rgba(242,237,226,0.3)" : "#E7A79B", background: "none", border: "none", cursor: pages.length <= 1 ? "default" : "pointer" }}>
+                    <button type="submit" disabled={pages.length <= 1} style={{ fontSize: 11.5, color: pages.length <= 1 ? TOKENS.ink40 : TOKENS.danger, background: "none", border: "none", cursor: pages.length <= 1 ? "default" : "pointer" }}>
                       {activeSide === "right" ? "O'ng" : "Chap"} sahifani o'chirish
                     </button>
                   </form>
                 </div>
               )}
-              {deletePageState?.error && <div style={{ fontSize: 11.5, color: "#E7A79B", textAlign: "center", marginTop: 6 }}>{deletePageState.error}</div>}
+              {deletePageState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, textAlign: "center", marginTop: 6 }}>{deletePageState.error}</div>}
 
               {/* Thumbnail filmstrip */}
               <div style={{ display: "flex", gap: 10, overflowX: "auto", marginTop: 22, paddingTop: 4, paddingBottom: 2 }}>
@@ -2657,7 +2722,7 @@ function AlbumEditor({
                         flexShrink: 0,
                         borderRadius: 4,
                         background: "#fff",
-                        border: inSpread ? `2px solid ${TOKENS.gold}` : "1px solid rgba(242,237,226,0.18)",
+                        border: inSpread ? `2px solid ${TOKENS.gold}` : "1px solid rgba(30,26,19,0.18)",
                         cursor: "pointer",
                         position: "relative",
                         overflow: "hidden",
@@ -2716,17 +2781,18 @@ function AlbumEditor({
                   <form action={addPageFormAction}>
                     <input type="hidden" name="familySlug" value={familySlug} />
                     <input type="hidden" name="albumId" value={album.id} />
-                    <button type="submit" disabled={addPagePending} style={{ width: 72, aspectRatio: "4/3", flexShrink: 0, borderRadius: 4, border: "1.5px dashed rgba(242,237,226,0.3)", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(242,237,226,0.6)", cursor: addPagePending ? "default" : "pointer" }}>
+                    <button type="submit" disabled={addPagePending} style={{ width: 72, aspectRatio: "4/3", flexShrink: 0, borderRadius: 4, border: "1.5px dashed rgba(30,26,19,0.3)", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: TOKENS.ink40, cursor: addPagePending ? "default" : "pointer" }}>
                       <Plus size={16} />
                     </button>
                   </form>
                 )}
               </div>
-              {addPageState?.error && <div style={{ fontSize: 11, color: "#E7A79B", marginTop: 8 }}>{addPageState.error}</div>}
+              {addPageState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 8 }}>{addPageState.error}</div>}
             </div>
           );
         })()
       )}
+        </div>
 
       {selectedElement && (
         <PropertiesPanel

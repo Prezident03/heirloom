@@ -417,6 +417,11 @@ export async function deleteAlbum(albumId: string, familyId: string): Promise<vo
   await sql`DELETE FROM albums WHERE id = ${albumId} AND family_id = ${familyId}`;
 }
 
+export async function updateAlbumTitle(albumId: string, title: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE albums SET title = ${title.trim()} WHERE id = ${albumId}`;
+}
+
 export async function getPagesForAlbum(albumId: string): Promise<AlbumPage[]> {
   await ensureSchema();
   return (await sql`SELECT * FROM album_pages WHERE album_id = ${albumId} ORDER BY page_order ASC`) as AlbumPage[];

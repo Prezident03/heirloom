@@ -33,6 +33,7 @@ import {
   updatePageMeta,
   deletePage,
   deleteAlbum,
+  updateAlbumTitle,
   setAlbumCover,
   getAlbumById,
   getPagesForAlbum,
@@ -571,6 +572,20 @@ export async function deleteAlbumAction(_prevState: ActionState, formData: FormD
   const albumId = String(formData.get("albumId") || "").trim();
   await deleteAlbum(albumId, check.family.id);
   redirect(`/${familySlug}/dashboard?view=albums`);
+}
+
+export async function renameAlbumAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const title = String(formData.get("title") || "").trim();
+  if (!title) return { error: "Albom nomini kiriting." };
+
+  await updateAlbumTitle(albumId, title);
+  revalidatePath(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  return { ok: true };
 }
 
 export async function addAlbumPageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {

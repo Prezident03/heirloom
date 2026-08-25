@@ -98,7 +98,7 @@ function GlobalStyle() {
       .fm-toolbar-btn:hover { background: rgba(255,255,255,0.16); }
       .fm-toolbar-btn:disabled { opacity: 0.4; cursor: default; }
       .fm-toolbar-btn.danger:hover { background: rgba(231,167,155,0.28); }
-      .fm-rail-btn:hover { background: rgba(255,255,255,0.08) !important; color: #F2EDE2 !important; }
+      .fm-rail-btn:hover { background: rgba(30,26,15,0.07) !important; color: #1E2621 !important; }
       .fm-flyout-panel { animation: fm-flyout-in 0.16s ease; }
       @keyframes fm-flyout-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
       .fm-spin { animation: fm-spin 0.9s linear infinite; }
