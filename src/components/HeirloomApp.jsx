@@ -103,6 +103,8 @@ function GlobalStyle() {
       .fm-rail-btn:hover { background: rgba(255,255,255,0.08) !important; color: #F2EDE2 !important; }
       .fm-flyout-panel { animation: fm-flyout-in 0.16s ease; }
       @keyframes fm-flyout-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+      .fm-spin { animation: fm-spin 0.9s linear infinite; }
+      @keyframes fm-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) {
         .fm-polaroid, .fm-album-card, .fm-person, .fm-fade, .fm-panel-enter { transition: none !important; animation: none !important; }
       }

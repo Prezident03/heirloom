@@ -9,7 +9,7 @@ import {
   Leaf, Flower2, Heart, Star, Sun, Palette, Sticker as StickerIcon, Frame,
   AlignLeft, AlignCenter, AlignRight,
   Sparkles, Moon, Cloud, Gift, Cake, PartyPopper, Camera, Music, Crown, Umbrella,
-  Snowflake, Smile, Feather, Type,
+  Snowflake, Smile, Feather, Type, Download, Loader2,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
@@ -1541,6 +1541,155 @@ function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPho
   );
 }
 
+/* ---------------- Export (PNG/JPG/PDF) ---------------- */
+
+function waitFrames(n = 2) {
+  return new Promise((resolve) => {
+    let count = 0;
+    function step() {
+      count += 1;
+      if (count >= n) resolve();
+      else requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function captureNodeToCanvas(node) {
+  const { default: html2canvas } = await import("html2canvas");
+  return html2canvas(node, {
+    useCORS: true,
+    backgroundColor: "#ffffff",
+    scale: Math.min(2, window.devicePixelRatio || 2),
+    logging: false,
+  });
+}
+
+function slugifyFilename(name) {
+  return (name || "albom").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "albom";
+}
+
+function ExportMenu({ album, exporting, setExporting, exportError, setExportError, pageNodeRef, previewMode, setPreviewMode, activePanel, setActivePanel, pages, pageIndex, setPageIndex }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onClick = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const runExport = async (fn) => {
+    setOpen(false);
+    setExportError(null);
+    setExporting(true);
+    const restoreIndex = pageIndex;
+    const restorePreview = previewMode;
+    setActivePanel(null);
+    setPreviewMode(true);
+    try {
+      await waitFrames(2);
+      await fn();
+    } catch (err) {
+      setExportError("Eksport qilishda xatolik yuz berdi. Qaytadan urinib ko'ring.");
+    } finally {
+      setPageIndex(restoreIndex);
+      setPreviewMode(restorePreview);
+      setExporting(false);
+    }
+  };
+
+  const exportImage = (format) => runExport(async () => {
+    await waitFrames(2);
+    const canvas = await captureNodeToCanvas(pageNodeRef.current);
+    const mime = format === "jpg" ? "image/jpeg" : "image/png";
+    const quality = format === "jpg" ? 0.92 : undefined;
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
+    if (!blob) throw new Error("canvas empty");
+    downloadBlob(blob, `${slugifyFilename(album.title)}-sahifa-${pageIndex + 1}.${format}`);
+  });
+
+  const exportPdf = () => runExport(async () => {
+    const { default: jsPDF } = await import("jspdf");
+    let pdf = null;
+    for (let i = 0; i < pages.length; i += 1) {
+      setPageIndex(i);
+      // eslint-disable-next-line no-await-in-loop
+      await waitFrames(3);
+      // eslint-disable-next-line no-await-in-loop
+      const canvas = await captureNodeToCanvas(pageNodeRef.current);
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const orientation = canvas.width >= canvas.height ? "landscape" : "portrait";
+      if (!pdf) {
+        pdf = new jsPDF({ orientation, unit: "px", format: [canvas.width, canvas.height] });
+      } else {
+        pdf.addPage([canvas.width, canvas.height], orientation);
+      }
+      pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
+    }
+    if (pdf) pdf.save(`${slugifyFilename(album.title)}.pdf`);
+  });
+
+  return (
+    <div ref={menuRef} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={exporting}
+        style={{
+          display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
+          background: "rgba(255,255,255,0.08)", color: "rgba(242,237,226,0.85)",
+          border: "none", borderRadius: 8, padding: "7px 12px", cursor: exporting ? "default" : "pointer",
+        }}
+      >
+        {exporting ? <Loader2 size={14} className="fm-spin" /> : <Download size={14} />}
+        {exporting ? "Eksport qilinmoqda…" : "Yuklab olish"}
+      </button>
+      {open && !exporting && (
+        <div
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 60,
+            background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10,
+            boxShadow: "0 10px 24px rgba(30,26,15,0.3)", padding: 6, width: 200,
+          }}
+        >
+          {[
+            { label: "Joriy sahifa — PNG", onClick: () => exportImage("png") },
+            { label: "Joriy sahifa — JPG", onClick: () => exportImage("jpg") },
+            { label: "Butun albom — PDF", onClick: exportPdf },
+          ].map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={item.onClick}
+              style={{
+                display: "block", width: "100%", textAlign: "left", fontSize: 12.5, color: TOKENS.ink,
+                background: "transparent", border: "none", borderRadius: 6, padding: "8px 10px", cursor: "pointer",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = TOKENS.parchmentDeep; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AlbumEditor({
   album,
   onBack,
@@ -1575,6 +1724,9 @@ function AlbumEditor({
   const [activePanel, setActivePanel] = useState(null); // null | "template" | "layout" | "sticker" | "bg"
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
   const [previewMode, setPreviewMode] = useState(false); // true bo'lsa — tahrirlash chrome'i yashiriladi, faqat sahifa ko'rinishi
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+  const pageNodeRef = useRef(null);
 
   const pages = album.pages;
   const currentPage = pages[Math.min(pageIndex, pages.length - 1)];
@@ -1652,19 +1804,37 @@ function AlbumEditor({
                   )}
                 </div>
                 {canEdit && (
-                  <button
-                    onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
-                      background: previewMode ? TOKENS.gold : "rgba(255,255,255,0.08)",
-                      color: previewMode ? "#fff" : "rgba(242,237,226,0.85)",
-                      border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer",
-                    }}
-                  >
-                    {previewMode ? <><X size={14} /> Tahrirlashga qaytish</> : "Ko'rish"}
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <ExportMenu
+                      album={album}
+                      exporting={exporting}
+                      setExporting={setExporting}
+                      exportError={exportError}
+                      setExportError={setExportError}
+                      pageNodeRef={pageNodeRef}
+                      previewMode={previewMode}
+                      setPreviewMode={setPreviewMode}
+                      activePanel={activePanel}
+                      setActivePanel={setActivePanel}
+                      pages={pages}
+                      pageIndex={pageIndex}
+                      setPageIndex={setPageIndex}
+                    />
+                    <button
+                      onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
+                        background: previewMode ? TOKENS.gold : "rgba(255,255,255,0.08)",
+                        color: previewMode ? "#fff" : "rgba(242,237,226,0.85)",
+                        border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer",
+                      }}
+                    >
+                      {previewMode ? <><X size={14} /> Tahrirlashga qaytish</> : "Ko'rish"}
+                    </button>
+                  </div>
                 )}
               </div>
+              {exportError && <div style={{ fontSize: 11.5, color: "#E7A79B", marginBottom: 10, textAlign: "right" }}>{exportError}</div>}
               <form ref={addTextRef} action={addTextFormAction} style={{ display: "none" }}>
                 <input type="hidden" name="familySlug" />
                 <input type="hidden" name="albumId" />
@@ -1820,6 +1990,7 @@ function AlbumEditor({
               {/* Two-page spread */}
               <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative" }}>
                 <div
+                  ref={pageNodeRef}
                   onMouseDownCapture={() => effectiveCanEdit && setActiveSide("left")}
                   style={{
                     flex: 1, position: "relative",
