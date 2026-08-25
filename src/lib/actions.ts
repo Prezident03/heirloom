@@ -189,8 +189,6 @@ export async function loginAction(_prevState: ActionState, formData: FormData): 
 }
 
 export async function createFamilyAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  let targetSlug = "";
-
   try {
     const session = await getSession();
     if (!session) redirect("/login");
@@ -201,29 +199,21 @@ export async function createFamilyAction(_prevState: ActionState, formData: Form
     }
 
     const family = await createFamily(familyName, session.id);
-    targetSlug = family.slug;
 
-    const rawName = session.name || "Foydalanuvchi";
-    const [firstName, ...rest] = rawName.trim().split(" ");
-
-    await createPerson(
+    const [firstName, ...rest] = session.name.trim().split(" ");
+    const mePerson = await createPerson(
       family.id,
-      { 
-        firstName: firstName || rawName, 
-        lastName: rest.join(" ") || undefined 
-      },
+      { firstName: firstName || session.name, lastName: rest.join(" ") || undefined },
       session.id,
       session.id
     );
 
-    revalidatePath(`/${family.slug}/dashboard`);
+    return { ok: true, familySlug: family.slug, mePersonId: mePerson.id };
   } catch (e) {
     if ((e as Error).message?.includes("NEXT_REDIRECT")) throw e;
     console.error("[createFamilyAction] error:", e);
     return { error: "Oila yaratishda xato. Qaytadan urinib ko'ring." };
   }
-
-  redirect(`/${targetSlug}/dashboard`);
 }
 
 export async function logoutAction() {
@@ -253,6 +243,10 @@ export async function updateFamilyNameAction(_prevState: ActionState, formData: 
   return { ok: true };
 }
 
+/**
+ * Faqat oila egasi (owner) boshqa a'zoning rolini o'zgartira oladi.
+ * Owner'ning o'zi bu yerdan o'zgartirilmaydi (backend darajasida ham himoyalangan).
+ */
 export async function updateMemberRoleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -278,6 +272,10 @@ export async function updateMemberRoleAction(_prevState: ActionState, formData: 
   return { ok: true };
 }
 
+/**
+ * Faqat oila egasi a'zoni oiladan chiqarib yuborishi mumkin. Owner o'zini
+ * chiqarib yubora olmaydi (backend darajasida ham himoyalangan).
+ */
 export async function removeMemberAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -348,6 +346,7 @@ export async function acceptInviteAction(_prevState: ActionState, formData: Form
   redirect(`/${result.family.slug}/dashboard`);
 }
 
+// Oddiy <form action={...}> (useActionState'siz) uchun — invite sahifasida ishlatiladi.
 export async function acceptInviteFormAction(formData: FormData): Promise<void> {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -394,14 +393,18 @@ export async function addPersonAction(_prevState: ActionState, formData: FormDat
 
   if (relatedPersonId && (relationType === "child_of" || relationType === "spouse_of" || relationType === "parent_of")) {
     if (relationType === "child_of") {
+      // relatedPerson — yangi odamning ota-onasi
       await createRelationship(family.id, relatedPersonId, person.id, "parent");
     } else if (relationType === "parent_of") {
+      // yangi odam — relatedPerson'ning ota-onasi (masalan, "Ota"/"Ona" qo'shilganda)
       await createRelationship(family.id, person.id, relatedPersonId, "parent");
     } else {
       await createRelationship(family.id, person.id, relatedPersonId, "spouse");
     }
   }
 
+  // Onboarding wizard'dagi kabi ko'p qadamli oqimlarda sahifani tark etmasdan
+  // davom etish uchun ishlatiladi.
   if (String(formData.get("skipRedirect") || "") === "1") {
     return { ok: true };
   }
@@ -409,6 +412,10 @@ export async function addPersonAction(_prevState: ActionState, formData: FormDat
   redirect(`/${familySlug}/dashboard?view=tree`);
 }
 
+/**
+ * Ikki ALLAQACHON MAVJUD odamni bir-biriga bog'laydi (ota-ona/farzand yoki turmush o'rtoqlik).
+ * Bu — avval qo'shilgan, lekin daraxtda bog'lanmagan odamlarni tuzatish uchun.
+ */
 export async function linkPersonAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -434,8 +441,10 @@ export async function linkPersonAction(_prevState: ActionState, formData: FormDa
   }
 
   if (relationType === "other_is_parent") {
+    // otherPerson — personning ota-onasi
     await createRelationship(family.id, otherPersonId, personId, "parent");
   } else if (relationType === "other_is_child") {
+    // otherPerson — personning farzandi
     await createRelationship(family.id, personId, otherPersonId, "parent");
   } else if (relationType === "spouse") {
     await createRelationship(family.id, personId, otherPersonId, "spouse");
@@ -686,6 +695,13 @@ export async function uploadElementPhotoAction(_prevState: ActionState, formData
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 
+/**
+ * Faylning o'zi endi bu funksiyadan o'tmaydi — brauzer uni to'g'ridan-to'g'ri
+ * Vercel Blob'ga (@vercel/blob/client orqali, /api/blob-upload token'i bilan)
+ * yuklaydi va bizga faqat tayyor URL'ni beradi. Bu Vercel funksiyasining
+ * 4.5MB'lik qattiq chegarasini butunlay chetlab o'tadi. Bu — oddiy argumentli
+ * (FormData emas) Server Action, PhotoSlot'dan to'g'ridan-to'g'ri chaqiriladi.
+ */
 export async function saveElementPhotoUrlAction(
   familySlug: string,
   albumId: string,
@@ -790,6 +806,13 @@ export async function uploadTimelineEventPhotoAction(_prevState: ActionState, fo
   redirect(`/${familySlug}/dashboard?view=timeline`);
 }
 
+/**
+ * "+ Yangi" menyusidagi "Rasmlar yuklash" oqimi. Bir yoki bir nechta rasmni,
+ * mavjud albomga (yoki tezkor ravishda yaratilgan yangi albomga) tezda
+ * qo'shadi — har bir rasm uchun avtomatik "bitta katta" (l1) sahifa ochiladi,
+ * to'liq scrapbook-editorni ochmasdan. Foydalanuvchi keyinroq shu sahifalarni
+ * albom ichida oddiy tahrirlash bilan davom ettirishi mumkin.
+ */
 export async function bulkUploadPhotosAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const familySlug = String(formData.get("familySlug") || "").trim();
   const check = await requireEditableFamily(familySlug);
@@ -810,6 +833,8 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
     if (!newAlbumTitle) return { error: "Albom tanlang yoki yangi albom nomini kiriting." };
     const newAlbum = await createAlbum(check.family.id, check.session.id, { title: newAlbumTitle });
     albumId = newAlbum.id;
+    // createAlbum ichida avtomatik yaratilgan bo'sh birinchi sahifadan
+    // birinchi yuklangan rasm uchun foydalanamiz — ortiqcha bo'sh sahifa qolmasin.
     const pages = await getPagesForAlbum(albumId);
     reuseFirstPageId = pages[0]?.id ?? null;
   }
@@ -845,6 +870,13 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 
+// MUHIM: bu action'lar frontendda `useActionState(createMemoryAction, ...)`
+// orqali chaqiriladi — React bunday holatda funksiyani
+// `(oldingi_holat, formData)` tartibida chaqiradi. Shuning uchun birinchi
+// parametr sifatida `_prevState` qabul qilinishi SHART — aks holda funksiya
+// ichida `formData` o'rniga haqiqatda oldingi holat (odatda `undefined`)
+// keladi va `.get()` chaqirilganda "formData.get is not a function" xatosi
+// bilan yiqiladi (bu "Saqlash" bosilganda sodir bo'lardi).
 export async function createMemoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
@@ -934,6 +966,9 @@ export async function updateMemoryPhotoAction(_prevState: ActionState, formData:
   }
 }
 
+// MUHIM: bu action MemoriesView'da `deleteMemoryAction(undefined, formData)`
+// tarzida to'g'ridan-to'g'ri (useActionState orqali emas) chaqiriladi —
+// shuning uchun ikki parametrli imzoga mos kelishi kerak.
 export async function deleteMemoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
@@ -959,6 +994,7 @@ export async function deleteElementAction(_prevState: ActionState, formData: For
 
   const elementId = String(formData.get("elementId") || "").trim();
   const pageId = String(formData.get("pageId") || "").trim();
+  const albumId = String(formData.get("albumId") || "").trim();
 
   if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
 
@@ -976,6 +1012,7 @@ export async function reorderElementsAction(_prevState: ActionState, formData: F
   if ("error" in check) return { error: check.error };
 
   const pageId = String(formData.get("pageId") || "").trim();
+  const albumId = String(formData.get("albumId") || "").trim();
   const elementIdsRaw = String(formData.get("elementIds") || "");
 
   if (!pageId || !elementIdsRaw) return { error: "Page ID va element IDlari kerak." };
@@ -1185,6 +1222,7 @@ export async function addStickerElementAction(_prevState: ActionState, formData:
   const stickerId = String(formData.get("stickerId") || "leaf") as StickerId;
   if (!pageId) return { error: "Page ID kerak." };
 
+  // Washi-lenta uzun-yupqa, boshqalari kvadrat shaklda joylashadi.
   const kind = STICKERS[stickerId]?.kind;
   const pos = kind === "tape" ? { x: 32, y: 40, w: 28, h: 8 } : { x: 38, y: 38, w: 16, h: 16 };
 
@@ -1408,12 +1446,3 @@ export async function deletePlaceAction(_prevState: ActionState, formData: FormD
     return { error: "Joy o'chirishda xato: " + String(e) };
   }
 }
-
-// AlbumEditor ulanishi uchun kerakli action nomlari
-export const addPhotoToPageAction = addPhotoElementAction;
-export const addStickerToPageAction = addStickerElementAction;
-
-export async function addTextToPageAction(...args: any[]) { return { success: false }; }
-export async function createPageAction(...args: any[]) { return { success: false }; }
-export async function deletePageAction(...args: any[]) { return { success: false }; }
-export async function updatePageBackgroundAction(...args: any[]) { return { success: false }; }
