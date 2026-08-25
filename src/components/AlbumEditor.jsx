@@ -1,20 +1,26 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useActionState } from "react";
+import React, { useState, useRef, useEffect, useActionState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import {
   BookImage, Plus, X, ImagePlus, LayoutGrid,
-  ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Trash2, Calendar, MapPinned,
-  Leaf, Flower2, Heart, Star, Sun, Palette, Sticker as StickerIcon, Frame,
+  ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
+  Copy, Trash2, Calendar, MapPinned,
+  Leaf, Flower2, Heart, Star, Sun, Palette,
+  Sticker as StickerIcon, Frame,
   AlignLeft, AlignCenter, AlignRight,
-  Sparkles, Moon, Cloud, Gift, Cake, PartyPopper, Camera, Music, Crown, Umbrella,
-  Snowflake, Smile, Feather, Type, Download, Loader2, Undo2, Redo2,
+  Sparkles, Moon, Cloud, Gift, Cake, PartyPopper,
+  Camera, Music, Crown, Umbrella,
+  Snowflake, Smile, Feather, Type, Download,
+  Loader2, Undo2, Redo2,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
 
-/* ---------------- Albums view ---------------- */
+// ============================================================
+// KONFIGURATSIYALAR (o'zgarmaydi)
+// ============================================================
 
 const LAYOUTS = [
   { id: "l1", name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
@@ -23,7 +29,6 @@ const LAYOUTS = [
   { id: "l4", name: "Uchtasi qatorda", slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55 }, { type: "photo", x: 36, y: 10, w: 28, h: 55 }, { type: "photo", x: 67, y: 10, w: 28, h: 55 }, { type: "text", x: 5, y: 70, w: 90, h: 22 }] },
 ];
 
-// Fon (background) tanlovlari — src/lib/albums.ts dagi BACKGROUNDS bilan mos id'lar.
 const BACKGROUNDS = {
   paper: { name: "Qog'oz", from: "#F4EDDD", to: "#ECE2C8" },
   sage: { name: "Sage", from: "#E7EDE3", to: "#D3DECB" },
@@ -33,17 +38,16 @@ const BACKGROUNDS = {
 };
 const BACKGROUND_LIST = Object.entries(BACKGROUNDS).map(([id, v]) => ({ id, ...v }));
 
-// Yengil qog'oz texturasi — SVG fractal-noise, data-URI sifatida (tashqi rasm shart emas).
 const PAPER_TEXTURE_URL =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-// Stikerlar — src/lib/albums.ts dagi STICKERS bilan mos id'lar/kind'lar.
 const STICKER_ICONS = {
   leaf: Leaf, flower: Flower2, heart: Heart, star: Star, sun: Sun,
   sparkles: Sparkles, moon: Moon, cloud: Cloud, gift: Gift, cake: Cake,
   party: PartyPopper, camera: Camera, music: Music, crown: Crown,
   umbrella: Umbrella, snowflake: Snowflake, smile: Smile, feather: Feather,
 };
+
 const STICKER_GROUPS = [
   {
     label: "Ikonkalar",
@@ -96,9 +100,6 @@ const FRAME_LIST = [
   { id: "none", name: "Ramkasiz" },
 ];
 
-// Tayyor shablonlar — src/lib/albums.ts dagi TEMPLATES bilan qo'lda
-// sinxronlangan (bu client komponent, server-only albums.ts'ni import qila
-// olmaydi). Har biri: fon + rasm/matn slotlari + dekorativ stikerlar.
 const TEMPLATES = {
   "classic-cream": {
     name: "Klassik", category: "Oddiy", backgroundId: "paper",
@@ -169,7 +170,6 @@ const TEMPLATES = {
 const TEMPLATE_LIST = Object.entries(TEMPLATES).map(([id, t]) => ({ id, ...t }));
 const TEMPLATE_CATEGORIES = [...new Set(TEMPLATE_LIST.map((t) => t.category))];
 
-// Matn stillari — shrift oilalari, tayyor ranglar, tekislash tanlovlari.
 const FONT_FAMILIES = {
   handwriting: "'Caveat', cursive",
   serif: "'Fraunces', serif",
@@ -187,16 +187,15 @@ const ALIGN_LIST = [
   { id: "right", name: "O'ng", icon: AlignRight },
 ];
 
-/* ---------------- Scrapbook decoration helpers ---------------- */
+// ============================================================
+// YORDAMCHI FUNKSIYALAR
+// ============================================================
 
-// Small deterministic "randomness" from an element id, so the same photo
-// always gets the same paper-doll tilt/tape angle instead of jittering
-// between renders.
 function seeded(id, salt = 0) {
   const str = String(id || "x") + "-" + salt;
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h % 1000) / 1000; // 0..1
+  return Math.abs(h % 1000) / 1000;
 }
 
 function LeafDoodle({ style, flip }) {
@@ -228,7 +227,896 @@ function RailButton({ icon: Icon, label, active, onClick }) {
   );
 }
 
-/* ---------------- Empty state ---------------- */
+// ============================================================
+// 🎯 YANGI: TransformableElement — faqat mavjud React bilan
+// ============================================================
+
+function TransformableElement({
+  element,
+  children,
+  isSelected,
+  onSelect,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  onLayerUp,
+  onLayerDown,
+  canEdit,
+}) {
+  const [pos, setPos] = useState({
+    x: element.position_x || 0,
+    y: element.position_y || 0,
+    w: element.position_w || 40,
+    h: element.position_h || 40,
+    rotate: element.rotation || 0,
+  });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({ startX: 0, startY: 0, startPos: pos });
+  const resizeRef = useRef({ handle: null, startX: 0, startY: 0, startPos: pos });
+
+  // ===== DRAG =====
+  const handleDragStart = (e) => {
+    if (!canEdit) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startPos: { ...pos },
+    };
+    setIsDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    const dx = ((e.clientX - dragRef.current.startX) / e.currentTarget.parentElement.getBoundingClientRect().width) * 100;
+    const dy = ((e.clientY - dragRef.current.startY) / e.currentTarget.parentElement.getBoundingClientRect().height) * 100;
+    const newX = Math.max(0, Math.min(100 - pos.w, dragRef.current.startPos.x + dx));
+    const newY = Math.max(0, Math.min(100 - pos.h, dragRef.current.startPos.y + dy));
+    setPos((p) => ({ ...p, x: newX, y: newY }));
+  };
+
+  const handleDragEnd = (e) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
+  };
+
+  // ===== RESIZE =====
+  const handleResizeStart = (e, handle) => {
+    if (!canEdit) return;
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    resizeRef.current = {
+      handle,
+      startX: e.clientX,
+      startY: e.clientY,
+      startPos: { ...pos },
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleResizeMove = (e) => {
+    const { handle, startX, startY, startPos } = resizeRef.current;
+    if (!handle) return;
+    const parentRect = e.currentTarget.parentElement.getBoundingClientRect();
+    const dx = ((e.clientX - startX) / parentRect.width) * 100;
+    const dy = ((e.clientY - startY) / parentRect.height) * 100;
+    
+    let newW = startPos.w;
+    let newH = startPos.h;
+    let newX = startPos.x;
+    let newY = startPos.y;
+    const minSize = 3;
+
+    switch (handle) {
+      case "se": newW = Math.max(minSize, startPos.w + dx); newH = Math.max(minSize, startPos.h + dy); break;
+      case "nw": newW = Math.max(minSize, startPos.w - dx); newH = Math.max(minSize, startPos.h - dy); newX = startPos.x + (startPos.w - newW); newY = startPos.y + (startPos.h - newH); break;
+      case "ne": newW = Math.max(minSize, startPos.w + dx); newH = Math.max(minSize, startPos.h - dy); newY = startPos.y + (startPos.h - newH); break;
+      case "sw": newW = Math.max(minSize, startPos.w - dx); newH = Math.max(minSize, startPos.h + dy); newX = startPos.x + (startPos.w - newW); break;
+      case "n": newH = Math.max(minSize, startPos.h - dy); newY = startPos.y + (startPos.h - newH); break;
+      case "s": newH = Math.max(minSize, startPos.h + dy); break;
+      case "w": newW = Math.max(minSize, startPos.w - dx); newX = startPos.x + (startPos.w - newW); break;
+      case "e": newW = Math.max(minSize, startPos.w + dx); break;
+    }
+
+    setPos({ ...pos, x: newX, y: newY, w: newW, h: newH });
+  };
+
+  const handleResizeEnd = (e) => {
+    if (!resizeRef.current.handle) return;
+    resizeRef.current.handle = null;
+    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
+  };
+
+  // ===== ROTATE =====
+  const rotateRef = useRef({ startX: 0, startY: 0, startRotate: 0, centerX: 0, centerY: 0 });
+
+  const handleRotateStart = (e) => {
+    if (!canEdit) return;
+    e.stopPropagation();
+    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+    const centerX = rect.left + rect.width * (pos.x + pos.w / 2) / 100;
+    const centerY = rect.top + rect.height * (pos.y + pos.h / 2) / 100;
+    rotateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startRotate: pos.rotate,
+      centerX,
+      centerY,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleRotateMove = (e) => {
+    const { startX, startY, startRotate, centerX, centerY } = rotateRef.current;
+    if (centerX === undefined) return;
+    const angle1 = Math.atan2(startY - centerY, startX - centerX) * 180 / Math.PI;
+    const angle2 = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+    const newRotate = startRotate + (angle2 - angle1);
+    setPos((p) => ({ ...p, rotate: newRotate }));
+  };
+
+  const handleRotateEnd = (e) => {
+    rotateRef.current.centerX = undefined;
+    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
+  };
+
+  // ===== Resize handles =====
+  const resizeHandles = [
+    { id: "se", cursor: "nwse-resize", x: 1, y: 1 },
+    { id: "nw", cursor: "nwse-resize", x: 0, y: 0 },
+    { id: "ne", cursor: "nesw-resize", x: 1, y: 0 },
+    { id: "sw", cursor: "nesw-resize", x: 0, y: 1 },
+    { id: "n", cursor: "ns-resize", x: 0.5, y: 0 },
+    { id: "s", cursor: "ns-resize", x: 0.5, y: 1 },
+    { id: "w", cursor: "ew-resize", x: 0, y: 0.5 },
+    { id: "e", cursor: "ew-resize", x: 1, y: 0.5 },
+  ];
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: `${pos.x}%`,
+        top: `${pos.y}%`,
+        width: `${pos.w}%`,
+        height: `${pos.h}%`,
+        transform: `rotate(${pos.rotate}deg)`,
+        cursor: canEdit ? "grab" : "default",
+        touchAction: "none",
+        zIndex: isSelected ? 500 : (element.z_index || 0),
+        border: isSelected ? `2px solid ${TOKENS.gold}` : "1px solid transparent",
+        borderRadius: 4,
+        boxShadow: isSelected ? `0 0 0 3px ${TOKENS.gold}33` : "none",
+        transition: isDragging ? "none" : "border 0.15s, box-shadow 0.15s",
+        userSelect: "none",
+      }}
+      onPointerDown={handleDragStart}
+      onPointerMove={handleDragMove}
+      onPointerUp={handleDragEnd}
+      onPointerCancel={handleDragEnd}
+      onClick={(e) => { e.stopPropagation(); onSelect(element.id); }}
+    >
+      {children}
+
+      {isSelected && canEdit && (
+        <>
+          {/* 8 ta resize tutqichi */}
+          {resizeHandles.map((h) => (
+            <div
+              key={h.id}
+              style={{
+                position: "absolute",
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                background: "#fff",
+                border: `2px solid ${TOKENS.gold}`,
+                boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+                left: `calc(${h.x * 100}% - 6px)`,
+                top: `calc(${h.y * 100}% - 6px)`,
+                cursor: h.cursor,
+                touchAction: "none",
+                zIndex: 10,
+              }}
+              onPointerDown={(e) => { e.stopPropagation(); handleResizeStart(e, h.id); }}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+              onPointerCancel={handleResizeEnd}
+            />
+          ))}
+
+          {/* Rotate tutqichi */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: -34,
+              transform: "translateX(-50%)",
+              width: 18,
+              height: 18,
+              borderRadius: "50%",
+              background: TOKENS.teal,
+              border: "2.5px solid #fff",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+              cursor: "grab",
+              touchAction: "none",
+              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontSize: 10,
+            }}
+            onPointerDown={handleRotateStart}
+            onPointerMove={handleRotateMove}
+            onPointerUp={handleRotateEnd}
+            onPointerCancel={handleRotateEnd}
+          >
+            ↻
+          </div>
+
+          {/* Rotate chizig'i */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: -20,
+              width: 1.5,
+              height: 20,
+              background: `${TOKENS.teal}99`,
+              transform: "translateX(-50%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Floating toolbar */}
+          <ElementFloatingToolbar
+            onDuplicate={() => onDuplicate(element.id)}
+            onLayerUp={() => onLayerUp(element.id)}
+            onLayerDown={() => onLayerDown(element.id)}
+            onDelete={() => onDelete(element.id)}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// ElementFloatingToolbar
+// ============================================================
+
+function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: "50%",
+        bottom: "calc(100% + 10px)",
+        transform: "translateX(-50%)",
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        background: TOKENS.ink,
+        borderRadius: 9,
+        padding: 4,
+        boxShadow: "0 6px 16px rgba(30,26,15,0.3)",
+        zIndex: 70,
+        whiteSpace: "nowrap",
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button type="button" className="fm-toolbar-btn" title="Nusxalash" onClick={onDuplicate}>
+        <Copy size={14} />
+      </button>
+      <button type="button" className="fm-toolbar-btn" title="Tepaga chiqarish" onClick={onLayerUp}>
+        <ChevronUp size={16} />
+      </button>
+      <button type="button" className="fm-toolbar-btn" title="Pastga tushirish" onClick={onLayerDown}>
+        <ChevronDown size={16} />
+      </button>
+      <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.18)", margin: "0 2px" }} />
+      <button type="button" className="fm-toolbar-btn danger" title="O'chirish" onClick={onDelete}>
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+}
+
+// ============================================================
+// PageCanvas — qayta yozilgan
+// ============================================================
+
+function PageCanvas({
+  page,
+  layout,
+  familySlug,
+  albumId,
+  canEdit,
+  saveElementPhotoUrlAction,
+  updateElementTextAction,
+  deleteElementAction,
+  updateElementPositionAction,
+  updateElementFrameAction,
+  updateElementTextStyleAction,
+  updateElementStickerColorAction,
+  changeZIndexAction,
+  duplicateElementAction,
+  backgroundId,
+  onCommitPosition,
+  onDuplicated,
+  onZIndexChange,
+}) {
+  const router = useRouter();
+  const [selectedId, setSelectedId] = useState(null);
+  const canvasRef = useRef(null);
+  const elements = page.elements || [];
+
+  // ===== Snap/Align =====
+  const [snapGuides, setSnapGuides] = useState({ vx: null, hy: null });
+
+  const findSnap = useCallback((movingId, x, y, w, h) => {
+    const threshold = 0.8;
+    const targetsX = [0, 50, 100];
+    const targetsY = [0, 50, 100];
+
+    elements.forEach((el) => {
+      if (el.id === movingId) return;
+      const ex = el.position_x ?? 0;
+      const ey = el.position_y ?? 0;
+      const ew = el.position_w ?? 40;
+      const eh = el.position_h ?? 40;
+      targetsX.push(ex, ex + ew, ex + ew / 2);
+      targetsY.push(ey, ey + eh, ey + eh / 2);
+    });
+
+    const edgesX = [x, x + w, x + w / 2];
+    const edgesY = [y, y + h, y + h / 2];
+
+    let snapX = null, snapY = null;
+    for (const edge of edgesX) {
+      for (const t of targetsX) {
+        if (Math.abs(edge - t) < threshold) { snapX = { edge, target: t }; break; }
+      }
+      if (snapX) break;
+    }
+    for (const edge of edgesY) {
+      for (const t of targetsY) {
+        if (Math.abs(edge - t) < threshold) { snapY = { edge, target: t }; break; }
+      }
+      if (snapY) break;
+    }
+
+    const result = {
+      x: snapX ? x + (snapX.target - snapX.edge) : x,
+      y: snapY ? y + (snapY.target - snapY.edge) : y,
+      vx: snapX ? snapX.target : null,
+      hy: snapY ? snapY.target : null,
+    };
+    setSnapGuides({ vx: result.vx, hy: result.hy });
+    return result;
+  }, [elements]);
+
+  // ===== Element yangilash =====
+  const handleUpdate = (elId, updates) => {
+    const el = elements.find((e) => e.id === elId);
+    if (!el) return;
+
+    const newPos = {
+      x: updates.x ?? el.position_x ?? 0,
+      y: updates.y ?? el.position_y ?? 0,
+      w: updates.w ?? el.position_w ?? 40,
+      h: updates.h ?? el.position_h ?? 40,
+      rotation: updates.rotate ?? el.rotation ?? 0,
+    };
+
+    onCommitPosition?.({
+      pageId: page.id,
+      elementId: elId,
+      prev: {
+        x: el.position_x ?? 0,
+        y: el.position_y ?? 0,
+        w: el.position_w ?? 40,
+        h: el.position_h ?? 40,
+        r: el.rotation ?? 0,
+      },
+      next: newPos,
+    });
+
+    // Serverga saqlash (debounce qilingan)
+    const f = posRef.current;
+    if (f) {
+      f.elements.familySlug.value = familySlug;
+      f.elements.pageId.value = page.id;
+      f.elements.elementId.value = elId;
+      f.elements.positionX.value = String(newPos.x);
+      f.elements.positionY.value = String(newPos.y);
+      f.elements.positionW.value = String(newPos.w);
+      f.elements.positionH.value = String(newPos.h);
+      f.elements.rotation.value = String(newPos.rotation);
+      f.elements.zIndex.value = "";
+      setTimeout(() => f.requestSubmit(), 0);
+    }
+  };
+
+  // ===== Element o'chirish =====
+  const handleDelete = (elId) => {
+    if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
+    const f = delRef.current;
+    if (f) {
+      f.elements.familySlug.value = familySlug;
+      f.elements.pageId.value = page.id;
+      f.elements.albumId.value = albumId;
+      f.elements.elementId.value = elId;
+      f.requestSubmit();
+    }
+    setSelectedId(null);
+  };
+
+  // ===== Element nusxalash =====
+  const handleDuplicate = (elId) => {
+    const f = dupRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.albumId.value = albumId;
+    f.elements.elementId.value = elId;
+    f.requestSubmit();
+  };
+
+  // ===== Layer o'zgartirish =====
+  const handleLayerUp = (elId) => {
+    onZIndexChange?.({ pageId: page.id, elementId: elId, direction: "up" });
+    const f = zRef.current;
+    if (f) {
+      f.elements.familySlug.value = familySlug;
+      f.elements.pageId.value = page.id;
+      f.elements.elementId.value = elId;
+      f.elements.direction.value = "up";
+      f.requestSubmit();
+    }
+  };
+
+  const handleLayerDown = (elId) => {
+    onZIndexChange?.({ pageId: page.id, elementId: elId, direction: "down" });
+    const f = zRef.current;
+    if (f) {
+      f.elements.familySlug.value = familySlug;
+      f.elements.pageId.value = page.id;
+      f.elements.elementId.value = elId;
+      f.elements.direction.value = "down";
+      f.requestSubmit();
+    }
+  };
+
+  // ===== Refs =====
+  const posRef = useRef(null);
+  const delRef = useRef(null);
+  const dupRef = useRef(null);
+  const zRef = useRef(null);
+
+  // ===== Keyboard shortcuts =====
+  useEffect(() => {
+    if (!canEdit) return;
+    const onKeyDown = (e) => {
+      if (!selectedId) return;
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        handleDelete(selectedId);
+      }
+      if (e.key === "Escape") {
+        setSelectedId(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canEdit, selectedId]);
+
+  // ===== Element mazmuni =====
+  const renderContent = (el) => {
+    if (el.type === "photo") {
+      return (
+        <PhotoSlotContent
+          element={el}
+          familySlug={familySlug}
+          albumId={albumId}
+          pageId={page.id}
+          saveElementPhotoUrlAction={saveElementPhotoUrlAction}
+          deleteElementAction={deleteElementAction}
+          canEdit={canEdit}
+        />
+      );
+    }
+    if (el.type === "text") {
+      return (
+        <TextSlotContent
+          element={el}
+          familySlug={familySlug}
+          albumId={albumId}
+          updateElementTextAction={updateElementTextAction}
+          canEdit={canEdit}
+        />
+      );
+    }
+    if (el.type === "sticker") {
+      return <StickerSlotContent element={el} canEdit={canEdit} />;
+    }
+    return null;
+  };
+
+  return (
+    <div
+      ref={canvasRef}
+      onClick={() => { setSelectedId(null); setSnapGuides({ vx: null, hy: null }); }}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        aspectRatio: "4/3",
+        borderRadius: 3,
+        position: "relative",
+        background: `${PAPER_TEXTURE_URL}, radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${BACKGROUNDS[backgroundId]?.from || BACKGROUNDS.paper.from}, ${BACKGROUNDS[backgroundId]?.to || BACKGROUNDS.paper.to})`,
+        backgroundSize: "220px 220px, cover, cover",
+        boxShadow: `inset 0 0 40px rgba(120,96,54,0.16), 0 2px 6px rgba(30,38,33,0.08)`,
+        touchAction: "none",
+        overflow: "hidden",
+      }}
+    >
+      <LeafDoodle style={{ bottom: 6, right: 8 }} flip />
+      <LeafDoodle style={{ top: 4, left: 6, opacity: 0.28 }} />
+
+      {/* Snap chiziqlari */}
+      {snapGuides.vx != null && (
+        <div style={{ position: "absolute", left: `${snapGuides.vx}%`, top: 0, bottom: 0, width: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 100 }} />
+      )}
+      {snapGuides.hy != null && (
+        <div style={{ position: "absolute", top: `${snapGuides.hy}%`, left: 0, right: 0, height: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 100 }} />
+      )}
+
+      {/* Hidden forms */}
+      <form ref={posRef} action={() => {}} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="positionX" />
+        <input type="hidden" name="positionY" />
+        <input type="hidden" name="positionW" />
+        <input type="hidden" name="positionH" />
+        <input type="hidden" name="zIndex" />
+        <input type="hidden" name="rotation" />
+      </form>
+      <form ref={delRef} action={() => {}} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="albumId" />
+      </form>
+      <form ref={dupRef} action={() => {}} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="albumId" />
+      </form>
+      <form ref={zRef} action={() => {}} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="direction" />
+      </form>
+
+      {/* Elementlar */}
+      {elements.map((el, i) => (
+        <TransformableElement
+          key={el.id}
+          element={el}
+          isSelected={selectedId === el.id}
+          onSelect={setSelectedId}
+          onUpdate={(updates) => handleUpdate(el.id, updates)}
+          onDelete={handleDelete}
+          onDuplicate={handleDuplicate}
+          onLayerUp={handleLayerUp}
+          onLayerDown={handleLayerDown}
+          canEdit={canEdit}
+        >
+          {renderContent(el)}
+        </TransformableElement>
+      ))}
+
+      {/* Sahifa meta */}
+      <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
+        {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
+        {page.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// PhotoSlotContent
+// ============================================================
+
+function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, deleteElementAction, canEdit }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+  const [deleteState, deleteFormAction, deletePending] = useActionState(deleteElementAction, undefined);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    if (!file.type.startsWith("image/")) {
+      setError("Faqat rasm fayllari qabul qilinadi.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError("Rasm hajmi 15MB dan oshmasligi kerak.");
+      return;
+    }
+
+    setError("");
+    setPending(true);
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/blob-upload",
+        clientPayload: JSON.stringify({ familySlug }),
+      });
+
+      const result = await saveElementPhotoUrlAction(familySlug, albumId, element.id, blob.url, false);
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      setError("Rasm yuklashda xato yuz berdi: " + (err?.message || String(err)));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const frameStyle = element.frame_style || "polaroid";
+  const isPolaroid = frameStyle === "polaroid";
+  const tilt = element.photo_url && isPolaroid ? (seeded(element.id, 1) * 4 - 2) : 0;
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        borderRadius: isPolaroid ? 2 : 8,
+        position: "relative",
+        transform: `rotate(${tilt}deg)`,
+        background: element.photo_url ? (isPolaroid ? "#fff" : "transparent") : TOKENS.parchment,
+        padding: element.photo_url && isPolaroid ? "5% 5% 9%" : 0,
+        boxShadow: element.photo_url ? "0 8px 18px rgba(30,26,15,0.22), 0 2px 5px rgba(30,26,15,0.12)" : "none",
+        border: element.photo_url ? "none" : `1.5px dashed ${TOKENS.parchmentDeep}`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxSizing: "border-box",
+        overflow: "hidden",
+      }}
+    >
+      {element.photo_url && (
+        <div
+          style={{
+            position: "absolute",
+            top: -10,
+            left: "50%",
+            width: 46,
+            height: 20,
+            transform: `translateX(-50%) rotate(${seeded(element.id, 2) * 16 - 8}deg)`,
+            background: TOKENS.tape,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
+            opacity: 0.85,
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: 1,
+          backgroundImage: element.photo_url ? `url(${element.photo_url})` : undefined,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
+        {canEdit && (
+          <>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={pending}
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                background: "rgba(30,38,33,0.0)",
+                border: "none",
+                cursor: pending ? "default" : "pointer",
+              }}
+            >
+              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
+            </button>
+            {element.photo_url && (
+              <form action={deleteFormAction} style={{ position: "absolute", top: 4, right: 4 }}>
+                <input type="hidden" name="familySlug" value={familySlug} />
+                <input type="hidden" name="albumId" value={albumId} />
+                <input type="hidden" name="pageId" value={pageId} />
+                <input type="hidden" name="elementId" value={element.id} />
+                <button
+                  type="submit"
+                  disabled={deletePending}
+                  title="O'chirish"
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: "rgba(30,38,33,0.8)",
+                    border: "none",
+                    color: "#fff",
+                    cursor: deletePending ? "default" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: deletePending ? 0.6 : 1,
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </form>
+            )}
+          </>
+        )}
+      </div>
+      {error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{error}</div>}
+      {deleteState?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{deleteState.error}</div>}
+    </div>
+  );
+}
+
+// ============================================================
+// TextSlotContent
+// ============================================================
+
+function TextSlotContent({ element, familySlug, albumId, updateElementTextAction, canEdit }) {
+  const [state, formAction] = useActionState(updateElementTextAction, undefined);
+  const [value, setValue] = useState(element.text_content || "");
+  const formRef = useRef(null);
+
+  return (
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      <form ref={formRef} action={formAction}>
+        <input type="hidden" name="familySlug" value={familySlug} />
+        <input type="hidden" name="albumId" value={albumId} />
+        <input type="hidden" name="elementId" value={element.id} />
+        <input type="hidden" name="text" value={value} />
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => {
+            if (canEdit && value !== (element.text_content || "")) {
+              formRef.current?.requestSubmit();
+            }
+          }}
+          readOnly={!canEdit}
+          placeholder={canEdit ? "Matn yozing..." : ""}
+          style={{
+            width: "100%",
+            height: "100%",
+            border: "none",
+            outline: "none",
+            resize: "none",
+            background: "transparent",
+            fontFamily: FONT_FAMILIES[element.text_font || "handwriting"],
+            fontSize: element.text_size || 22,
+            lineHeight: 1.35,
+            color: element.text_color || TOKENS.ink,
+            textAlign: element.text_align || "left",
+            fontWeight: (element.text_font || "handwriting") === "handwriting" ? 600 : 500,
+            padding: 0,
+          }}
+        />
+      </form>
+      {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger }}>{state.error}</div>}
+    </div>
+  );
+}
+
+// ============================================================
+// StickerSlotContent
+// ============================================================
+
+function StickerSlotContent({ element, canEdit }) {
+  const stickerId = element.sticker_id || "leaf";
+  const kind = stickerId.endsWith("-shape") ? "shape" : stickerId.startsWith("tape-") ? "tape" : "icon";
+  const color = element.sticker_color || TOKENS.teal;
+  const rot = seeded(element.id, 3) * 20 - 10;
+
+  let inner;
+  if (kind === "tape") {
+    const striped = stickerId === "tape-stripe";
+    inner = (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          background: striped
+            ? `repeating-linear-gradient(45deg, ${color}, ${color} 8px, rgba(255,255,255,0.55) 8px, rgba(255,255,255,0.55) 16px)`
+            : color,
+          opacity: 0.82,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+          borderRadius: 1,
+        }}
+      />
+    );
+  } else if (kind === "shape") {
+    if (stickerId === "circle-shape") {
+      inner = <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: color, opacity: 0.85 }} />;
+    } else if (stickerId === "square-shape") {
+      inner = <div style={{ width: "100%", height: "100%", borderRadius: 4, background: color, opacity: 0.85 }} />;
+    } else {
+      inner = (
+        <div
+          style={{
+            width: 0,
+            height: 0,
+            borderLeft: "50% solid transparent",
+            borderRight: "50% solid transparent",
+            borderBottom: "100% solid " + color,
+            opacity: 0.85,
+            aspectRatio: "1/1",
+          }}
+        />
+      );
+    }
+  } else {
+    const Icon = STICKER_ICONS[stickerId] || Leaf;
+    inner = <Icon size="70%" color={color} strokeWidth={1.4} fill={color} fillOpacity={0.3} />;
+  }
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        transform: `rotate(${rot}deg)`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {inner}
+    </div>
+  );
+}
+
+// ============================================================
+// EmptyAlbums, CreateAlbumModal, UploadPhotosModal, AlbumGrid
+// ============================================================
 
 function EmptyAlbums({ onCreate }) {
   return (
@@ -246,8 +1134,6 @@ function EmptyAlbums({ onCreate }) {
     </div>
   );
 }
-
-/* ---------------- Create Album modal ---------------- */
 
 export function CreateAlbumModal({ familySlug, createAlbumAction, onClose }) {
   const [state, formAction, pending] = useActionState(createAlbumAction, undefined);
@@ -276,8 +1162,6 @@ export function CreateAlbumModal({ familySlug, createAlbumAction, onClose }) {
     </div>
   );
 }
-
-/* ---------------- Bulk photo upload modal ("+ Yangi" > "Rasmlar yuklash") ---------------- */
 
 export function UploadPhotosModal({ familySlug, albums, bulkUploadPhotosAction, onClose }) {
   const [state, formAction, pending] = useActionState(bulkUploadPhotosAction, undefined);
@@ -394,301 +1278,9 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug }) {
   );
 }
 
-/* ---------------- Page canvas (real elementlar bilan) ---------------- */
-
-function PhotoSlot({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, deleteElementAction, canEdit, style, onDragStart, isDragging }) {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const [deleteState, deleteFormAction, deletePending] = useActionState(deleteElementAction, undefined);
-  const inputRef = useRef(null);
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = ""; // xuddi shu faylni qayta tanlash imkoniyati uchun
-
-    if (!file.type.startsWith("image/")) {
-      setError("Faqat rasm fayllari qabul qilinadi.");
-      return;
-    }
-    if (file.size > 15 * 1024 * 1024) {
-      setError("Rasm hajmi 15MB dan oshmasligi kerak.");
-      return;
-    }
-
-    setError("");
-    setPending(true);
-    try {
-      // Fayl to'g'ridan-to'g'ri brauzerdan Vercel Blob'ga ketadi — bizning
-      // serverimiz (va uning 4.5MB chegarasi) faylning o'zini ko'rmaydi ham.
-      const blob = await upload(file.name, file, {
-        access: "public",
-        handleUploadUrl: "/api/blob-upload",
-        clientPayload: JSON.stringify({ familySlug }),
-      });
-
-      const result = await saveElementPhotoUrlAction(familySlug, albumId, element.id, blob.url, false);
-      if (result?.error) {
-        setError(result.error);
-      } else {
-        router.refresh();
-      }
-    } catch (err) {
-      setError("Rasm yuklashda xato yuz berdi: " + (err?.message || String(err)));
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const frameStyle = element.frame_style || "polaroid";
-  const isPolaroid = frameStyle === "polaroid";
-  const isSoft = frameStyle === "soft";
-  const tilt = element.photo_url && isPolaroid ? (seeded(element.id, 1) * 4 - 2) : 0; // -2..2deg, decorative only
-  const tapeRotate = seeded(element.id, 2) * 16 - 8; // -8..8deg
-
-  return (
-    <div
-      style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s" }}
-    >
-      <div
-        style={{
-          width: "100%", height: "100%", borderRadius: isPolaroid ? 2 : 8, position: "relative",
-          transform: `rotate(${tilt}deg)`,
-          background: element.photo_url ? (isPolaroid ? "#fff" : "transparent") : TOKENS.parchment,
-          padding: element.photo_url && isPolaroid ? "5% 5% 9%" : 0,
-          boxShadow: element.photo_url ? "0 8px 18px rgba(30,26,15,0.22), 0 2px 5px rgba(30,26,15,0.12)" : "none",
-          border: element.photo_url ? "none" : `1.5px dashed ${TOKENS.parchmentDeep}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: canEdit ? "grab" : "default",
-          boxSizing: "border-box",
-        }}
-      >
-        {element.photo_url && (
-          <div
-            aria-hidden
-            style={{
-              position: "absolute", top: -10, left: "50%", width: 46, height: 20,
-              transform: `translateX(-50%) rotate(${tapeRotate}deg)`,
-              background: TOKENS.tape, boxShadow: "0 1px 2px rgba(0,0,0,0.12)",
-              opacity: 0.85, pointerEvents: "none",
-            }}
-          />
-        )}
-        <div
-          style={{
-            width: "100%", height: "100%", position: "relative", overflow: "hidden", borderRadius: 1,
-            backgroundImage: element.photo_url ? `url(${element.photo_url})` : undefined,
-            backgroundSize: "cover", backgroundPosition: "center",
-          }}
-        >
-        {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
-        {canEdit && (
-          <>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-            />
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={pending}
-              style={{
-                position: "absolute", inset: 0, width: "100%", height: "100%", background: "rgba(30,38,33,0.0)",
-                border: "none", cursor: pending ? "default" : "pointer",
-              }}
-            >
-              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
-            </button>
-            {element.photo_url && (
-              <form action={deleteFormAction} style={{ position: "absolute", top: 4, right: 4 }}>
-                <input type="hidden" name="familySlug" value={familySlug} />
-                <input type="hidden" name="albumId" value={albumId} />
-                <input type="hidden" name="pageId" value={pageId} />
-                <input type="hidden" name="elementId" value={element.id} />
-                <button
-                  type="submit"
-                  disabled={deletePending}
-                  title="O'chirish"
-                  style={{
-                    width: 24, height: 24, borderRadius: "50%", background: "rgba(30,38,33,0.8)",
-                    border: "none", color: "#fff", cursor: deletePending ? "default" : "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", opacity: deletePending ? 0.6 : 1,
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </form>
-            )}
-          </>
-        )}
-        </div>
-      </div>
-      {error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{error}</div>}
-      {deleteState?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{deleteState.error}</div>}
-    </div>
-  );
-}
-
-// Stiker tanlash panelidagi kichik ko'rinish (namuna) — 20px shakl/lenta yoki ikonka.
-function StickerPickerPreview({ stickerId, kind }) {
-  const color = STICKER_DEFAULT_COLORS[stickerId] || TOKENS.teal;
-  if (kind === "tape") {
-    const striped = stickerId === "tape-stripe";
-    return (
-      <div style={{
-        width: 26, height: 10, borderRadius: 1,
-        background: striped
-          ? `repeating-linear-gradient(45deg, ${color}, ${color} 4px, rgba(255,255,255,0.55) 4px, rgba(255,255,255,0.55) 8px)`
-          : color,
-        opacity: 0.85,
-      }} />
-    );
-  }
-  if (kind === "shape") {
-    if (stickerId === "circle-shape") return <div style={{ width: 20, height: 20, borderRadius: "50%", background: color, opacity: 0.85 }} />;
-    if (stickerId === "square-shape") return <div style={{ width: 20, height: 20, borderRadius: 4, background: color, opacity: 0.85 }} />;
-    return <div style={{ width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderBottom: `18px solid ${color}`, opacity: 0.85 }} />;
-  }
-  const Icon = STICKER_ICONS[stickerId] || Leaf;
-  return <Icon size={20} color={color} />;
-}
-
-function TemplateThumbnail({ template }) {
-  const bg = BACKGROUNDS[template.backgroundId] || BACKGROUNDS.paper;
-  return (
-    <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${bg.from}, ${bg.to})`, borderRadius: 4, overflow: "hidden" }}>
-      {template.slots.map((s, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`,
-            background: s.type === "photo" ? "rgba(255,255,255,0.55)" : "rgba(30,38,33,0.18)",
-            border: s.type === "photo" ? "1px solid rgba(255,255,255,0.8)" : "none",
-            borderRadius: 2,
-          }}
-        />
-      ))}
-      {template.stickers.map((st, i) => {
-        if (st.kind === "icon") {
-          const Icon = STICKER_ICONS[st.stickerId] || Leaf;
-          return (
-            <div key={i} style={{ position: "absolute", left: `${st.x}%`, top: `${st.y}%`, width: `${st.w}%`, height: `${st.h}%`, display: "flex" }}>
-              <Icon size={9} color={st.color} style={{ width: "100%", height: "100%" }} />
-            </div>
-          );
-        }
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute", left: `${st.x}%`, top: `${st.y}%`, width: `${st.w}%`, height: `${st.h}%`,
-              background: st.color, opacity: 0.85,
-              borderRadius: st.kind === "tape" ? 1 : st.kind === "shape" ? 3 : 0,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function StickerSlot({ element, canEdit, style, onDragStart, isDragging }) {
-  const stickerId = element.sticker_id || "leaf";
-  const kind = stickerId.endsWith("-shape") ? "shape" : stickerId.startsWith("tape-") ? "tape" : "icon";
-  const color = element.sticker_color || TOKENS.teal;
-  const rot = seeded(element.id, 3) * 20 - 10; // -10..10deg, decorative
-
-  let inner;
-  if (kind === "tape") {
-    const striped = stickerId === "tape-stripe";
-    inner = (
-      <div
-        style={{
-          width: "100%", height: "100%",
-          background: striped
-            ? `repeating-linear-gradient(45deg, ${color}, ${color} 8px, rgba(255,255,255,0.55) 8px, rgba(255,255,255,0.55) 16px)`
-            : color,
-          opacity: 0.82,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-          borderRadius: 1,
-        }}
-      />
-    );
-  } else if (kind === "shape") {
-    if (stickerId === "circle-shape") {
-      inner = <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: color, opacity: 0.85 }} />;
-    } else if (stickerId === "square-shape") {
-      inner = <div style={{ width: "100%", height: "100%", borderRadius: 4, background: color, opacity: 0.85 }} />;
-    } else {
-      // triangle-shape — CSS border-trick uchburchak
-      inner = (
-        <div
-          style={{
-            width: 0, height: 0,
-            borderLeft: "50% solid transparent",
-            borderRight: "50% solid transparent",
-            borderBottom: "100% solid " + color,
-            opacity: 0.85,
-            aspectRatio: "1/1",
-          }}
-        />
-      );
-    }
-  } else {
-    const Icon = STICKER_ICONS[stickerId] || Leaf;
-    inner = <Icon size="70%" color={color} strokeWidth={1.4} fill={color} fillOpacity={0.3} />;
-  }
-
-  return (
-    <div
-      style={{ ...style, position: "absolute", opacity: isDragging ? 0.5 : 1, transition: "opacity 0.2s", cursor: canEdit ? "grab" : "default" }}
-    >
-      <div style={{ width: "100%", height: "100%", transform: `rotate(${rot}deg)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {inner}
-      </div>
-    </div>
-  );
-}
-
-function TextSlot({ element, familySlug, albumId, updateElementTextAction, canEdit, style }) {
-  const [state, formAction] = useActionState(updateElementTextAction, undefined);
-  const [value, setValue] = useState(element.text_content || "");
-  const formRef = useRef(null);
-
-  return (
-    <div style={{ ...style, position: "absolute" }}>
-      <form ref={formRef} action={formAction}>
-        <input type="hidden" name="familySlug" value={familySlug} />
-        <input type="hidden" name="albumId" value={albumId} />
-        <input type="hidden" name="elementId" value={element.id} />
-        <input type="hidden" name="text" value={value} />
-        <textarea
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={() => { if (canEdit && value !== (element.text_content || "")) formRef.current?.requestSubmit(); }}
-          readOnly={!canEdit}
-          placeholder={canEdit ? "Matn yozing..." : ""}
-          style={{
-            width: "100%", height: "100%", border: "none", outline: "none", resize: "none", background: "transparent",
-            fontFamily: FONT_FAMILIES[element.text_font || "handwriting"],
-            fontSize: element.text_size || 22,
-            lineHeight: 1.35,
-            color: element.text_color || TOKENS.ink,
-            textAlign: element.text_align || "left",
-            fontWeight: (element.text_font || "handwriting") === "handwriting" ? 600 : 500,
-          }}
-        />
-      </form>
-      {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger }}>{state.error}</div>}
-    </div>
-  );
-}
-
-/* ---------------- Selected-element style panels ---------------- */
+// ============================================================
+// StylePanelShell, TextStylePanel, StickerStylePanel, PhotoStylePanel
+// ============================================================
 
 const PANEL_LABEL_STYLE = { fontSize: 10.5, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
 
@@ -711,7 +1303,6 @@ function TextStylePanel({ element, familySlug, updateElementTextStyleAction, onC
   const formRef = useRef(null);
   const [size, setSize] = useState(element.text_size || 22);
 
-  // Boshqa elementga o'tilganda slider'ni shu elementning saqlangan qiymatiga tenglashtiramiz.
   useEffect(() => { setSize(element.text_size || 22); }, [element.id]);
 
   const submit = (overrides) => {
@@ -909,718 +1500,75 @@ function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameActio
   );
 }
 
-function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete, busy }) {
-  return (
-    <div
-      className="fm-element-toolbar"
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        position: "absolute", left: "50%", bottom: "calc(100% + 10px)", transform: "translateX(-50%)",
-        display: "flex", alignItems: "center", gap: 2, background: TOKENS.ink, borderRadius: 9,
-        padding: 4, boxShadow: "0 6px 16px rgba(30,26,15,0.3)", zIndex: 70, whiteSpace: "nowrap",
-      }}
-    >
-      <button type="button" className="fm-toolbar-btn" title="Nusxalash" disabled={busy} onClick={onDuplicate}>
-        <Copy size={14} />
-      </button>
-      <button type="button" className="fm-toolbar-btn" title="Tepaga chiqarish" onClick={onLayerUp}>
-        <ChevronUp size={16} />
-      </button>
-      <button type="button" className="fm-toolbar-btn" title="Pastga tushirish" onClick={onLayerDown}>
-        <ChevronDown size={16} />
-      </button>
-      <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.18)", margin: "0 2px" }} />
-      <button type="button" className="fm-toolbar-btn danger" title="O'chirish" onClick={onDelete}>
-        <Trash2 size={14} />
-      </button>
-    </div>
-  );
+// ============================================================
+// StickerPickerPreview, TemplateThumbnail
+// ============================================================
+
+function StickerPickerPreview({ stickerId, kind }) {
+  const color = STICKER_DEFAULT_COLORS[stickerId] || TOKENS.teal;
+  if (kind === "tape") {
+    const striped = stickerId === "tape-stripe";
+    return (
+      <div style={{
+        width: 26, height: 10, borderRadius: 1,
+        background: striped
+          ? `repeating-linear-gradient(45deg, ${color}, ${color} 4px, rgba(255,255,255,0.55) 4px, rgba(255,255,255,0.55) 8px)`
+          : color,
+        opacity: 0.85,
+      }} />
+    );
+  }
+  if (kind === "shape") {
+    if (stickerId === "circle-shape") return <div style={{ width: 20, height: 20, borderRadius: "50%", background: color, opacity: 0.85 }} />;
+    if (stickerId === "square-shape") return <div style={{ width: 20, height: 20, borderRadius: 4, background: color, opacity: 0.85 }} />;
+    return <div style={{ width: 0, height: 0, borderLeft: "10px solid transparent", borderRight: "10px solid transparent", borderBottom: `18px solid ${color}`, opacity: 0.85 }} />;
+  }
+  const Icon = STICKER_ICONS[stickerId] || Leaf;
+  return <Icon size={20} color={color} />;
 }
 
-function PageCanvas({ page, layout, familySlug, albumId, canEdit, saveElementPhotoUrlAction, updateElementTextAction, reorderElementsAction, deleteElementAction, updateElementPositionAction, updateElementCaptionAction, updateElementPlaceAction, changeZIndexAction, duplicateElementAction, moveElementUpAction, moveElementDownAction, updateElementFrameAction, updateElementTextStyleAction, updateElementStickerColorAction, backgroundId, onCommitPosition, onDuplicated, onZIndexChange }) {
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [dropIndex, setDropIndex] = useState(null);
-  const [reorderState, reorderFormAction, reorderPending] = useActionState(reorderElementsAction, undefined);
-  const [posState, posFormAction, posPending] = useActionState(updateElementPositionAction, undefined);
-  const [delState, delFormAction, delPending] = useActionState(deleteElementAction, undefined);
-  const [dupState, dupFormAction, dupPending] = useActionState(duplicateElementAction, undefined);
-  const [zState, zFormAction] = useActionState(changeZIndexAction, undefined);
-
-  const reorderRef = useRef(null);
-  const posRef = useRef(null);
-  const delRef = useRef(null);
-  const dupRef = useRef(null);
-  const zRef = useRef(null);
-  const pendingDuplicateSourceRef = useRef(null); // Undo/Redo tarixi uchun: nusxalash boshlanganda manba elementi ID'sini vaqtincha saqlaydi
-
-  const [selectedId, setSelectedId] = useState(null);
-  const [hoveredId, setHoveredId] = useState(null);
-  const canvasRef = useRef(null);
-  const dragState = useRef(null);
-  const commitState = useRef(null);
-  const snapGuide = useRef(null); // { vx?: number, hy?: number } — faol snap chiziqlari (% koordinatada)
-  const [, forceRender] = useState(0);
-
-  // Nusxalash server'dan tasdiqlangach (yangi elementId kelgach), AlbumEditor
-  // darajasidagi Undo/Redo tarixiga "duplicate" yozuvini qo'shamiz.
-  useEffect(() => {
-    if (dupState?.ok && dupState.elementId && pendingDuplicateSourceRef.current) {
-      onDuplicated?.({ pageId: page.id, sourceId: pendingDuplicateSourceRef.current, newId: dupState.elementId });
-      pendingDuplicateSourceRef.current = null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dupState]);
-
-  // Elementni (id bo'yicha) surayotganda unga eng yaqin snap-nishonlarni
-  // (sahifa markazi/chetlari + boshqa elementlarning cheti/markazi) topadi.
-  // threshX/threshY — % birlikda, taxminan bir necha piksel ekvivalenti.
-  const findSnap = (movingId, x, y, w, h, threshX, threshY) => {
-    const targetsX = [0, 50, 100]; // sahifa: chap chet, markaz, o'ng chet
-    const targetsY = [0, 50, 100];
-    elements.forEach((el, i) => {
-      if (el.id === movingId) return;
-      const b = getElBox(el, i);
-      targetsX.push(b.x, b.x + b.w / 2, b.x + b.w);
-      targetsY.push(b.y, b.y + b.h / 2, b.y + b.h);
-    });
-    const edgesX = [x, x + w / 2, x + w]; // chap, markaz, o'ng
-    const edgesY = [y, y + h / 2, y + h]; // yuqori, markaz, past
-    let bestX = null, bestXDist = threshX;
-    let bestY = null, bestYDist = threshY;
-    for (const edge of edgesX) {
-      for (const t of targetsX) {
-        const d = Math.abs(edge - t);
-        if (d < bestXDist) { bestXDist = d; bestX = { edge, target: t }; }
-      }
-    }
-    for (const edge of edgesY) {
-      for (const t of targetsY) {
-        const d = Math.abs(edge - t);
-        if (d < bestYDist) { bestYDist = d; bestY = { edge, target: t }; }
-      }
-    }
-    const snappedX = bestX ? x + (bestX.target - bestX.edge) : x;
-    const snappedY = bestY ? y + (bestY.target - bestY.edge) : y;
-    return {
-      x: snappedX, y: snappedY,
-      vx: bestX ? bestX.target : null,
-      hy: bestY ? bestY.target : null,
-    };
-  };
-
-  const submitDuplicate = (elId) => {
-    const f = dupRef.current;
-    if (!f) return;
-    pendingDuplicateSourceRef.current = elId;
-    f.elements.familySlug.value = familySlug;
-    f.elements.pageId.value = page.id;
-    f.elements.albumId.value = albumId;
-    f.elements.elementId.value = elId;
-    setTimeout(() => f.requestSubmit(), 0);
-  };
-
-  const submitZIndex = (elId, direction) => {
-    const f = zRef.current;
-    if (!f) return;
-    onZIndexChange?.({ pageId: page.id, elementId: elId, direction });
-    f.elements.familySlug.value = familySlug;
-    f.elements.pageId.value = page.id;
-    f.elements.elementId.value = elId;
-    f.elements.direction.value = direction;
-    setTimeout(() => f.requestSubmit(), 0);
-  };
-
-  const submitDelete = (elId) => {
-    const f = delRef.current;
-    if (!f) return;
-    f.elements.familySlug.value = familySlug;
-    f.elements.pageId.value = page.id;
-    f.elements.albumId.value = albumId;
-    f.elements.elementId.value = elId;
-    setTimeout(() => f.requestSubmit(), 0);
-    setSelectedId(null);
-  };
-
-  const selected = page.elements?.find(e => e.id === selectedId) || null;
-
-  const handleDragStart = (index) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = (e, dropIdx) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIdx || !canEdit) return;
-    if (reorderPending) {
-      setDraggedIndex(null);
-      setDropIndex(null);
-      return;
-    }
-    const oldElements = page.elements || [];
-    const sourceEl = oldElements[draggedIndex];
-    const targetEl = oldElements[dropIdx];
-    if (!sourceEl || !targetEl) {
-      setDraggedIndex(null);
-      setDropIndex(null);
-      return;
-    }
-    const nextElements = [...oldElements];
-    [nextElements[draggedIndex], nextElements[dropIdx]] = [nextElements[dropIdx], nextElements[draggedIndex]];
-
-    if (reorderRef.current) {
-      const f = reorderRef.current;
-      f.elements.familySlug.value = familySlug;
-      f.elements.albumId.value = albumId;
-      f.elements.pageId.value = page.id;
-      f.elements.elementIds.value = nextElements.map((el) => el?.id).filter(Boolean).join(",");
-      setTimeout(() => f.requestSubmit(), 0);
-    }
-    setDraggedIndex(null);
-    setDropIndex(null);
-  };
-
-  const submitPosition = (elId, x, y, w, h, zIndex, rotation) => {
-    const f = posRef.current;
-    if (!f) return;
-    f.elements.familySlug.value = familySlug;
-    f.elements.pageId.value = page.id;
-    f.elements.elementId.value = elId;
-    f.elements.positionX.value = String(x);
-    f.elements.positionY.value = String(y);
-    f.elements.positionW.value = String(w);
-    f.elements.positionH.value = String(h);
-    if (zIndex != null) f.elements.zIndex.value = String(zIndex); else f.elements.zIndex.value = "";
-    if (rotation != null) f.elements.rotation.value = String(rotation); else f.elements.rotation.value = "";
-    setTimeout(() => f.requestSubmit(), 0);
-  };
-
-  const MIN_SIZE = 4; // % — elementning eng kichik ruxsat etilgan kengligi/balandligi
-
-  const onPointerDownElement = (e, el) => {
-    if (!canEdit) return;
-    // Rasm yuklash/o'chirish tugmasi yoki matn maydoni ustida bosilgan bo'lsa,
-    // "tortib joylashtirish" rejimini ishga tushirmaymiz — aks holda canvas
-    // pointer'ni o'zlashtirib olib, tugmaning onClick/inputning fokusi ishlamay qoladi.
-    const interactive = e.target.closest && e.target.closest("button, input, textarea, select, label, a");
-    if (interactive) {
-      setSelectedId(el.id);
-      return;
-    }
-    e.stopPropagation();
-    setSelectedId(el.id);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width * 100;
-    const py = (e.clientY - rect.top) / rect.height * 100;
-    const box = getElBox(el, page.elements.indexOf(el));
-    if (px >= box.x && px <= box.x + box.w && py >= box.y && py <= box.y + box.h) {
-      dragState.current = {
-        id: el.id, mode: "move",
-        startX: box.x, startY: box.y, startW: box.w, startH: box.h, startR: box.r,
-        offsetX: px - box.x, offsetY: py - box.y,
-        lastX: box.x, lastY: box.y, lastW: box.w, lastH: box.h, lastR: box.r,
-        moved: false,
-      };
-      canvas.setPointerCapture?.(e.pointerId);
-    }
-  };
-
-  // Resize (burchak tutqichi) yoki rotate (burish tutqichi) tortishni boshlaydi.
-  const onPointerDownHandle = (e, el, mode) => {
-    if (!canEdit) return;
-    e.stopPropagation();
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const box = getElBox(el, page.elements.indexOf(el));
-    dragState.current = {
-      id: el.id, mode,
-      startX: box.x, startY: box.y, startW: box.w, startH: box.h, startR: box.r,
-      offsetX: 0, offsetY: 0,
-      lastX: box.x, lastY: box.y, lastW: box.w, lastH: box.h, lastR: box.r,
-      moved: false,
-    };
-    canvas.setPointerCapture?.(e.pointerId);
-  };
-
-  const onPointerMoveCanvas = (e) => {
-    const ds = dragState.current;
-    if (!ds) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width * 100;
-    const py = (e.clientY - rect.top) / rect.height * 100;
-
-    if (ds.mode === "move") {
-      let nx = Math.max(0, Math.min(100 - ds.startW, px - ds.offsetX));
-      let ny = Math.max(0, Math.min(100 - ds.startH, py - ds.offsetY));
-      // Snap/align — sichqoncha bilan qo'lda surishda sahifa markazi/chetiga
-      // yoki boshqa elementlarning cheti/markaziga "yopishadi" (~6px chegara ichida).
-      const threshX = 6 / rect.width * 100;
-      const threshY = 6 / rect.height * 100;
-      const snap = findSnap(ds.id, nx, ny, ds.startW, ds.startH, threshX, threshY);
-      nx = snap.x; ny = snap.y;
-      snapGuide.current = (snap.vx != null || snap.hy != null) ? { vx: snap.vx, hy: snap.hy } : null;
-      ds.lastX = nx;
-      ds.lastY = ny;
-      ds.moved = true;
-    } else if (ds.mode.startsWith("resize-")) {
-      const corner = ds.mode.slice("resize-".length); // nw | ne | sw | se
-      // MUHIM: element `rotate(r deg)` bilan burilgan bo'lishi mumkin, va
-      // canvas kvadrat emas (4:3) — shu sabab hisoblashni % emas, PIKSEL
-      // fazosida va sichqoncha nuqtasini elementning "local" (burilmagan)
-      // koordinata tizimiga teskari aylantirib olib borishimiz kerak.
-      // Aks holda burilgan elementni tortib kattalashtirish sichqoncha
-      // harakatiga mos kelmay "sirg'anib" ketaveradi.
-      const rad = (ds.startR || 0) * Math.PI / 180;
-      const cos = Math.cos(rad), sin = Math.sin(rad);
-
-      const sxPx = ds.startX / 100 * rect.width;
-      const syPx = ds.startY / 100 * rect.height;
-      const swPx = ds.startW / 100 * rect.width;
-      const shPx = ds.startH / 100 * rect.height;
-      const cxPx = sxPx + swPx / 2;
-      const cyPx = syPx + shPx / 2;
-
-      const mxPx = e.clientX - rect.left;
-      const myPx = e.clientY - rect.top;
-      const dx = mxPx - cxPx, dy = myPx - cyPx;
-      // Markazga nisbatan sichqoncha nuqtasini -rad ga aylantirib, elementning
-      // o'z (burilmagan) koordinata tizimidagi holatini topamiz.
-      const lx = dx * cos + dy * sin;
-      const ly = -dx * sin + dy * cos;
-
-      const halfW = swPx / 2, halfH = shPx / 2;
-      // Tortilayotgan burchakning diagonal qarama-qarshisi (anchor) — local
-      // fazoda o'zgarmas turadi (rezayz paytida shu nuqta joyida qoladi).
-      const anchor = {
-        nw: { x: halfW, y: halfH },
-        ne: { x: -halfW, y: halfH },
-        sw: { x: halfW, y: -halfH },
-        se: { x: -halfW, y: -halfH },
-      }[corner];
-
-      const minWPx = MIN_SIZE / 100 * rect.width;
-      const minHPx = MIN_SIZE / 100 * rect.height;
-      let dragX = lx, dragY = ly;
-      if (Math.abs(dragX - anchor.x) < minWPx) {
-        dragX = anchor.x + (Math.sign(dragX - anchor.x) || 1) * minWPx;
-      }
-      if (Math.abs(dragY - anchor.y) < minHPx) {
-        dragY = anchor.y + (Math.sign(dragY - anchor.y) || 1) * minHPx;
-      }
-
-      const newWPx = Math.abs(dragX - anchor.x);
-      const newHPx = Math.abs(dragY - anchor.y);
-      const localCx = (anchor.x + dragX) / 2;
-      const localCy = (anchor.y + dragY) / 2;
-      // Yangi (local) markazni orqaga — canvas piksel fazosiga — aylantiramiz.
-      const newCxPx = cxPx + (localCx * cos - localCy * sin);
-      const newCyPx = cyPx + (localCx * sin + localCy * cos);
-
-      const newX = (newCxPx - newWPx / 2) / rect.width * 100;
-      const newY = (newCyPx - newHPx / 2) / rect.height * 100;
-      const newW = newWPx / rect.width * 100;
-      const newH = newHPx / rect.height * 100;
-
-      ds.lastX = newX; ds.lastY = newY; ds.lastW = newW; ds.lastH = newH;
-      ds.moved = true;
-      snapGuide.current = null; // rezayzda snap chizig'i chizilmaydi — faqat surishda
-    } else if (ds.mode === "rotate") {
-      // Aylanish burchagini piksellarda hisoblaymiz (canvas kvadrat emas, 4:3),
-      // aks holda % koordinatalar bo'yicha burchak noto'g'ri chiqadi.
-      const cx = rect.left + (ds.startX + ds.startW / 2) / 100 * rect.width;
-      const cy = rect.top + (ds.startY + ds.startH / 2) / 100 * rect.height;
-      const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI + 90;
-      ds.lastR = Math.round(angle);
-      ds.moved = true;
-    }
-    forceRender(v => v + 1);
-  };
-
-  const onPointerUpCanvas = () => {
-    const ds = dragState.current;
-    if (!ds) return;
-    // Faol tortishni DARHOL to'xtatamiz (dragState.current = null) — aks
-    // holda tugma qo'yib yuborilgandan keyin ham oddiy sichqoncha harakati
-    // (pointermove) "drag" kodi orqali ishlab, element kursor ortidan
-    // sudralib yurishda davom etardi (bu avvalgi urinishdagi bug edi).
-    dragState.current = null;
-    snapGuide.current = null;
-    if (!ds.moved) {
-      forceRender(v => v + 1);
-      return;
-    }
-    // Vizual "flash"ni (serverga saqlanmaguncha eski joyga bir lahza
-    // qaytib, keyin sakrab to'g'ri joyga borishni) oldini olish uchun,
-    // oxirgi tortilgan qiymatlarni ALOHIDA commitState ref'ida saqlab
-    // qolamiz — bu faqat render uchun ishlatiladi, pointermove'ga
-    // umuman ta'sir qilmaydi. Pastdagi useEffect serverdan yangilangan
-    // `page` shu qiymatlarga mos kelganda uni tozalaydi.
-    commitState.current = {
-      id: ds.id,
-      lastX: ds.lastX, lastY: ds.lastY, lastW: ds.lastW, lastH: ds.lastH, lastR: ds.lastR,
-      committedAt: Date.now(),
-    };
-    forceRender(v => v + 1);
-    if (ds.mode === "move") {
-      onCommitPosition?.({
-        pageId: page.id, elementId: ds.id,
-        prev: { x: ds.startX, y: ds.startY, w: ds.startW, h: ds.startH, r: ds.startR },
-        next: { x: ds.lastX, y: ds.lastY, w: ds.startW, h: ds.startH, r: ds.startR },
-      });
-      submitPosition(ds.id, ds.lastX, ds.lastY, ds.startW, ds.startH, undefined, undefined);
-    } else if (ds.mode.startsWith("resize-")) {
-      onCommitPosition?.({
-        pageId: page.id, elementId: ds.id,
-        prev: { x: ds.startX, y: ds.startY, w: ds.startW, h: ds.startH, r: ds.startR },
-        next: { x: ds.lastX, y: ds.lastY, w: ds.lastW, h: ds.lastH, r: ds.startR },
-      });
-      submitPosition(ds.id, ds.lastX, ds.lastY, ds.lastW, ds.lastH, undefined, undefined);
-    } else if (ds.mode === "rotate") {
-      onCommitPosition?.({
-        pageId: page.id, elementId: ds.id,
-        prev: { x: ds.startX, y: ds.startY, w: ds.startW, h: ds.startH, r: ds.startR },
-        next: { x: ds.startX, y: ds.startY, w: ds.startW, h: ds.startH, r: ds.lastR },
-      });
-      submitPosition(ds.id, ds.startX, ds.startY, ds.startW, ds.startH, undefined, ds.lastR);
-    }
-  };
-
-  // Server (revalidatsiyalangan `page` prop) commit qilingan qiymatlarga
-  // yetib kelganda optimistik overlay'ni tozalaydi. Agar biror sababga ko'ra
-  // (masalan action xato bergan) hech qachon mos kelmasa, 4 soniyadan keyin
-  // baribir tozalaymiz — overlay abadiy "muzlab" qolmasligi uchun.
-  useEffect(() => {
-    const cs = commitState.current;
-    if (!cs) return;
-    const el = elements.find((e) => e.id === cs.id);
-    if (!el) {
-      commitState.current = null;
-      return;
-    }
-    const i = elements.indexOf(el);
-    const box = getElBox(el, i);
-    const matches =
-      Math.abs(box.x - cs.lastX) < 0.5 &&
-      Math.abs(box.y - cs.lastY) < 0.5 &&
-      Math.abs(box.w - cs.lastW) < 0.5 &&
-      Math.abs(box.h - cs.lastH) < 0.5 &&
-      Math.abs(box.r - cs.lastR) < 0.5;
-    if (matches || Date.now() - cs.committedAt > 4000) {
-      commitState.current = null;
-      forceRender((v) => v + 1);
-    }
-  });
-
-  const elements = page.elements || [];
-
-  const getElBox = (el, i) => {
-    const slot = layout.slots[i];
-    return {
-      x: el.position_x != null ? el.position_x : (slot?.x ?? 5),
-      y: el.position_y != null ? el.position_y : (slot?.y ?? 5),
-      w: el.position_w != null ? el.position_w : (slot?.w ?? 40),
-      h: el.position_h != null ? el.position_h : (slot?.h ?? 40),
-      r: el.rotation ?? 0,
-      z: el.z_index ?? i,
-    };
-  };
-
-  const saving = posPending || delPending;
-
-  // Klaviatura yorliqlari: Delete/Backspace — o'chirish, Ctrl/Cmd+D — nusxalash,
-  // Escape — tanlovni bekor qilish, strelkalar — surish (Shift bilan kattaroq
-  // qadam). Faqat shu tomon (chap/o'ng)da biror element tanlangan bo'lsa va
-  // matn maydonida fokus bo'lmasa ishlaydi.
-  useEffect(() => {
-    if (!canEdit) return;
-    const onKeyDown = (e) => {
-      const tag = document.activeElement?.tagName;
-      const isEditable = tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
-      if (isEditable) return;
-      if (!selectedId) return;
-
-      if (e.key === "Escape") {
-        setSelectedId(null);
-        return;
-      }
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        submitDelete(selectedId);
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
-        e.preventDefault();
-        submitDuplicate(selectedId);
-        return;
-      }
-      if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        const el = elements.find((x) => x.id === selectedId);
-        if (!el) return;
-        const i = elements.indexOf(el);
-        const box = getElBox(el, i);
-        const step = e.shiftKey ? 5 : 0.5; // % — Shift bilan kattaroq qadam
-        let { x, y } = box;
-        if (e.key === "ArrowUp") y -= step;
-        else if (e.key === "ArrowDown") y += step;
-        else if (e.key === "ArrowLeft") x -= step;
-        else if (e.key === "ArrowRight") x += step;
-        onCommitPosition?.({
-          pageId: page.id, elementId: selectedId,
-          prev: { x: box.x, y: box.y, w: box.w, h: box.h, r: box.r },
-          next: { x, y, w: box.w, h: box.h, r: box.r },
-        });
-        submitPosition(selectedId, x, y, box.w, box.h, undefined, undefined);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canEdit, selectedId, elements]);
-
+function TemplateThumbnail({ template }) {
+  const bg = BACKGROUNDS[template.backgroundId] || BACKGROUNDS.paper;
   return (
-    <div style={{ display: "flex", gap: 16 }}>
-      <div
-        ref={canvasRef}
-        onPointerMove={onPointerMoveCanvas}
-        onPointerUp={onPointerUpCanvas}
-        onPointerCancel={onPointerUpCanvas}
-        onClick={() => setSelectedId(null)}
-        style={{
-          flex: 1, minWidth: 0, aspectRatio: "4/3", borderRadius: 3, position: "relative",
-          background: `${PAPER_TEXTURE_URL}, radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).from}, ${(BACKGROUNDS[backgroundId] || BACKGROUNDS.paper).to})`,
-          backgroundSize: "220px 220px, cover, cover",
-          boxShadow: `inset 0 0 40px ${TOKENS.paperShadow}, 0 2px 6px rgba(30,38,33,0.08)`,
-          opacity: saving ? 0.7 : 1, transition: "opacity 0.2s", touchAction: "none", overflow: "hidden",
-        }}
-        onDragOver={handleDragOver}
-      >
-        <LeafDoodle style={{ bottom: 6, right: 8 }} flip />
-        <LeafDoodle style={{ top: 4, left: 6, opacity: 0.28 }} />
-        {dragState.current && snapGuide.current?.vx != null && (
-          <div style={{ position: "absolute", left: `${snapGuide.current.vx}%`, top: 0, bottom: 0, width: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 400 }} />
-        )}
-        {dragState.current && snapGuide.current?.hy != null && (
-          <div style={{ position: "absolute", top: `${snapGuide.current.hy}%`, left: 0, right: 0, height: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 400 }} />
-        )}
-        <form ref={reorderRef} action={reorderFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="albumId" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementIds" />
-        </form>
-        <form ref={posRef} action={posFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="positionX" />
-          <input type="hidden" name="positionY" />
-          <input type="hidden" name="positionW" />
-          <input type="hidden" name="positionH" />
-          <input type="hidden" name="zIndex" />
-          <input type="hidden" name="rotation" />
-        </form>
-        <form ref={delRef} action={delFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="albumId" />
-        </form>
-        <form ref={dupRef} action={dupFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="albumId" />
-        </form>
-        <form ref={zRef} action={zFormAction} style={{ display: "none" }}>
-          <input type="hidden" name="familySlug" />
-          <input type="hidden" name="pageId" />
-          <input type="hidden" name="elementId" />
-          <input type="hidden" name="direction" />
-        </form>
-        {elements.map((el, i) => {
-          const live = dragState.current?.id === el.id;
-          const committing = !live && commitState.current?.id === el.id;
-          const box = getElBox(el, i);
-          // Tortish/o'lchamni o'zgartirish/burish faol bo'lsa — dragState'dan,
-          // endigina qo'yib yuborilgan va serverga saqlanishi kutilayotgan
-          // bo'lsa — commitState (frozen overlay)'dan, aks holda serverdagi
-          // (props orqali kelgan) qiymatlardan olamiz.
-          const src = live ? dragState.current : committing ? commitState.current : null;
-          const x = src ? src.lastX : box.x;
-          const y = src ? src.lastY : box.y;
-          const w = src ? src.lastW : box.w;
-          const h = src ? src.lastH : box.h;
-          const r = src ? src.lastR : box.r;
-          const isSelected = selectedId === el.id;
-          const isHovered = hoveredId === el.id && !isSelected && !dragState.current;
-          const style = {
-            left: `${x}%`,
-            top: `${y}%`,
-            width: `${w}%`,
-            height: `${h}%`,
-            transform: `rotate(${r}deg)`,
-            zIndex: isSelected ? 500 : box.z,
-            position: "absolute",
-            border: isSelected ? `2px solid ${TOKENS.gold}` : isHovered ? `2px solid ${TOKENS.gold}88` : "1px solid transparent",
-            borderRadius: 4,
-            boxShadow: isSelected ? `0 0 0 3px ${TOKENS.gold}33` : "none",
-            transition: live ? "none" : "border 0.15s, box-shadow 0.15s",
-          };
-          const slot = layout.slots[i];
-          const isPhoto = el.type === "photo" || (slot?.type === "photo" && el.type !== "sticker" && el.type !== "text");
-          const isSticker = el.type === "sticker";
+    <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${bg.from}, ${bg.to})`, borderRadius: 4, overflow: "hidden" }}>
+      {template.slots.map((s, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`,
+            background: s.type === "photo" ? "rgba(255,255,255,0.55)" : "rgba(30,38,33,0.18)",
+            border: s.type === "photo" ? "1px solid rgba(255,255,255,0.8)" : "none",
+            borderRadius: 2,
+          }}
+        />
+      ))}
+      {template.stickers.map((st, i) => {
+        if (st.kind === "icon") {
+          const Icon = STICKER_ICONS[st.stickerId] || Leaf;
           return (
-            <div
-              key={el.id}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, i)}
-              onDragLeave={() => setDropIndex(null)}
-              onDragEnter={() => setDropIndex(i)}
-              onPointerDown={(e) => onPointerDownElement(e, el)}
-              onClick={(e) => e.stopPropagation()}
-              onMouseEnter={() => setHoveredId(el.id)}
-              onMouseLeave={() => setHoveredId((h) => (h === el.id ? null : h))}
-              style={style}
-            >
-              {isSticker ? (
-                <StickerSlot
-                  element={el}
-                  canEdit={canEdit}
-                  style={{ width: "100%", height: "100%", position: "relative" }}
-                  onDragStart={() => handleDragStart(i)}
-                  isDragging={draggedIndex === i}
-                />
-              ) : isPhoto ? (
-                <PhotoSlot
-                  element={el}
-                  familySlug={familySlug}
-                  albumId={albumId}
-                  pageId={page.id}
-                  saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-                  deleteElementAction={deleteElementAction}
-                  canEdit={canEdit}
-                  style={{ width: "100%", height: "100%", position: "relative" }}
-                  onDragStart={() => handleDragStart(i)}
-                  isDragging={draggedIndex === i}
-                />
-              ) : (
-                <TextSlot
-                  element={el}
-                  familySlug={familySlug}
-                  albumId={albumId}
-                  updateElementTextAction={updateElementTextAction}
-                  canEdit={canEdit}
-                  style={{ width: "100%", height: "100%" }}
-                />
-              )}
-              {el.caption && selectedId !== el.id && (
-                <div style={{ position: "absolute", bottom: 4, left: 4, right: 4, fontSize: 10, color: "#fff", background: "rgba(0,0,0,0.55)", padding: "2px 6px", borderRadius: 3, pointerEvents: "none" }}>
-                  {el.caption}
-                </div>
-              )}
-              {canEdit && selectedId === el.id && (
-                <>
-                  {["nw", "ne", "sw", "se"].map((corner) => (
-                    <div
-                      key={corner}
-                      onPointerDown={(e) => onPointerDownHandle(e, el, `resize-${corner}`)}
-                      className="fm-resize-handle"
-                      style={{
-                        position: "absolute",
-                        width: 20, height: 20, borderRadius: "50%",
-                        background: "#fff", border: `2.5px solid ${TOKENS.gold}`,
-                        boxShadow: "0 2px 5px rgba(30,26,15,0.35)",
-                        top: corner[0] === "n" ? -10 : "auto",
-                        bottom: corner[0] === "s" ? -10 : "auto",
-                        left: corner[1] === "w" ? -10 : "auto",
-                        right: corner[1] === "e" ? -10 : "auto",
-                        cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize",
-                        touchAction: "none",
-                        zIndex: 60,
-                        transition: "transform 0.1s",
-                      }}
-                    />
-                  ))}
-                  <div
-                    onPointerDown={(e) => onPointerDownHandle(e, el, "rotate")}
-                    title="Burish"
-                    className="fm-resize-handle"
-                    style={{
-                      position: "absolute", left: "50%", top: -34, width: 18, height: 18, borderRadius: "50%",
-                      background: TOKENS.teal, border: "2.5px solid #fff", boxShadow: "0 2px 5px rgba(30,26,15,0.35)",
-                      transform: "translateX(-50%)", cursor: "grab", touchAction: "none", zIndex: 60,
-                    }}
-                  />
-                  <div
-                    aria-hidden
-                    style={{ position: "absolute", left: "50%", top: -20, width: 1.5, height: 20, background: `${TOKENS.teal}99`, transform: "translateX(-50%)", pointerEvents: "none" }}
-                  />
-                  <ElementFloatingToolbar
-                    onDuplicate={() => submitDuplicate(el.id)}
-                    onLayerUp={() => submitZIndex(el.id, "up")}
-                    onLayerDown={() => submitZIndex(el.id, "down")}
-                    onDelete={() => {
-                      if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
-                      submitDelete(el.id);
-                    }}
-                    busy={dupPending}
-                  />
-                </>
-              )}
+            <div key={i} style={{ position: "absolute", left: `${st.x}%`, top: `${st.y}%`, width: `${st.w}%`, height: `${st.h}%`, display: "flex" }}>
+              <Icon size={9} color={st.color} style={{ width: "100%", height: "100%" }} />
             </div>
           );
-        })}
-        {[reorderState?.error, posState?.error, delState?.error].filter(Boolean).length > 0 && (
-          <div style={{ position: "absolute", top: 8, left: 8, right: 8, background: "#fff1f0", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 6, padding: "6px 10px", fontSize: 11.5, zIndex: 50 }}>
-            {[reorderState?.error, posState?.error, delState?.error].filter(Boolean)[0]}
-          </div>
-        )}
-        <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
-          {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
-          {page.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>}
-        </div>
-      </div>
-
-      {canEdit && selected && selected.type === "text" && (
-        <TextStylePanel
-          element={selected}
-          familySlug={familySlug}
-          updateElementTextStyleAction={updateElementTextStyleAction}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
-      {canEdit && selected && selected.type === "sticker" && (
-        <StickerStylePanel
-          element={selected}
-          familySlug={familySlug}
-          updateElementStickerColorAction={updateElementStickerColorAction}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
-      {canEdit && selected && selected.type === "photo" && (
-        <PhotoStylePanel
-          element={selected}
-          familySlug={familySlug}
-          albumId={albumId}
-          updateElementFrameAction={updateElementFrameAction}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
+        }
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute", left: `${st.x}%`, top: `${st.y}%`, width: `${st.w}%`, height: `${st.h}%`,
+              background: st.color, opacity: 0.85,
+              borderRadius: st.kind === "tape" ? 1 : st.kind === "shape" ? 3 : 0,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
-/* ---------------- Export (PNG/JPG/PDF) ---------------- */
+// ============================================================
+// Export (PNG/JPG/PDF)
+// ============================================================
 
 function waitFrames(n = 2) {
   return new Promise((resolve) => {
@@ -1769,6 +1717,10 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
   );
 }
 
+// ============================================================
+// AlbumEditor — asosiy komponent
+// ============================================================
+
 function AlbumEditor({
   album,
   onBack,
@@ -1799,27 +1751,22 @@ function AlbumEditor({
   deleteAlbumAction,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
-  const [activeSide, setActiveSide] = useState("left"); // "left" | "right" — Layout/Stiker/Fon shu tomonga ta'sir qiladi
-  const [activePanel, setActivePanel] = useState(null); // null | "template" | "layout" | "sticker" | "bg"
+  const [activeSide, setActiveSide] = useState("left");
+  const [activePanel, setActivePanel] = useState(null);
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
-  const [previewMode, setPreviewMode] = useState(false); // true bo'lsa — tahrirlash chrome'i yashiriladi, faqat sahifa ko'rinishi
+  const [previewMode, setPreviewMode] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
 
-  // Zoom — sahifa yozuvi (spread)ni kattalashtirish/kichraytirish. 1 = "ekranga
-  // moslash" (konteyner kengligiga to'la sig'adigan asosiy o'lcham).
+  // Zoom
   const ZOOM_MIN = 0.5, ZOOM_MAX = 2, ZOOM_STEP = 0.1;
   const [zoom, setZoom] = useState(1);
   const zoomIn = () => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100));
   const zoomOut = () => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100));
   const zoomFit = () => setZoom(1);
 
-  /* ---- Undo / Redo (brauzer darajasida — sahifa yangilansa yo'qoladi) ----
-     Tarix AlbumEditor darajasida saqlanadi (chap va o'ng sahifa PageCanvas'lari
-     umumiy stack'ga yozadi). Faqat pozitsiya (surish/resize/rotate), nusxalash
-     va qatlam tartibi (layer up/down) qamrab olingan — o'chirish/qo'shish/shablon/
-     fon/matn-uslub o'zgarishlari hali undo qilinmaydi (keyingi bosqich). */
+  // Undo/Redo
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const [, forceHistoryRender] = useState(0);
@@ -1847,6 +1794,7 @@ function AlbumEditor({
     f.elements.rotation.value = r != null ? String(r) : "";
     setTimeout(() => f.requestSubmit(), 0);
   };
+
   const submitUndoDuplicate = (pageId, sourceId) => {
     const f = undoDupRef.current;
     if (!f) return;
@@ -1856,6 +1804,7 @@ function AlbumEditor({
     f.elements.elementId.value = sourceId;
     setTimeout(() => f.requestSubmit(), 0);
   };
+
   const submitUndoDelete = (pageId, elId) => {
     const f = undoDelRef.current;
     if (!f) return;
@@ -1865,6 +1814,7 @@ function AlbumEditor({
     f.elements.elementId.value = elId;
     setTimeout(() => f.requestSubmit(), 0);
   };
+
   const submitUndoZIndex = (pageId, elId, direction) => {
     const f = undoZRef.current;
     if (!f) return;
@@ -1880,12 +1830,15 @@ function AlbumEditor({
     redoStackRef.current = [];
     forceHistoryRender((v) => v + 1);
   };
+
   const handleCommitPosition = ({ pageId, elementId, prev, next }) => {
     pushHistory({ type: "position", pageId, elementId, prev, next });
   };
+
   const handleDuplicated = ({ pageId, sourceId, newId }) => {
     pushHistory({ type: "duplicate", pageId, elementId: newId, sourceId });
   };
+
   const handleZIndexChange = ({ pageId, elementId, direction }) => {
     pushHistory({ type: "zindex", pageId, elementId, direction });
   };
@@ -1912,6 +1865,7 @@ function AlbumEditor({
     applyHistoryEntry(entry, "undo");
     forceHistoryRender((v) => v + 1);
   };
+
   const handleRedo = () => {
     const stack = redoStackRef.current;
     if (stack.length === 0) return;
@@ -1927,14 +1881,13 @@ function AlbumEditor({
       if (!canEdit || previewMode) return;
       const tag = document.activeElement?.tagName;
       const isEditable = tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
-      if (isEditable) return; // matn maydonlarida brauzerning o'z undo'siga ruxsat beramiz
+      if (isEditable) return;
       if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
       e.preventDefault();
       if (e.shiftKey) handleRedo(); else handleUndo();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canEdit, previewMode]);
 
   const pages = album.pages;
@@ -1955,6 +1908,7 @@ function AlbumEditor({
 
   return (
     <div style={{ padding: "22px clamp(16px, 4vw, 48px) 60px", maxWidth: 1680, margin: "0 auto" }}>
+      {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.ink60, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           <ChevronLeft size={16} /> Albomlarga qaytish
@@ -1995,7 +1949,7 @@ function AlbumEditor({
           const spreadNum = Math.floor(pageIndex / 2) + 1;
           const targetPage = activeSide === "right" && rightPage ? rightPage : currentPage;
           const targetLayout = activeSide === "right" && rightLayout ? rightLayout : currentLayout;
-          const effectiveCanEdit = canEdit && !previewMode; // Preview rejimida tahrirlash chrome'i butunlay yashiriladi
+          const effectiveCanEdit = canEdit && !previewMode;
 
           return (
             <div style={{ background: `linear-gradient(180deg, ${TOKENS.bookCoverSoft}, ${TOKENS.bookCover})`, borderRadius: 18, padding: "18px 18px 20px" }}>
@@ -2012,112 +1966,28 @@ function AlbumEditor({
                     </div>
                   )}
                   <div style={{ display: "flex", alignItems: "center", gap: 2, marginLeft: 6, background: "rgba(255,255,255,0.08)", borderRadius: 8, padding: 3 }}>
-                    <button
-                      type="button"
-                      onClick={zoomOut}
-                      disabled={zoom <= ZOOM_MIN}
-                      title="Kichraytirish"
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24,
-                        background: "transparent", border: "none", borderRadius: 5,
-                        color: zoom <= ZOOM_MIN ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)",
-                        cursor: zoom <= ZOOM_MIN ? "default" : "pointer", fontSize: 15, lineHeight: 1,
-                      }}
-                    >
-                      −
-                    </button>
-                    <button
-                      type="button"
-                      onClick={zoomFit}
-                      title="Ekranga moslash"
-                      style={{
-                        fontSize: 10.5, fontWeight: 600, color: "rgba(242,237,226,0.75)",
-                        background: "transparent", border: "none", cursor: "pointer",
-                        padding: "0 6px", minWidth: 40, textAlign: "center",
-                      }}
-                    >
-                      {Math.round(zoom * 100)}%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={zoomIn}
-                      disabled={zoom >= ZOOM_MAX}
-                      title="Kattalashtirish"
-                      style={{
-                        display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24,
-                        background: "transparent", border: "none", borderRadius: 5,
-                        color: zoom >= ZOOM_MAX ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)",
-                        cursor: zoom >= ZOOM_MAX ? "default" : "pointer", fontSize: 15, lineHeight: 1,
-                      }}
-                    >
-                      +
-                    </button>
+                    <button type="button" onClick={zoomOut} disabled={zoom <= ZOOM_MIN} title="Kichraytirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, background: "transparent", border: "none", borderRadius: 5, color: zoom <= ZOOM_MIN ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: zoom <= ZOOM_MIN ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>−</button>
+                    <button type="button" onClick={zoomFit} title="Ekranga moslash" style={{ fontSize: 10.5, fontWeight: 600, color: "rgba(242,237,226,0.75)", background: "transparent", border: "none", cursor: "pointer", padding: "0 6px", minWidth: 40, textAlign: "center" }}>{Math.round(zoom * 100)}%</button>
+                    <button type="button" onClick={zoomIn} disabled={zoom >= ZOOM_MAX} title="Kattalashtirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, background: "transparent", border: "none", borderRadius: 5, color: zoom >= ZOOM_MAX ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: zoom >= ZOOM_MAX ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>+</button>
                   </div>
                 </div>
                 {canEdit && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     {!previewMode && (
                       <div style={{ display: "flex", alignItems: "center", gap: 2, background: "rgba(255,255,255,0.08)", borderRadius: 8, padding: 3 }}>
-                        <button
-                          type="button"
-                          onClick={handleUndo}
-                          disabled={undoStackRef.current.length === 0}
-                          title="Bekor qilish (Ctrl+Z)"
-                          style={{
-                            display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 26,
-                            background: "transparent", border: "none", borderRadius: 6,
-                            color: undoStackRef.current.length === 0 ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)",
-                            cursor: undoStackRef.current.length === 0 ? "default" : "pointer",
-                          }}
-                        >
-                          <Undo2 size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRedo}
-                          disabled={redoStackRef.current.length === 0}
-                          title="Qaytarish (Ctrl+Shift+Z)"
-                          style={{
-                            display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 26,
-                            background: "transparent", border: "none", borderRadius: 6,
-                            color: redoStackRef.current.length === 0 ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)",
-                            cursor: redoStackRef.current.length === 0 ? "default" : "pointer",
-                          }}
-                        >
-                          <Redo2 size={15} />
-                        </button>
+                        <button type="button" onClick={handleUndo} disabled={undoStackRef.current.length === 0} title="Bekor qilish (Ctrl+Z)" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 26, background: "transparent", border: "none", borderRadius: 6, color: undoStackRef.current.length === 0 ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: undoStackRef.current.length === 0 ? "default" : "pointer" }}><Undo2 size={15} /></button>
+                        <button type="button" onClick={handleRedo} disabled={redoStackRef.current.length === 0} title="Qaytarish (Ctrl+Shift+Z)" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 26, background: "transparent", border: "none", borderRadius: 6, color: redoStackRef.current.length === 0 ? "rgba(242,237,226,0.3)" : "rgba(242,237,226,0.85)", cursor: redoStackRef.current.length === 0 ? "default" : "pointer" }}><Redo2 size={15} /></button>
                       </div>
                     )}
-                    <ExportMenu
-                      album={album}
-                      exporting={exporting}
-                      setExporting={setExporting}
-                      exportError={exportError}
-                      setExportError={setExportError}
-                      pageNodeRef={pageNodeRef}
-                      previewMode={previewMode}
-                      setPreviewMode={setPreviewMode}
-                      activePanel={activePanel}
-                      setActivePanel={setActivePanel}
-                      pages={pages}
-                      pageIndex={pageIndex}
-                      setPageIndex={setPageIndex}
-                    />
-                    <button
-                      onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
-                        background: previewMode ? TOKENS.gold : "rgba(255,255,255,0.08)",
-                        color: previewMode ? "#fff" : "rgba(242,237,226,0.85)",
-                        border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer",
-                      }}
-                    >
+                    <ExportMenu album={album} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} pageNodeRef={pageNodeRef} previewMode={previewMode} setPreviewMode={setPreviewMode} activePanel={activePanel} setActivePanel={setActivePanel} pages={pages} pageIndex={pageIndex} setPageIndex={setPageIndex} />
+                    <button onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, background: previewMode ? TOKENS.gold : "rgba(255,255,255,0.08)", color: previewMode ? "#fff" : "rgba(242,237,226,0.85)", border: "none", borderRadius: 8, padding: "7px 12px", cursor: "pointer" }}>
                       {previewMode ? <><X size={14} /> Tahrirlashga qaytish</> : "Ko'rish"}
                     </button>
                   </div>
                 )}
               </div>
               {exportError && <div style={{ fontSize: 11.5, color: "#E7A79B", marginBottom: 10, textAlign: "right" }}>{exportError}</div>}
+
               <form ref={addTextRef} action={addTextFormAction} style={{ display: "none" }}>
                 <input type="hidden" name="familySlug" />
                 <input type="hidden" name="albumId" />
@@ -2157,6 +2027,7 @@ function AlbumEditor({
                 <input type="hidden" name="elementId" />
                 <input type="hidden" name="direction" />
               </form>
+
               {addTextState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addTextState.error}</div>}
               {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
 
@@ -2168,28 +2039,8 @@ function AlbumEditor({
                     <RailButton icon={StickerIcon} label="Stiker" active={activePanel === "sticker"} onClick={() => setActivePanel((p) => (p === "sticker" ? null : "sticker"))} />
                     <RailButton icon={Palette} label="Fon" active={activePanel === "bg"} onClick={() => setActivePanel((p) => (p === "bg" ? null : "bg"))} />
                     <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "4px 10px" }} />
-                    <RailButton
-                      icon={Type}
-                      label="Matn"
-                      onClick={() => {
-                        const f = addTextRef.current; if (!f) return;
-                        f.elements.familySlug.value = familySlug;
-                        f.elements.albumId.value = album.id;
-                        f.elements.pageId.value = targetPage.id;
-                        setTimeout(() => f.requestSubmit(), 0);
-                      }}
-                    />
-                    <RailButton
-                      icon={ImagePlus}
-                      label="Rasm"
-                      onClick={() => {
-                        const f = addPhotoRef.current; if (!f) return;
-                        f.elements.familySlug.value = familySlug;
-                        f.elements.albumId.value = album.id;
-                        f.elements.pageId.value = targetPage.id;
-                        setTimeout(() => f.requestSubmit(), 0);
-                      }}
-                    />
+                    <RailButton icon={Type} label="Matn" onClick={() => { const f = addTextRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
+                    <RailButton icon={ImagePlus} label="Rasm" onClick={() => { const f = addPhotoRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
                   </div>
                 )}
 
@@ -2197,9 +2048,7 @@ function AlbumEditor({
                   <div className="fm-flyout-panel" style={{ width: 250, flexShrink: 0, background: TOKENS.card, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, padding: 12, maxHeight: 560, overflowY: "auto" }}>
                     {activePanel === "template" && (
                       <div>
-                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
-                          Shablon {activeSide === "right" ? "o'ng" : "chap"} sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.
-                        </div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Shablon {activeSide === "right" ? "o'ng" : "chap"} sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.</div>
                         {TEMPLATE_CATEGORIES.map((cat) => (
                           <div key={cat} style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{cat}</div>
@@ -2233,10 +2082,7 @@ function AlbumEditor({
                               <input type="hidden" name="albumId" value={album.id} />
                               <input type="hidden" name="pageId" value={targetPage.id} />
                               <input type="hidden" name="layoutId" value={l.id} />
-                              <button
-                                type="submit"
-                                style={{ width: "100%", cursor: "pointer", border: targetLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}
-                              >
+                              <button type="submit" style={{ width: "100%", cursor: "pointer", border: targetLayout.id === l.id ? `2px solid ${TOKENS.gold}` : `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 8, background: "#fff" }}>
                                 <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: TOKENS.parchment, borderRadius: 3, marginBottom: 6 }}>
                                   {l.slots.map((s, i) => <div key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, height: `${s.h}%`, background: s.type === "photo" ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.7 }} />)}
                                 </div>
@@ -2299,94 +2145,67 @@ function AlbumEditor({
                 )}
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-              {/* Two-page spread */}
-              <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease" }}>
-                <div
-                  ref={pageNodeRef}
-                  onMouseDownCapture={() => effectiveCanEdit && setActiveSide("left")}
-                  style={{
-                    flex: 1, position: "relative",
-                    boxShadow: effectiveCanEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
-                    zIndex: effectiveCanEdit && rightPage && activeSide === "left" ? 2 : 1,
-                  }}
-                >
-                  <PageCanvas
-                    page={currentPage}
-                    layout={currentLayout}
-                    familySlug={familySlug}
-                    albumId={album.id}
-                    canEdit={effectiveCanEdit}
-                    saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-                    updateElementTextAction={updateElementTextAction}
-                    reorderElementsAction={reorderElementsAction}
-                    deleteElementAction={deleteElementAction}
-                    updateElementPositionAction={updateElementPositionAction}
-                    updateElementCaptionAction={updateElementCaptionAction}
-                    updateElementPlaceAction={updateElementPlaceAction}
-                    changeZIndexAction={changeZIndexAction}
-                    duplicateElementAction={duplicateElementAction}
-                    moveElementUpAction={moveElementUpAction}
-                    moveElementDownAction={moveElementDownAction}
-                    updateElementFrameAction={updateElementFrameAction}
-                    updateElementTextStyleAction={updateElementTextStyleAction}
-                    updateElementStickerColorAction={updateElementStickerColorAction}
-                    backgroundId={currentPage.background_id || "paper"}
-                    onCommitPosition={handleCommitPosition}
-                    onDuplicated={handleDuplicated}
-                    onZIndexChange={handleZIndexChange}
-                  />
-                </div>
-                {/* Spine shadow between pages */}
-                <div style={{ width: 22, marginLeft: -11, marginRight: -11, zIndex: 5, background: "linear-gradient(90deg, transparent, rgba(30,26,15,0.22) 45%, rgba(30,26,15,0.22) 55%, transparent)", pointerEvents: "none" }} />
-                <div
-                  onMouseDownCapture={() => effectiveCanEdit && rightPage && setActiveSide("right")}
-                  style={{
-                    flex: 1, position: "relative",
-                    boxShadow: effectiveCanEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none",
-                    zIndex: effectiveCanEdit && rightPage && activeSide === "right" ? 2 : 1,
-                  }}
-                >
-                  {rightPage ? (
-                    <PageCanvas
-                      page={rightPage}
-                      layout={rightLayout}
-                      familySlug={familySlug}
-                      albumId={album.id}
-                      canEdit={effectiveCanEdit}
-                      saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-                      updateElementTextAction={updateElementTextAction}
-                      reorderElementsAction={reorderElementsAction}
-                      deleteElementAction={deleteElementAction}
-                      updateElementPositionAction={updateElementPositionAction}
-                      updateElementCaptionAction={updateElementCaptionAction}
-                      updateElementPlaceAction={updateElementPlaceAction}
-                      changeZIndexAction={changeZIndexAction}
-                      duplicateElementAction={duplicateElementAction}
-                      moveElementUpAction={moveElementUpAction}
-                      moveElementDownAction={moveElementDownAction}
-                      updateElementFrameAction={updateElementFrameAction}
-                      updateElementTextStyleAction={updateElementTextStyleAction}
-                      updateElementStickerColorAction={updateElementStickerColorAction}
-                      backgroundId={rightPage.background_id || "paper"}
-                      onCommitPosition={handleCommitPosition}
-                      onDuplicated={handleDuplicated}
-                      onZIndexChange={handleZIndexChange}
-                    />
-                  ) : (
-                    <div style={{ width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)` }}>
-                      {effectiveCanEdit && (
-                        <form action={addPageFormAction} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <input type="hidden" name="familySlug" value={familySlug} />
-                          <input type="hidden" name="albumId" value={album.id} />
-                          <button type="submit" disabled={addPagePending} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "transparent", border: `1.5px dashed ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "16px 22px", color: TOKENS.ink40, cursor: addPagePending ? "default" : "pointer" }}>
-                            <Plus size={18} /><span style={{ fontSize: 11.5 }}>Sahifa qo'shish</span>
-                          </button>
-                        </form>
+                  <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.45)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease" }}>
+                    <div ref={pageNodeRef} onMouseDownCapture={() => effectiveCanEdit && setActiveSide("left")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "left" ? 2 : 1 }}>
+                      <PageCanvas
+                        page={currentPage}
+                        layout={currentLayout}
+                        familySlug={familySlug}
+                        albumId={album.id}
+                        canEdit={effectiveCanEdit}
+                        saveElementPhotoUrlAction={saveElementPhotoUrlAction}
+                        updateElementTextAction={updateElementTextAction}
+                        deleteElementAction={deleteElementAction}
+                        updateElementPositionAction={updateElementPositionAction}
+                        changeZIndexAction={changeZIndexAction}
+                        duplicateElementAction={duplicateElementAction}
+                        updateElementFrameAction={updateElementFrameAction}
+                        updateElementTextStyleAction={updateElementTextStyleAction}
+                        updateElementStickerColorAction={updateElementStickerColorAction}
+                        backgroundId={currentPage.background_id || "paper"}
+                        onCommitPosition={handleCommitPosition}
+                        onDuplicated={handleDuplicated}
+                        onZIndexChange={handleZIndexChange}
+                      />
+                    </div>
+                    <div style={{ width: 22, marginLeft: -11, marginRight: -11, zIndex: 5, background: "linear-gradient(90deg, transparent, rgba(30,26,15,0.22) 45%, rgba(30,26,15,0.22) 55%, transparent)", pointerEvents: "none" }} />
+                    <div onMouseDownCapture={() => effectiveCanEdit && rightPage && setActiveSide("right")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "right" ? 2 : 1 }}>
+                      {rightPage ? (
+                        <PageCanvas
+                          page={rightPage}
+                          layout={rightLayout}
+                          familySlug={familySlug}
+                          albumId={album.id}
+                          canEdit={effectiveCanEdit}
+                          saveElementPhotoUrlAction={saveElementPhotoUrlAction}
+                          updateElementTextAction={updateElementTextAction}
+                          deleteElementAction={deleteElementAction}
+                          updateElementPositionAction={updateElementPositionAction}
+                          changeZIndexAction={changeZIndexAction}
+                          duplicateElementAction={duplicateElementAction}
+                          updateElementFrameAction={updateElementFrameAction}
+                          updateElementTextStyleAction={updateElementTextStyleAction}
+                          updateElementStickerColorAction={updateElementStickerColorAction}
+                          backgroundId={rightPage.background_id || "paper"}
+                          onCommitPosition={handleCommitPosition}
+                          onDuplicated={handleDuplicated}
+                          onZIndexChange={handleZIndexChange}
+                        />
+                      ) : (
+                        <div style={{ width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)` }}>
+                          {effectiveCanEdit && (
+                            <form action={addPageFormAction} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <input type="hidden" name="familySlug" value={familySlug} />
+                              <input type="hidden" name="albumId" value={album.id} />
+                              <button type="submit" disabled={addPagePending} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "transparent", border: `1.5px dashed ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "16px 22px", color: TOKENS.ink40, cursor: addPagePending ? "default" : "pointer" }}>
+                                <Plus size={18} /><span style={{ fontSize: 11.5 }}>Sahifa qo'shish</span>
+                              </button>
+                            </form>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
                 </div>
               </div>
 
@@ -2448,6 +2267,10 @@ function AlbumEditor({
     </div>
   );
 }
+
+// ============================================================
+// AlbumsView
+// ============================================================
 
 export function AlbumsView({
   albums,
@@ -2515,7 +2338,8 @@ export function AlbumsView({
           addTextElementAction={addTextElementAction}
           addPhotoElementAction={addPhotoElementAction}
           deleteAlbumAction={deleteAlbumAction}
-        />      ) : (
+        />
+      ) : (
         <AlbumGrid albums={albums} onOpen={(a) => setOpenAlbumId(a.id)} canEdit={canEdit} createAlbumAction={createAlbumAction} familySlug={familySlug} />
       )}
     </div>
