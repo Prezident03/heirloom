@@ -21,6 +21,7 @@ export type AlbumPage = {
   date_label: string | null;
   location: string | null;
   background_id: string;
+  background_image_url: string | null; // 🆕 Yangi
 };
 
 export type PageElement = {
@@ -436,7 +437,7 @@ export async function createAlbumPage(albumId: string, layoutId: LayoutId): Prom
   await sql`INSERT INTO album_pages (id, album_id, page_order, layout_id) VALUES (${id}, ${albumId}, ${order}, ${layoutId})`;
   await createEmptyElements(id, layoutId);
 
-  return { id, album_id: albumId, page_order: order, layout_id: layoutId, date_label: null, location: null, background_id: "paper" };
+  return { id, album_id: albumId, page_order: order, layout_id: layoutId, date_label: null, location: null, background_id: "paper", background_image_url: null };
 }
 
 async function createEmptyElements(pageId: string, layoutId: LayoutId): Promise<void> {
@@ -449,6 +450,15 @@ async function createEmptyElements(pageId: string, layoutId: LayoutId): Promise<
       VALUES (${randomUUID()}, ${pageId}, ${i}, ${slot.type}, ${null}, ${slot.type === "text" ? "" : null}, ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, 0, ${i})
     `;
   }
+}
+
+// ============================================================
+// 🆕 Background image
+// ============================================================
+
+export async function updatePageBackgroundImage(pageId: string, imageUrl: string | null): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE album_pages SET background_image_url = ${imageUrl} WHERE id = ${pageId}`;
 }
 
 export async function changePageLayout(pageId: string, layoutId: LayoutId): Promise<void> {
@@ -718,8 +728,8 @@ export async function duplicateAlbumPage(pageId: string, albumId: string): Promi
   const order = existing[0]?.c ?? 0;
   
   await sql`
-    INSERT INTO album_pages (id, album_id, page_order, layout_id, date_label, location, background_id)
-    VALUES (${newPageId}, ${albumId}, ${order}, ${page.layout_id}, ${page.date_label}, ${page.location}, ${page.background_id})
+    INSERT INTO album_pages (id, album_id, page_order, layout_id, date_label, location, background_id, background_image_url)
+    VALUES (${newPageId}, ${albumId}, ${order}, ${page.layout_id}, ${page.date_label}, ${page.location}, ${page.background_id}, ${page.background_image_url})
   `;
   
   const elements = await sql`SELECT * FROM page_elements WHERE page_id = ${pageId}` as PageElement[];

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useActionState, useCallback } from 
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import {
-  BookImage, Plus, X, ImagePlus, LayoutGrid,
+  BookImage, Plus, X, ImagePlus, Images, Shapes, LayoutGrid,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Copy, Trash2, Calendar, MapPinned,
   Leaf, Flower2, Heart, Star, Sun, Palette,
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
+import { updatePageBackgroundImageAction, addPhotoWithUrlAction } from "@/lib/actions";
 
 const LAYOUTS = [
   { id: "l1", name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
@@ -216,6 +217,136 @@ function RailButton({ icon: Icon, label, active, onClick }) {
       <Icon size={19} />
       <span style={{ fontSize: 9.5, fontWeight: 600, lineHeight: 1 }}>{label}</span>
     </button>
+  );
+}
+
+// ============================================================
+// 🆕 Chap panel — Photos
+// ============================================================
+
+function PhotosPanel({ familySlug, photos, onDragStart, onAddPhoto }) {
+  const [uploading, setUploading] = useState(false);
+  const [extraPhotos, setExtraPhotos] = useState([]);
+  const inputRef = useRef(null);
+
+  const handleFileUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) continue;
+        if (file.size > 15 * 1024 * 1024) continue;
+        const blob = await upload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/blob-upload",
+          clientPayload: JSON.stringify({ familySlug }),
+        });
+        uploaded.push({ id: blob.url, url: blob.url });
+      }
+      setExtraPhotos((prev) => [...uploaded, ...prev]);
+    } catch (err) {
+      console.error("Rasm yuklashda xato:", err);
+    } finally {
+      e.target.value = "";
+      setUploading(false);
+    }
+  };
+
+  const allPhotos = [...extraPhotos, ...photos];
+
+  return (
+    <div style={{ padding: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60 }}>Rasmlar</span>
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TOKENS.gold }}
+        >
+          {uploading ? "⏳" : "+ Yuklash"}
+        </button>
+        <input ref={inputRef} type="file" accept="image/*" multiple onChange={handleFileUpload} style={{ display: "none" }} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+        {allPhotos.map((photo, i) => (
+          <div
+            key={photo.id || i}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("text/plain", JSON.stringify({ type: "photo", url: photo.url, id: photo.id }));
+              onDragStart?.(photo);
+            }}
+            style={{
+              aspectRatio: "1",
+              borderRadius: 4,
+              background: `url(${photo.url}) center/cover`,
+              cursor: "grab",
+              border: `1px solid ${TOKENS.parchmentDeep}`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// 🆕 Chap panel — Elements
+// ============================================================
+
+const DECORATIVE_ELEMENTS = [
+  { id: "flower", icon: Flower2, label: "Gul", defaultColor: "#E6C9BC" },
+  { id: "tape", icon: Frame, label: "Lenta", defaultColor: "#D9BC85" },
+  { id: "heart", icon: Heart, label: "Yurak", defaultColor: "#A8453A" },
+  { id: "star", icon: Star, label: "Yulduz", defaultColor: "#B8863B" },
+  { id: "leaf", icon: Leaf, label: "Barg", defaultColor: "#2F4C48" },
+  { id: "circle", icon: () => <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#D9BC85" }} />, label: "Doira" },
+  { id: "square", icon: () => <div style={{ width: 16, height: 16, borderRadius: 2, background: "#5C7A73" }} />, label: "Kvadrat" },
+  { id: "triangle", icon: () => <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "16px solid #A8453A" }} />, label: "Uchburchak" },
+];
+
+const DECORATIVE_TO_STICKER_ID = {
+  flower: "flower",
+  tape: "tape-gold",
+  heart: "heart",
+  star: "star",
+  leaf: "leaf",
+  circle: "circle-shape",
+  square: "square-shape",
+  triangle: "triangle-shape",
+};
+
+function ElementsPanel({ onAddElement }) {
+  return (
+    <div style={{ padding: "8px" }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, marginBottom: 8 }}>Dekorativ elementlar</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+        {DECORATIVE_ELEMENTS.map((el) => (
+          <button
+            key={el.id}
+            onClick={() => onAddElement?.(el)}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              padding: 8,
+              borderRadius: 6,
+              border: `1px solid ${TOKENS.parchmentDeep}`,
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: 10,
+              color: TOKENS.ink60,
+            }}
+          >
+            <el.icon size={18} color={el.defaultColor} />
+            <span>{el.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -607,6 +738,8 @@ function PageCanvas({
   changeZIndexAction,
   duplicateElementAction,
   backgroundId,
+  backgroundImageUrl,
+  onDropPhoto,
   onCommitPosition,
   onDuplicated,
   onZIndexChange,
@@ -616,6 +749,27 @@ function PageCanvas({
   const router = useRouter();
   const canvasRef = useRef(null);
   const elements = page.elements || [];
+
+  const handleCanvasDrop = (e) => {
+    if (!canEdit) return;
+    e.preventDefault();
+    const raw = e.dataTransfer.getData("text/plain");
+    if (!raw) return;
+    let data = null;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      data = null;
+    }
+    if (!data || data.type !== "photo" || !data.url) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return;
+    const dw = 40;
+    const dh = 30;
+    const x = Math.max(0, Math.min(100 - dw, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100 - dh, ((e.clientY - rect.top) / rect.height) * 100));
+    onDropPhoto?.(data.url, Math.round(x * 10) / 10, Math.round(y * 10) / 10);
+  };
 
   const [snapGuides, setSnapGuides] = useState({ vx: null, hy: null });
 
@@ -807,14 +961,24 @@ function PageCanvas({
     <div
       ref={canvasRef}
       onClick={() => { onElementSelect(null); setSnapGuides({ vx: null, hy: null }); }}
+      onDragOver={(e) => {
+        if (!canEdit) return;
+        if (Array.from(e.dataTransfer.types).includes("text/plain")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={handleCanvasDrop}
       style={{
         flex: 1,
         minWidth: 0,
         aspectRatio: "4/3",
         borderRadius: 3,
         position: "relative",
-        background: `${PAPER_TEXTURE_URL}, radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${BACKGROUNDS[backgroundId]?.from || BACKGROUNDS.paper.from}, ${BACKGROUNDS[backgroundId]?.to || BACKGROUNDS.paper.to})`,
-        backgroundSize: "220px 220px, cover, cover",
+        background: backgroundImageUrl
+          ? `url("${backgroundImageUrl}") center/cover no-repeat`
+          : `${PAPER_TEXTURE_URL}, radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5), transparent 60%), linear-gradient(180deg, ${BACKGROUNDS[backgroundId]?.from || BACKGROUNDS.paper.from}, ${BACKGROUNDS[backgroundId]?.to || BACKGROUNDS.paper.to})`,
+        backgroundSize: backgroundImageUrl ? "cover" : "220px 220px, cover, cover",
         boxShadow: `inset 0 0 40px rgba(120,96,54,0.16), 0 2px 6px rgba(30,38,33,0.08)`,
         touchAction: "none",
         overflow: "hidden",
@@ -1042,10 +1206,30 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
   );
 }
 
+// ============================================================
+// 🆕 TextSlotContent — formatlash bilan
+// ============================================================
+
 function TextSlotContent({ element, familySlug, albumId, updateElementTextAction, canEdit }) {
   const [state, formAction] = useActionState(updateElementTextAction, undefined);
   const [value, setValue] = useState(element.text_content || "");
+  const [isFocused, setIsFocused] = useState(false);
   const formRef = useRef(null);
+  const editorRef = useRef(null);
+
+  const handleFormat = (command, value = null) => {
+    document.execCommand(command, false, value);
+    const newContent = editorRef.current?.innerHTML || "";
+    setValue(newContent);
+    // Avtomatik saqlash
+    if (canEdit && newContent !== (element.text_content || "")) {
+      const f = formRef.current;
+      if (f) {
+        f.elements.text.value = newContent;
+        setTimeout(() => f.requestSubmit(), 0);
+      }
+    }
+  };
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
@@ -1054,40 +1238,96 @@ function TextSlotContent({ element, familySlug, albumId, updateElementTextAction
         <input type="hidden" name="albumId" value={albumId} />
         <input type="hidden" name="elementId" value={element.id} />
         <input type="hidden" name="text" value={value} />
-        <div
-          contentEditable={canEdit}
-          suppressContentEditableWarning
-          onInput={(e) => setValue(e.currentTarget.textContent || "")}
-          onBlur={() => {
-            if (canEdit && value !== (element.text_content || "")) {
-              formRef.current?.requestSubmit();
-            }
-          }}
-          style={{
-            width: "100%",
-            height: "100%",
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            fontFamily: FONT_FAMILIES[element.text_font || "handwriting"],
-            fontSize: element.text_size || 22,
-            lineHeight: 1.35,
-            color: element.text_color || TOKENS.ink,
-            textAlign: element.text_align || "left",
-            fontWeight: (element.text_font || "handwriting") === "handwriting" ? 600 : 500,
-            padding: 0,
-            overflow: "auto",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            cursor: canEdit ? "text" : "default",
-          }}
-          dangerouslySetInnerHTML={{ __html: value }}
-        />
       </form>
+
+      {/* Formatlash toolbar */}
+      {canEdit && isFocused && (
+        <div
+          style={{
+            position: "absolute",
+            top: -44,
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: 4,
+            background: TOKENS.ink,
+            borderRadius: 8,
+            padding: 4,
+            zIndex: 20,
+            boxShadow: "0 6px 16px rgba(0,0,0,0.3)",
+          }}
+        >
+          <button onClick={() => handleFormat("bold")} style={toolbarBtnStyle} title="Qalin">B</button>
+          <button onClick={() => handleFormat("italic")} style={toolbarBtnStyle} title="Qiyshiq">I</button>
+          <button onClick={() => handleFormat("underline")} style={toolbarBtnStyle} title="Tagiga chizish">U</button>
+          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.2)" }} />
+          <button onClick={() => handleFormat("insertUnorderedList")} style={toolbarBtnStyle} title="Ro'yxat">•</button>
+          <button onClick={() => handleFormat("insertOrderedList")} style={toolbarBtnStyle} title="Raqamli ro'yxat">1.</button>
+        </div>
+      )}
+
+      <div
+        ref={editorRef}
+        contentEditable={canEdit}
+        suppressContentEditableWarning
+        onInput={(e) => {
+          setValue(e.currentTarget.innerHTML);
+          if (canEdit) {
+            const f = formRef.current;
+            if (f) {
+              f.elements.text.value = e.currentTarget.innerHTML;
+              clearTimeout(window._textSaveTimer);
+              window._textSaveTimer = setTimeout(() => f.requestSubmit(), 1000);
+            }
+          }
+        }}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => {
+          setIsFocused(false);
+          if (canEdit && value !== (element.text_content || "")) {
+            formRef.current?.requestSubmit();
+          }
+        }}
+        style={{
+          width: "100%",
+          height: "100%",
+          border: "none",
+          outline: "none",
+          background: "transparent",
+          fontFamily: FONT_FAMILIES[element.text_font || "handwriting"],
+          fontSize: element.text_size || 22,
+          lineHeight: 1.35,
+          color: element.text_color || TOKENS.ink,
+          textAlign: element.text_align || "left",
+          fontWeight: (element.text_font || "handwriting") === "handwriting" ? 600 : 500,
+          padding: 0,
+          overflow: "auto",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          cursor: canEdit ? "text" : "default",
+          minHeight: "100%",
+        }}
+        dangerouslySetInnerHTML={{ __html: value }}
+      />
       {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger }}>{state.error}</div>}
     </div>
   );
 }
+
+const toolbarBtnStyle = {
+  width: 28,
+  height: 28,
+  borderRadius: 4,
+  background: "transparent",
+  border: "none",
+  color: "rgba(255,255,255,0.85)",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 600,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 
 function StickerSlotContent({ element, canEdit }) {
   const stickerId = element.sticker_id || "leaf";
@@ -1686,6 +1926,11 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
         pdf.addPage([canvas.width, canvas.height], orientation);
       }
       pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
+
+      // 📌 Har bir sahifaga nom qo'shish
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Sahifa ${i + 1} / ${pages.length}`, 10, canvas.height - 10);
     }
     if (pdf) pdf.save(`${slugifyFilename(album.title)}.pdf`);
   });
@@ -1768,6 +2013,7 @@ function AlbumEditor({
   deleteAlbumAction,
   reorderAlbumPagesAction,
   duplicateAlbumPageAction,
+  photos,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [activeSide, setActiveSide] = useState("left");
@@ -1933,13 +2179,36 @@ function AlbumEditor({
   const [deletePageState, deletePageFormAction] = useActionState(deleteAlbumPageAction, undefined);
   const [deleteAlbumState, deleteAlbumFormAction, deleteAlbumPending] = useActionState(deleteAlbumAction, undefined);
   const [bgState, bgFormAction] = useActionState(changePageBackgroundAction, undefined);
+  const [bgImageState, bgImageFormAction] = useActionState(updatePageBackgroundImageAction, undefined);
   const [stickerState, stickerFormAction, stickerPending] = useActionState(addStickerElementAction, undefined);
   const [addTextState, addTextFormAction, addTextPending] = useActionState(addTextElementAction, undefined);
   const [addPhotoState, addPhotoFormAction, addPhotoPending] = useActionState(addPhotoElementAction, undefined);
   const addTextRef = useRef(null);
   const addPhotoRef = useRef(null);
+  const stickerFormRef = useRef(null);
 
   const selectedElement = currentPage?.elements?.find(e => e.id === selectedElementId) || null;
+
+  const handleDropPhoto = async (url, x, y) => {
+    const rightPage = pages[pageIndex + 1] || null;
+    const dropTargetPage = (activeSide === "right" && rightPage) ? rightPage : currentPage;
+    if (!canEdit || previewMode || !dropTargetPage || !url) return;
+    try {
+      const fd = new FormData();
+      fd.append("familySlug", familySlug);
+      fd.append("albumId", album.id);
+      fd.append("pageId", dropTargetPage.id);
+      fd.append("photoUrl", url);
+      fd.append("positionX", String(x));
+      fd.append("positionY", String(y));
+      fd.append("positionW", "40");
+      fd.append("positionH", "30");
+      const res = await addPhotoWithUrlAction(null, fd);
+      if (res?.error) console.error(res.error);
+    } catch (err) {
+      console.error("Rasm qo'shishda xato:", err);
+    }
+  };
 
   return (
     <div style={{ padding: "22px clamp(16px, 4vw, 48px) 60px", maxWidth: 1680, margin: "0 auto" }}>
@@ -1987,6 +2256,11 @@ function AlbumEditor({
           const totalSpreads = Math.ceil(pages.length / 2);
           const spreadNum = Math.floor(pageIndex / 2) + 1;
           const targetPage = activeSide === "right" && rightPage ? rightPage : currentPage;
+  const allPhotos = (photos && photos.length > 0)
+    ? photos.map((p) => ({ id: p.id, url: p.photo_url || "" }))
+    : (pages || []).flatMap((p) =>
+        (p.elements || []).filter((e) => e.type === "photo" && e.photo_url).map((e) => ({ id: e.id, url: e.photo_url }))
+      );
           const targetLayout = activeSide === "right" && rightLayout ? rightLayout : currentLayout;
           const effectiveCanEdit = canEdit && !previewMode;
 
@@ -2036,6 +2310,12 @@ function AlbumEditor({
                 <input type="hidden" name="albumId" />
                 <input type="hidden" name="pageId" />
               </form>
+              <form ref={stickerFormRef} action={stickerFormAction} style={{ display: "none" }}>
+                <input type="hidden" name="familySlug" />
+                <input type="hidden" name="albumId" />
+                <input type="hidden" name="pageId" />
+                <input type="hidden" name="stickerId" />
+              </form>
               <form ref={undoPosRef} action={undoPosFormAction} style={{ display: "none" }}>
                 <input type="hidden" name="familySlug" />
                 <input type="hidden" name="pageId" />
@@ -2076,6 +2356,9 @@ function AlbumEditor({
                     <RailButton icon={LayoutGrid} label="Layout" active={activePanel === "layout"} onClick={() => setActivePanel((p) => (p === "layout" ? null : "layout"))} />
                     <RailButton icon={StickerIcon} label="Stiker" active={activePanel === "sticker"} onClick={() => setActivePanel((p) => (p === "sticker" ? null : "sticker"))} />
                     <RailButton icon={Palette} label="Fon" active={activePanel === "bg"} onClick={() => setActivePanel((p) => (p === "bg" ? null : "bg"))} />
+                    <RailButton icon={ImagePlus} label="Fon rasmi" active={activePanel === "bgImage"} onClick={() => setActivePanel((p) => (p === "bgImage" ? null : "bgImage"))} />
+                    <RailButton icon={Images} label="Rasmlar" active={activePanel === "photos"} onClick={() => setActivePanel((p) => (p === "photos" ? null : "photos"))} />
+                    <RailButton icon={Shapes} label="Elementlar" active={activePanel === "elements"} onClick={() => setActivePanel((p) => (p === "elements" ? null : "elements"))} />
                     <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "4px 10px" }} />
                     <RailButton icon={Type} label="Matn" onClick={() => { const f = addTextRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
                     <RailButton icon={ImagePlus} label="Rasm" onClick={() => { const f = addPhotoRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
@@ -2179,6 +2462,78 @@ function AlbumEditor({
                         {bgState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginTop: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{bgState.error}</div>}
                       </div>
                     )}
+
+                    {activePanel === "bgImage" && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
+                          {activeSide === "right" ? "O'ng" : "Chap"} sahifaga fon rasmi qo'shing.
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            // Rasmni yuklash va saqlash
+                            const blob = await upload(file.name, file, {
+                              access: "public",
+                              handleUploadUrl: "/api/blob-upload",
+                              clientPayload: JSON.stringify({ familySlug }),
+                            });
+                            const fd = new FormData();
+                            fd.append("familySlug", familySlug);
+                            fd.append("pageId", targetPage.id);
+                            fd.append("imageUrl", blob.url);
+                            bgImageFormAction(fd);
+                            e.target.value = "";
+                          }}
+                          style={{ width: "100%", padding: 8, borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}` }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Fon rasmini olib tashlash
+                            const fd = new FormData();
+                            fd.append("familySlug", familySlug);
+                            fd.append("pageId", targetPage.id);
+                            fd.append("imageUrl", "");
+                            bgImageFormAction(fd);
+                          }}
+                          style={{ marginTop: 8, width: "100%", padding: 8, borderRadius: 4, border: `1px solid ${TOKENS.danger}`, color: TOKENS.danger, background: "transparent", cursor: "pointer" }}
+                        >
+                          Fon rasmini olib tashlash
+                        </button>
+                        {bgImageState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginTop: 8 }}>{bgImageState.error}</div>}
+                      </div>
+                    )}
+
+                    {activePanel === "photos" && (
+                      <div>
+                        <PhotosPanel
+                          familySlug={familySlug}
+                          photos={allPhotos}
+                          onDragStart={() => {}}
+                          onAddPhoto={() => {}}
+                        />
+                      </div>
+                    )}
+
+                    {activePanel === "elements" && (
+                      <div>
+                        <ElementsPanel
+                          onAddElement={(el) => {
+                            const stickerId = DECORATIVE_TO_STICKER_ID[el.id] || el.id;
+                            const f = stickerFormRef.current;
+                            if (!f) return;
+                            f.elements.familySlug.value = familySlug;
+                            f.elements.albumId.value = album.id;
+                            f.elements.pageId.value = targetPage.id;
+                            f.elements.stickerId.value = stickerId;
+                            setTimeout(() => f.requestSubmit(), 0);
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2201,6 +2556,8 @@ function AlbumEditor({
                         updateElementTextStyleAction={updateElementTextStyleAction}
                         updateElementStickerColorAction={updateElementStickerColorAction}
                         backgroundId={currentPage.background_id || "paper"}
+                        backgroundImageUrl={currentPage.background_image_url || null}
+                        onDropPhoto={handleDropPhoto}
                         onCommitPosition={handleCommitPosition}
                         onDuplicated={handleDuplicated}
                         onZIndexChange={handleZIndexChange}
@@ -2227,6 +2584,8 @@ function AlbumEditor({
                           updateElementTextStyleAction={updateElementTextStyleAction}
                           updateElementStickerColorAction={updateElementStickerColorAction}
                           backgroundId={rightPage.background_id || "paper"}
+                          backgroundImageUrl={rightPage.background_image_url || null}
+                          onDropPhoto={handleDropPhoto}
                           onCommitPosition={handleCommitPosition}
                           onDuplicated={handleDuplicated}
                           onZIndexChange={handleZIndexChange}
@@ -2415,6 +2774,7 @@ export function AlbumsView({
   addPhotoElementAction,
   reorderAlbumPagesAction,
   duplicateAlbumPageAction,
+  photos,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
   const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
@@ -2427,6 +2787,7 @@ export function AlbumsView({
           onBack={() => setOpenAlbumId(null)}
           familySlug={familySlug}
           canEdit={canEdit}
+          photos={photos}
           addAlbumPageAction={addAlbumPageAction}
           deleteAlbumPageAction={deleteAlbumPageAction}
           changePageLayoutAction={changePageLayoutAction}

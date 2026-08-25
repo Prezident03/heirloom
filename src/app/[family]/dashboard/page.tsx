@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { getFamilyBySlug, getMembership, getMembersForFamily, getActiveInvitesForFamily, getFamilyStats } from "@/lib/family";
 import { getPeopleForFamily, getRelationshipsForFamily } from "@/lib/people";
 import { getAlbumsForFamily, getPagesForAlbum, getElementsForPages } from "@/lib/albums";
+import { getPhotosForFamily } from "@/lib/photos";
 import { getTimelineEventsForFamily } from "@/lib/timeline";
 import { getMemoriesForFamily, getOnThisDayMemories } from "@/lib/memories";
 import { getStoriesForFamily } from "@/lib/stories";
@@ -99,6 +100,7 @@ export default async function FamilyDashboardPage({
   let onThisDayMemories: any[] = [];
   let stories: any[] = [];
   let places: any[] = [];
+  let photos: any[] = [];
   let albumsWithPages: any[] = [];
   let stats: any = { peopleCount: 0, albumsCount: 0, pagesCount: 0, photosCount: 0, memoriesCount: 0, storiesCount: 0, eventsCount: 0, placesCount: 0, generationsCount: 0 };
 
@@ -109,7 +111,7 @@ export default async function FamilyDashboardPage({
     membership = await getMembership(family!.id, session!.id);
     if (!membership) notFound();
 
-    [people, relationships, albums, members, invites, timelineEvents, memories, stories, places, stats] = await Promise.all([
+    [people, relationships, albums, members, invites, timelineEvents, memories, stories, places, photos, stats] = await Promise.all([
       getPeopleForFamily(family!.id),
       getRelationshipsForFamily(family!.id),
       getAlbumsForFamily(family!.id),
@@ -119,6 +121,7 @@ export default async function FamilyDashboardPage({
       getMemoriesForFamily(family!.id),
       getStoriesForFamily(family!.id),
       getPlacesForFamily(family!.id),
+      getPhotosForFamily(family!.id),
       getFamilyStats(family!.id),
     ]);
 
@@ -170,6 +173,7 @@ export default async function FamilyDashboardPage({
       onThisDayMemories={onThisDayMemories as any}
       stories={stories as any}
       places={places as any}
+      photos={photos as any}
       stats={stats as any}
       activeAlbumId={activeAlbumId ?? (null as any)}
       canEdit={membership!.role !== "viewer"}

@@ -242,6 +242,7 @@ export default function HeirloomApp({
   onThisDayMemories = [],
   stories = [],
   places = [],
+  photos = [],
   stats = {},
   activeAlbumId = null,
   canEdit = true,
@@ -376,6 +377,7 @@ export default function HeirloomApp({
             {view === VIEWS.ALBUMS && (
               <AlbumsView
                 albums={albums}
+                photos={photos}
                 activeAlbumId={activeAlbumId}
                 openAlbumId={openAlbumId}
                 setOpenAlbumId={setOpenAlbumId}

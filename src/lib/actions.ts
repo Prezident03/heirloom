@@ -47,6 +47,7 @@ import {
   changeZIndex,
   duplicateElement,
   updatePageBackground,
+  updatePageBackgroundImage,
   updateElementFrame,
   updateElementTextStyle,
   addStickerElement,
@@ -1220,6 +1221,31 @@ export async function addPhotoElementAction(_prevState: ActionState, formData: F
   redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
 }
 
+export async function addPhotoWithUrlAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const pageId = String(formData.get("pageId") || "").trim();
+  const photoUrl = String(formData.get("photoUrl") || "").trim();
+  const x = Number(formData.get("positionX"));
+  const y = Number(formData.get("positionY"));
+  const w = Number(formData.get("positionW") || "40");
+  const h = Number(formData.get("positionH") || "30");
+
+  if (!pageId || !photoUrl) return { error: "Page ID yoki rasm URL kerak." };
+  if ([x, y, w, h].some((v) => Number.isNaN(v))) return { error: "Koordinatalar noto'g'ri." };
+
+  try {
+    const elementId = await addPhotoElement(pageId, { x, y, w, h });
+    await updateElementPhoto(elementId, photoUrl);
+    revalidatePath(`/${familySlug}/dashboard`);
+    return { ok: true };
+  } catch {
+    return { error: "Rasm qo'shishda xato yuz berdi." };
+  }
+}
+
 export async function createStoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const check = await verifyFamilyAccess(formData, "member");
   if (!check.ok) return { error: check.error };
@@ -1433,5 +1459,28 @@ export async function duplicateAlbumPageAction(_prevState: ActionState, formData
     return { ok: true };
   } catch {
     return { error: "Sahifani nusxalashda xato." };
+  }
+}
+
+// ============================================================
+// 🆕 Background image action
+// ============================================================
+
+export async function updatePageBackgroundImageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const pageId = String(formData.get("pageId") || "").trim();
+  const imageUrl = String(formData.get("imageUrl") || "").trim();
+  
+  if (!pageId) return { error: "Page ID kerak." };
+  
+  try {
+    await updatePageBackgroundImage(pageId, imageUrl || null);
+    revalidatePath(`/${familySlug}/dashboard`);
+    return { ok: true };
+  } catch {
+    return { error: "Fon rasmini saqlashda xato." };
   }
 }
