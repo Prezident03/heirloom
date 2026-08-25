@@ -19,7 +19,7 @@ import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
 
 // ============================================================
-// KONFIGURATSIYALAR (o'zgarmaydi)
+// KONFIGURATSIYALAR
 // ============================================================
 
 const LAYOUTS = [
@@ -228,7 +228,7 @@ function RailButton({ icon: Icon, label, active, onClick }) {
 }
 
 // ============================================================
-// 🎯 YANGI: TransformableElement — faqat mavjud React bilan
+// TransformableElement
 // ============================================================
 
 function TransformableElement({
@@ -255,7 +255,6 @@ function TransformableElement({
   const dragRef = useRef({ startX: 0, startY: 0, startPos: pos });
   const resizeRef = useRef({ handle: null, startX: 0, startY: 0, startPos: pos });
 
-  // ===== DRAG =====
   const handleDragStart = (e) => {
     if (!canEdit) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -283,7 +282,6 @@ function TransformableElement({
     onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
   };
 
-  // ===== RESIZE =====
   const handleResizeStart = (e, handle) => {
     if (!canEdit) return;
     e.stopPropagation();
@@ -330,7 +328,6 @@ function TransformableElement({
     onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
   };
 
-  // ===== ROTATE =====
   const rotateRef = useRef({ startX: 0, startY: 0, startRotate: 0, centerX: 0, centerY: 0 });
 
   const handleRotateStart = (e) => {
@@ -363,7 +360,6 @@ function TransformableElement({
     onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
   };
 
-  // ===== Resize handles =====
   const resizeHandles = [
     { id: "se", cursor: "nwse-resize", x: 1, y: 1 },
     { id: "nw", cursor: "nwse-resize", x: 0, y: 0 },
@@ -403,7 +399,6 @@ function TransformableElement({
 
       {isSelected && canEdit && (
         <>
-          {/* 8 ta resize tutqichi */}
           {resizeHandles.map((h) => (
             <div
               key={h.id}
@@ -428,7 +423,6 @@ function TransformableElement({
             />
           ))}
 
-          {/* Rotate tutqichi */}
           <div
             style={{
               position: "absolute",
@@ -458,7 +452,6 @@ function TransformableElement({
             ↻
           </div>
 
-          {/* Rotate chizig'i */}
           <div
             style={{
               position: "absolute",
@@ -472,7 +465,6 @@ function TransformableElement({
             }}
           />
 
-          {/* Floating toolbar */}
           <ElementFloatingToolbar
             onDuplicate={() => onDuplicate(element.id)}
             onLayerUp={() => onLayerUp(element.id)}
@@ -528,7 +520,7 @@ function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete 
 }
 
 // ============================================================
-// PageCanvas — qayta yozilgan
+// PageCanvas
 // ============================================================
 
 function PageCanvas({
@@ -556,7 +548,6 @@ function PageCanvas({
   const canvasRef = useRef(null);
   const elements = page.elements || [];
 
-  // ===== Snap/Align =====
   const [snapGuides, setSnapGuides] = useState({ vx: null, hy: null });
 
   const findSnap = useCallback((movingId, x, y, w, h) => {
@@ -601,7 +592,6 @@ function PageCanvas({
     return result;
   }, [elements]);
 
-  // ===== Element yangilash =====
   const handleUpdate = (elId, updates) => {
     const el = elements.find((e) => e.id === elId);
     if (!el) return;
@@ -627,7 +617,6 @@ function PageCanvas({
       next: newPos,
     });
 
-    // Serverga saqlash (debounce qilingan)
     const f = posRef.current;
     if (f) {
       f.elements.familySlug.value = familySlug;
@@ -643,7 +632,6 @@ function PageCanvas({
     }
   };
 
-  // ===== Element o'chirish =====
   const handleDelete = (elId) => {
     if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
     const f = delRef.current;
@@ -657,7 +645,6 @@ function PageCanvas({
     setSelectedId(null);
   };
 
-  // ===== Element nusxalash =====
   const handleDuplicate = (elId) => {
     const f = dupRef.current;
     if (!f) return;
@@ -668,7 +655,6 @@ function PageCanvas({
     f.requestSubmit();
   };
 
-  // ===== Layer o'zgartirish =====
   const handleLayerUp = (elId) => {
     onZIndexChange?.({ pageId: page.id, elementId: elId, direction: "up" });
     const f = zRef.current;
@@ -693,13 +679,11 @@ function PageCanvas({
     }
   };
 
-  // ===== Refs =====
   const posRef = useRef(null);
   const delRef = useRef(null);
   const dupRef = useRef(null);
   const zRef = useRef(null);
 
-  // ===== Keyboard shortcuts =====
   useEffect(() => {
     if (!canEdit) return;
     const onKeyDown = (e) => {
@@ -719,7 +703,6 @@ function PageCanvas({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [canEdit, selectedId]);
 
-  // ===== Element mazmuni =====
   const renderContent = (el) => {
     if (el.type === "photo") {
       return (
@@ -771,7 +754,6 @@ function PageCanvas({
       <LeafDoodle style={{ bottom: 6, right: 8 }} flip />
       <LeafDoodle style={{ top: 4, left: 6, opacity: 0.28 }} />
 
-      {/* Snap chiziqlari */}
       {snapGuides.vx != null && (
         <div style={{ position: "absolute", left: `${snapGuides.vx}%`, top: 0, bottom: 0, width: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 100 }} />
       )}
@@ -779,7 +761,6 @@ function PageCanvas({
         <div style={{ position: "absolute", top: `${snapGuides.hy}%`, left: 0, right: 0, height: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 100 }} />
       )}
 
-      {/* Hidden forms */}
       <form ref={posRef} action={() => {}} style={{ display: "none" }}>
         <input type="hidden" name="familySlug" />
         <input type="hidden" name="pageId" />
@@ -810,7 +791,6 @@ function PageCanvas({
         <input type="hidden" name="direction" />
       </form>
 
-      {/* Elementlar */}
       {elements.map((el, i) => (
         <TransformableElement
           key={el.id}
@@ -828,7 +808,6 @@ function PageCanvas({
         </TransformableElement>
       ))}
 
-      {/* Sahifa meta */}
       <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
         {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
         {page.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><MapPinned size={10} /> {page.location}</span>}
@@ -999,7 +978,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
 }
 
 // ============================================================
-// TextSlotContent
+// TextSlotContent — TUZATILGAN (contentEditable)
 // ============================================================
 
 function TextSlotContent({ element, familySlug, albumId, updateElementTextAction, canEdit }) {
@@ -1014,22 +993,20 @@ function TextSlotContent({ element, familySlug, albumId, updateElementTextAction
         <input type="hidden" name="albumId" value={albumId} />
         <input type="hidden" name="elementId" value={element.id} />
         <input type="hidden" name="text" value={value} />
-        <textarea
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+        <div
+          contentEditable={canEdit}
+          suppressContentEditableWarning
+          onInput={(e) => setValue(e.currentTarget.textContent || "")}
           onBlur={() => {
             if (canEdit && value !== (element.text_content || "")) {
               formRef.current?.requestSubmit();
             }
           }}
-          readOnly={!canEdit}
-          placeholder={canEdit ? "Matn yozing..." : ""}
           style={{
             width: "100%",
             height: "100%",
             border: "none",
             outline: "none",
-            resize: "none",
             background: "transparent",
             fontFamily: FONT_FAMILIES[element.text_font || "handwriting"],
             fontSize: element.text_size || 22,
@@ -1038,7 +1015,12 @@ function TextSlotContent({ element, familySlug, albumId, updateElementTextAction
             textAlign: element.text_align || "left",
             fontWeight: (element.text_font || "handwriting") === "handwriting" ? 600 : 500,
             padding: 0,
+            overflow: "auto",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            cursor: canEdit ? "text" : "default",
           }}
+          dangerouslySetInnerHTML={{ __html: value }}
         />
       </form>
       {state?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger }}>{state.error}</div>}
@@ -1567,7 +1549,7 @@ function TemplateThumbnail({ template }) {
 }
 
 // ============================================================
-// Export (PNG/JPG/PDF)
+// Export
 // ============================================================
 
 function waitFrames(n = 2) {
@@ -1718,7 +1700,7 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
 }
 
 // ============================================================
-// AlbumEditor — asosiy komponent
+// AlbumEditor
 // ============================================================
 
 function AlbumEditor({
@@ -1759,14 +1741,12 @@ function AlbumEditor({
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
 
-  // Zoom
   const ZOOM_MIN = 0.5, ZOOM_MAX = 2, ZOOM_STEP = 0.1;
   const [zoom, setZoom] = useState(1);
   const zoomIn = () => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100));
   const zoomOut = () => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100));
   const zoomFit = () => setZoom(1);
 
-  // Undo/Redo
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const [, forceHistoryRender] = useState(0);
@@ -1908,7 +1888,6 @@ function AlbumEditor({
 
   return (
     <div style={{ padding: "22px clamp(16px, 4vw, 48px) 60px", maxWidth: 1680, margin: "0 auto" }}>
-      {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: TOKENS.ink60, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           <ChevronLeft size={16} /> Albomlarga qaytish
@@ -1953,7 +1932,6 @@ function AlbumEditor({
 
           return (
             <div style={{ background: `linear-gradient(180deg, ${TOKENS.bookCoverSoft}, ${TOKENS.bookCover})`, borderRadius: 18, padding: "18px 18px 20px" }}>
-              {/* Book toolbar */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "0 6px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   <button onClick={() => { setPageIndex(Math.max(0, pageIndex - 2)); setActiveSide("left"); }} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: "#F2EDE2", opacity: pageIndex === 0 ? 0.3 : 0.85 }}><ChevronLeft size={20} /></button>
@@ -2223,7 +2201,6 @@ function AlbumEditor({
               )}
               {deletePageState?.error && <div style={{ fontSize: 11.5, color: "#E7A79B", textAlign: "center", marginTop: 6 }}>{deletePageState.error}</div>}
 
-              {/* Thumbnail filmstrip */}
               <div style={{ display: "flex", gap: 10, overflowX: "auto", marginTop: 22, paddingTop: 4, paddingBottom: 2 }}>
                 {pages.map((p, i) => {
                   const firstPhoto = p.elements.find((e) => e.type === "photo" && e.photo_url);
