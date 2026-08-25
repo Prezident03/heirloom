@@ -223,7 +223,7 @@ function MobileBottomNav({ current, onNavigate }) {
 }
 
 // ============================================================
-// MUHIM: HeirloomApp — TYPE XATOLIKLARI TUZATILDI
+// TYPE XATOLIKLARI TUZATILDI — BARCHA PROPLAR any QILIB BELGILANDI
 // ============================================================
 
 export default function HeirloomApp({
@@ -232,17 +232,17 @@ export default function HeirloomApp({
   familyName = "Mening oilam",
   familySince = null,
   familySlug = "",
-  people = null,
-  relationships = null,
-  albums = null,
-  members = null,
-  invites = null,
-  timelineEvents = null,
-  memories = null,
-  onThisDayMemories = null,
-  stories = null,
-  places = null,
-  stats = null,
+  people = [],
+  relationships = [],
+  albums = [],
+  members = [],
+  invites = [],
+  timelineEvents = [],
+  memories = [],
+  onThisDayMemories = [],
+  stories = [],
+  places = [],
+  stats = {},
   activeAlbumId = null,
   canEdit = true,
   isOwner = false,
@@ -304,19 +304,6 @@ export default function HeirloomApp({
   reorderAlbumPagesAction,
   duplicateAlbumPageAction,
 }) {
-  // Default qiymatlar — agar null bo'lsa, [] yoki {} ga aylantiramiz
-  const safePeople = people || [];
-  const safeRelationships = relationships || [];
-  const safeAlbums = albums || [];
-  const safeMembers = members || [];
-  const safeInvites = invites || [];
-  const safeTimelineEvents = timelineEvents || [];
-  const safeMemories = memories || [];
-  const safeOnThisDayMemories = onThisDayMemories || [];
-  const safeStories = stories || [];
-  const safePlaces = places || [];
-  const safeStats = stats || { peopleCount: 0, albumsCount: 0, pagesCount: 0, photosCount: 0, memoriesCount: 0, storiesCount: 0, eventsCount: 0, placesCount: 0, generationsCount: 0 };
-
   const [view, setView] = useState(
     initialView === "tree" ? VIEWS.TREE
       : initialView === "albums" ? VIEWS.ALBUMS
@@ -363,20 +350,20 @@ export default function HeirloomApp({
                 userName={userName}
                 familyName={familyName}
                 familySince={familySince}
-                people={safePeople}
-                relationships={safeRelationships}
-                albums={safeAlbums}
-                timelineEvents={safeTimelineEvents}
-                memories={safeMemories}
-                stats={safeStats}
+                people={people}
+                relationships={relationships}
+                albums={albums}
+                timelineEvents={timelineEvents}
+                memories={memories}
+                stats={stats}
               />
             )}
             {view === VIEWS.TREE && (
               <FamilyTreeView
                 familyName={familyName}
                 familySlug={familySlug}
-                people={safePeople}
-                relationships={safeRelationships}
+                people={people}
+                relationships={relationships}
                 canEdit={canEdit}
                 mePersonId={mePersonId}
                 addPersonAction={addPersonAction}
@@ -388,7 +375,7 @@ export default function HeirloomApp({
             )}
             {view === VIEWS.ALBUMS && (
               <AlbumsView
-                albums={safeAlbums}
+                albums={albums}
                 activeAlbumId={activeAlbumId}
                 openAlbumId={openAlbumId}
                 setOpenAlbumId={setOpenAlbumId}
@@ -426,8 +413,8 @@ export default function HeirloomApp({
               <PeopleView
                 familyName={familyName}
                 familySlug={familySlug}
-                people={safePeople}
-                relationships={safeRelationships}
+                people={people}
+                relationships={relationships}
                 canEdit={canEdit}
                 mePersonId={mePersonId}
                 addPersonAction={addPersonAction}
@@ -440,8 +427,8 @@ export default function HeirloomApp({
             {view === VIEWS.TIMELINE && (
               <TimelineView
                 familySlug={familySlug}
-                people={safePeople}
-                timelineEvents={safeTimelineEvents}
+                people={people}
+                timelineEvents={timelineEvents}
                 canEdit={canEdit}
                 createTimelineEventAction={createTimelineEventAction}
                 updateTimelineEventAction={updateTimelineEventAction}
@@ -452,9 +439,9 @@ export default function HeirloomApp({
             {view === VIEWS.MEMORIES && (
               <MemoriesView
                 familySlug={familySlug}
-                memories={safeMemories}
-                onThisDayMemories={safeOnThisDayMemories}
-                people={safePeople}
+                memories={memories}
+                onThisDayMemories={onThisDayMemories}
+                people={people}
                 canEdit={canEdit}
                 createMemoryAction={createMemoryAction}
                 updateMemoryAction={updateMemoryAction}
@@ -465,8 +452,8 @@ export default function HeirloomApp({
             {view === VIEWS.STORIES && (
               <StoriesView
                 familySlug={familySlug}
-                stories={safeStories}
-                people={safePeople}
+                stories={stories}
+                people={people}
                 canEdit={canEdit}
                 createStoryAction={createStoryAction}
                 updateStoryAction={updateStoryAction}
@@ -476,7 +463,7 @@ export default function HeirloomApp({
             )}
             {view === VIEWS.PLACES && (
               <PlacesView
-                places={safePlaces}
+                places={places}
                 canEdit={canEdit}
                 familySlug={familySlug}
                 createPlaceAction={createPlaceAction}
@@ -489,8 +476,8 @@ export default function HeirloomApp({
                 familyName={familyName}
                 familySince={familySince}
                 familySlug={familySlug}
-                members={safeMembers}
-                invites={safeInvites}
+                members={members}
+                invites={invites}
                 isOwner={isOwner}
                 canInvite={canInvite}
                 userEmail={userEmail}
@@ -509,8 +496,8 @@ export default function HeirloomApp({
       {globalModal === "addPerson" && (
         <AddPersonModal
           familySlug={familySlug}
-          people={safePeople}
-          relationships={safeRelationships}
+          people={people}
+          relationships={relationships}
           addPersonAction={addPersonAction}
           onClose={() => setGlobalModal(null)}
         />
@@ -525,7 +512,7 @@ export default function HeirloomApp({
       {globalModal === "uploadPhotos" && (
         <UploadPhotosModal
           familySlug={familySlug}
-          albums={safeAlbums}
+          albums={albums}
           bulkUploadPhotosAction={bulkUploadPhotosAction}
           onClose={() => setGlobalModal(null)}
         />
@@ -533,7 +520,7 @@ export default function HeirloomApp({
       {globalModal === "addEvent" && (
         <AddTimelineEventModal
           familySlug={familySlug}
-          people={safePeople}
+          people={people}
           createTimelineEventAction={createTimelineEventAction}
           onClose={() => setGlobalModal(null)}
         />
@@ -548,7 +535,7 @@ export default function HeirloomApp({
       {globalModal === "addStory" && (
         <AddStoryModal
           familySlug={familySlug}
-          people={safePeople}
+          people={people}
           createStoryAction={createStoryAction}
           onClose={() => setGlobalModal(null)}
         />
