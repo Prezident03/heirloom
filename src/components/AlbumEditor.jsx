@@ -225,9 +225,8 @@ function RailButton({ icon: Icon, label, active, onClick }) {
 // 🆕 Chap panel — Photos
 // ============================================================
 
-function PhotosPanel({ familySlug, photos, onDragStart, onAddPhoto }) {
+function PhotosPanel({ familySlug, photos, uploadedPhotos, onUploaded, onDragStart, onAddPhoto }) {
   const [uploading, setUploading] = useState(false);
-  const [extraPhotos, setExtraPhotos] = useState([]);
   const inputRef = useRef(null);
 
   const handleFileUpload = async (e) => {
@@ -246,7 +245,7 @@ function PhotosPanel({ familySlug, photos, onDragStart, onAddPhoto }) {
         });
         uploaded.push({ id: blob.url, url: blob.url });
       }
-      setExtraPhotos((prev) => [...uploaded, ...prev]);
+      onUploaded?.([...uploaded, ...(uploadedPhotos || [])]);
     } catch (err) {
       console.error("Rasm yuklashda xato:", err);
     } finally {
@@ -255,7 +254,7 @@ function PhotosPanel({ familySlug, photos, onDragStart, onAddPhoto }) {
     }
   };
 
-  const allPhotos = [...extraPhotos, ...photos];
+  const allPhotos = [...(uploadedPhotos || []), ...(photos || [])];
 
   return (
     <div style={{ padding: "8px" }}>
@@ -273,10 +272,10 @@ function PhotosPanel({ familySlug, photos, onDragStart, onAddPhoto }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
         {allPhotos.map((photo, i) => (
           <div
-            key={photo.id || i}
+            key={photo.id || photo.url || i}
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData("text/plain", JSON.stringify({ type: "photo", url: photo.url, id: photo.id }));
+              e.dataTransfer.setData("text/plain", JSON.stringify({ type: "photo", url: photo.url, id: photo.id || photo.url }));
               onDragStart?.(photo);
             }}
             style={{
@@ -706,6 +705,7 @@ function PageCanvas({
   const [ungroupState, ungroupFormAction] = useActionState(ungroupElementsAction, undefined);
   const groupFormRef = useRef(null);
   const ungroupFormRef = useRef(null);
+  const [, delFormAction] = useActionState(deleteElementAction, undefined);
 
   const handleElementSelect = (id, shift) => {
     if (shift && canEdit) {
@@ -1097,7 +1097,7 @@ function PageCanvas({
         <input type="hidden" name="zIndex" />
         <input type="hidden" name="rotation" />
       </form>
-      <form ref={delRef} action={() => {}} style={{ display: "none" }}>
+      <form ref={delRef} action={delFormAction} style={{ display: "none" }}>
         <input type="hidden" name="familySlug" />
         <input type="hidden" name="pageId" />
         <input type="hidden" name="elementId" />
@@ -2272,6 +2272,7 @@ function AlbumEditor({
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [stylePopupId, setStylePopupId] = useState(null);
   const [draggedPageIndex, setDraggedPageIndex] = useState(null);
+  const [sessionUploads, setSessionUploads] = useState([]);
   const router = useRouter();
 
   const [saveStatus, setSaveStatus] = useState("saved");
@@ -2891,6 +2892,8 @@ function AlbumEditor({
                         <PhotosPanel
                           familySlug={familySlug}
                           photos={allPhotos}
+                          uploadedPhotos={sessionUploads}
+                          onUploaded={(list) => setSessionUploads(list)}
                           onDragStart={() => {}}
                           onAddPhoto={() => {}}
                         />
