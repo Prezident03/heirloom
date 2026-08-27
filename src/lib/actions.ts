@@ -54,6 +54,9 @@ import {
   addStickerElement,
   updateElementStickerColor,
   addTextElement,
+  groupElements,
+  ungroupElements,
+  updateElementCrop,
   addPhotoElement,
   applyPageTemplate,
   reorderAlbumPages,
@@ -969,6 +972,7 @@ export async function deleteElementAction(_prevState: ActionState, formData: For
 
   try {
     await deleteElement(elementId, pageId);
+    revalidatePath(`/${familySlug}/dashboard`);
     return { ok: true };
   } catch {
     return { error: "Element o'chirishda xato yuz berdi." };
@@ -1057,6 +1061,67 @@ export async function updateElementPositionAction(_prevState: ActionState, formD
     return { ok: true };
   } catch {
     return { error: "Element joylashuvini saqlashda xato." };
+  }
+}
+
+export async function groupElementsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const pageId = String(formData.get("pageId") || "").trim();
+  const groupId = String(formData.get("groupId") || "").trim();
+  const raw = String(formData.get("elementIds") || "");
+  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+
+  if (!pageId || !groupId || ids.length === 0) return { error: "Guruhlash uchun noto'g'ri ma'lumot." };
+  try {
+    await groupElements(pageId, ids, groupId);
+    return { ok: true };
+  } catch {
+    return { error: "Elementlarni guruhlashda xato." };
+  }
+}
+
+export async function ungroupElementsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const pageId = String(formData.get("pageId") || "").trim();
+  const raw = String(formData.get("elementIds") || "");
+  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
+
+  if (!pageId || ids.length === 0) return { error: "Guruhdan chiqarish uchun noto'g'ri ma'lumot." };
+  try {
+    await ungroupElements(pageId, ids);
+    return { ok: true };
+  } catch {
+    return { error: "Elementlarni guruhdan chiqarishda xato." };
+  }
+}
+
+export async function updateElementCropAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const scale = Number(formData.get("scale"));
+  const dx = Number(formData.get("dx"));
+  const dy = Number(formData.get("dy"));
+  const flipH = formData.get("flipH") === "true";
+  const flipV = formData.get("flipV") === "true";
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+  if ([scale, dx, dy].some((v) => Number.isNaN(v))) return { error: "Crop parametrlari noto'g'ri." };
+
+  try {
+    await updateElementCrop(elementId, pageId, { scale, dx, dy, flipH, flipV });
+    return { ok: true };
+  } catch {
+    return { error: "Cropni saqlashda xato." };
   }
 }
 
