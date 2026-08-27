@@ -1026,7 +1026,6 @@ function PageCanvas({
           albumId={albumId}
           pageId={page.id}
           saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-          deleteElementAction={deleteElementAction}
           updateElementCropAction={updateElementCropAction}
           canEdit={canEdit}
         />
@@ -1181,12 +1180,11 @@ function PageCanvas({
   );
 }
 
-function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, deleteElementAction, updateElementCropAction, canEdit }) {
+function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, updateElementCropAction, canEdit }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef(null);
-  const [deleteState, deleteFormAction, deletePending] = useActionState(deleteElementAction, undefined);
   const [cropState, cropFormAction] = useActionState(updateElementCropAction, undefined);
   const cropFormRef = useRef(null);
   const [cropMode, setCropMode] = useState(false);
@@ -1401,44 +1399,16 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
               </button>
             )}
             {element.photo_url && !cropMode && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => inputRef.current?.click()}
-                  title="Rasmni almashtirish"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClickCapture={(e) => e.stopPropagation()}
-                  style={{ position: "absolute", top: 4, right: 32, width: 24, height: 24, borderRadius: "50%", background: "rgba(30,38,33,0.72)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9 }}
-                >
-                  <Images size={12} />
-                </button>
-                <form action={deleteFormAction} style={{ position: "absolute", top: 4, right: 4, zIndex: 9 }} onPointerDown={(e) => e.stopPropagation()}>
-                  <input type="hidden" name="familySlug" value={familySlug} />
-                  <input type="hidden" name="albumId" value={albumId} />
-                  <input type="hidden" name="pageId" value={pageId} />
-                  <input type="hidden" name="elementId" value={element.id} />
-                  <button
-                    type="submit"
-                    disabled={deletePending}
-                    title="O'chirish"
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: "50%",
-                      background: "rgba(30,38,33,0.8)",
-                      border: "none",
-                      color: "#fff",
-                      cursor: deletePending ? "default" : "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      opacity: deletePending ? 0.6 : 1,
-                    }}
-                  >
-                    <X size={14} />
-                  </button>
-                </form>
-              </>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                title="Rasmni almashtirish"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClickCapture={(e) => e.stopPropagation()}
+                style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(30,38,33,0.72)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9 }}
+              >
+                <Images size={12} />
+              </button>
             )}
           </>
         )}
