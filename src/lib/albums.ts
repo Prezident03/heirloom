@@ -47,6 +47,12 @@ export type PageElement = {
   text_color: string | null;
   text_align: "left" | "center" | "right" | null;
   text_font: "handwriting" | "serif" | "sans" | null;
+  group_id: string | null;
+  crop_scale: number | null;
+  crop_dx: number | null;
+  crop_dy: number | null;
+  flip_h: boolean | null;
+  flip_v: boolean | null;
 };
 
 export const BACKGROUNDS = {
@@ -559,6 +565,33 @@ export async function updateElementPosition(
   if (pos.rotation !== undefined) {
     await sql`UPDATE page_elements SET rotation = ${pos.rotation} WHERE id = ${elementId} AND page_id = ${pageId}`;
   }
+}
+
+export async function groupElements(pageId: string, elementIds: string[], groupId: string): Promise<void> {
+  await ensureSchema();
+  for (const id of elementIds) {
+    await sql`UPDATE page_elements SET group_id = ${groupId} WHERE id = ${id} AND page_id = ${pageId}`;
+  }
+}
+
+export async function ungroupElements(pageId: string, elementIds: string[]): Promise<void> {
+  await ensureSchema();
+  for (const id of elementIds) {
+    await sql`UPDATE page_elements SET group_id = NULL WHERE id = ${id} AND page_id = ${pageId}`;
+  }
+}
+
+export async function updateElementCrop(
+  elementId: string,
+  pageId: string,
+  crop: { scale?: number; dx?: number; dy?: number; flipH?: boolean; flipV?: boolean }
+): Promise<void> {
+  await ensureSchema();
+  if (crop.scale !== undefined) await sql`UPDATE page_elements SET crop_scale = ${crop.scale} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  if (crop.dx !== undefined) await sql`UPDATE page_elements SET crop_dx = ${crop.dx} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  if (crop.dy !== undefined) await sql`UPDATE page_elements SET crop_dy = ${crop.dy} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  if (crop.flipH !== undefined) await sql`UPDATE page_elements SET flip_h = ${crop.flipH} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  if (crop.flipV !== undefined) await sql`UPDATE page_elements SET flip_v = ${crop.flipV} WHERE id = ${elementId} AND page_id = ${pageId}`;
 }
 
 export async function updateElementCaption(elementId: string, caption: string): Promise<void> {
