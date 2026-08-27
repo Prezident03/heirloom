@@ -706,6 +706,16 @@ function PageCanvas({
   const groupFormRef = useRef(null);
   const ungroupFormRef = useRef(null);
   const [, delFormAction] = useActionState(deleteElementAction, undefined);
+  const [, posFormAction] = useActionState(updateElementPositionAction, undefined);
+  const [dupState, dupFormAction] = useActionState(duplicateElementAction, undefined);
+  const [, zFormAction] = useActionState(changeZIndexAction, undefined);
+  const lastDupSourceRef = useRef(null);
+
+  useEffect(() => {
+    if (dupState?.ok && dupState.elementId) {
+      onDuplicated?.({ pageId: page.id, sourceId: lastDupSourceRef.current, newId: dupState.elementId });
+    }
+  }, [dupState]);
 
   const handleElementSelect = (id, shift) => {
     if (shift && canEdit) {
@@ -912,6 +922,7 @@ function PageCanvas({
   const handleDuplicate = (elId) => {
     const f = dupRef.current;
     if (!f) return;
+    lastDupSourceRef.current = elId;
     f.elements.familySlug.value = familySlug;
     f.elements.pageId.value = page.id;
     f.elements.albumId.value = albumId;
@@ -1085,7 +1096,7 @@ function PageCanvas({
         <div style={{ position: "absolute", top: `${snapGuides.hy}%`, left: 0, right: 0, height: 1, background: TOKENS.gold, opacity: 0.85, pointerEvents: "none", zIndex: 100 }} />
       )}
 
-      <form ref={posRef} action={() => {}} style={{ display: "none" }}>
+      <form ref={posRef} action={posFormAction} style={{ display: "none" }}>
         <input type="hidden" name="familySlug" />
         <input type="hidden" name="pageId" />
         <input type="hidden" name="elementId" />
@@ -1102,13 +1113,13 @@ function PageCanvas({
         <input type="hidden" name="elementId" />
         <input type="hidden" name="albumId" />
       </form>
-      <form ref={dupRef} action={() => {}} style={{ display: "none" }}>
+      <form ref={dupRef} action={dupFormAction} style={{ display: "none" }}>
         <input type="hidden" name="familySlug" />
         <input type="hidden" name="pageId" />
         <input type="hidden" name="elementId" />
         <input type="hidden" name="albumId" />
       </form>
-      <form ref={zRef} action={() => {}} style={{ display: "none" }}>
+      <form ref={zRef} action={zFormAction} style={{ display: "none" }}>
         <input type="hidden" name="familySlug" />
         <input type="hidden" name="pageId" />
         <input type="hidden" name="elementId" />
@@ -2083,7 +2094,7 @@ function slugifyFilename(name) {
   return (name || "albom").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "albom";
 }
 
-function ExportMenu({ album, exporting, setExporting, exportError, setExportError, pageNodeRef, previewMode, setPreviewMode, activePanel, setActivePanel, pages, pageIndex, setPageIndex }) {
+function ExportMenu({ album, exporting, setExporting, exportError, setExportError, pageNodeRef, rightPageNodeRef, activeSide, previewMode, setPreviewMode, activePanel, setActivePanel, pages, pageIndex, setPageIndex }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -2116,7 +2127,8 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
 
   const exportImage = (format) => runExport(async () => {
     await waitFrames(2);
-    const canvas = await captureNodeToCanvas(pageNodeRef.current);
+    const targetNode = (activeSide === "right" && rightPageNodeRef.current) ? rightPageNodeRef.current : pageNodeRef.current;
+    const canvas = await captureNodeToCanvas(targetNode);
     const mime = format === "jpg" ? "image/jpeg" : "image/png";
     const quality = format === "jpg" ? 0.92 : undefined;
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
@@ -2239,6 +2251,7 @@ function AlbumEditor({
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
+  const rightPageNodeRef = useRef(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [stylePopupId, setStylePopupId] = useState(null);
   const [draggedPageIndex, setDraggedPageIndex] = useState(null);
@@ -2384,7 +2397,7 @@ function AlbumEditor({
   const applyHistoryEntry = (entry, direction) => {
     if (entry.type === "position") {
       const box = direction === "undo" ? entry.prev : entry.next;
-      submitUndoPosition(entry.pageId, entry.elementId, box.x, box.y, box.w, box.h, box.r);
+      submitUndoPosition(entry.pageId, entry.elementId, box.x, box.y, box.w, box.h, box.r ?? box.rotation);
     } else if (entry.type === "duplicate") {
       if (direction === "undo") submitUndoDelete(entry.pageId, entry.elementId);
       else submitUndoDuplicate(entry.pageId, entry.sourceId);
@@ -2582,7 +2595,7 @@ function AlbumEditor({
           )}
         </div>
 
-        <ExportMenu album={album} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} pageNodeRef={pageNodeRef} previewMode={previewMode} setPreviewMode={setPreviewMode} activePanel={activePanel} setActivePanel={setActivePanel} pages={pages} pageIndex={pageIndex} setPageIndex={setPageIndex} />
+        <ExportMenu album={album} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} pageNodeRef={pageNodeRef} rightPageNodeRef={rightPageNodeRef} activeSide={activeSide} previewMode={previewMode} setPreviewMode={setPreviewMode} activePanel={activePanel} setActivePanel={setActivePanel} pages={pages} pageIndex={pageIndex} setPageIndex={setPageIndex} />
 
         {canEdit && (
           !confirmDeleteAlbum ? (
@@ -2987,7 +3000,7 @@ function AlbumEditor({
                       />
                     </div>
                     <div style={{ width: 22, marginLeft: -11, marginRight: -11, zIndex: 5, background: "linear-gradient(90deg, transparent, rgba(30,26,15,0.22) 45%, rgba(30,26,15,0.22) 55%, transparent)", pointerEvents: "none" }} />
-                    <div onMouseDownCapture={() => effectiveCanEdit && rightPage && setActiveSide("right")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "right" ? 2 : 1 }}>
+                    <div ref={rightPageNodeRef} onMouseDownCapture={() => effectiveCanEdit && rightPage && setActiveSide("right")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "right" ? 2 : 1 }}>
                       {rightPage ? (
                         <PageCanvas
                           page={rightPage}
