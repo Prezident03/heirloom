@@ -66,6 +66,9 @@ import {
   addPhotoElementAction,
   reorderAlbumPagesAction,
   duplicateAlbumPageAction,
+  groupElementsAction,
+  ungroupElementsAction,
+  updateElementCropAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -245,6 +248,9 @@ export default async function FamilyDashboardPage({
       deleteStoryAction={deleteStoryAction}
       reorderAlbumPagesAction={reorderAlbumPagesAction}
       duplicateAlbumPageAction={duplicateAlbumPageAction}
+      groupElementsAction={groupElementsAction}
+      ungroupElementsAction={ungroupElementsAction}
+      updateElementCropAction={updateElementCropAction}
     />
   );
 }

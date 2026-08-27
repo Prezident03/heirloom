@@ -157,6 +157,13 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS text_color TEXT DEFAULT '#2E362F'`, "add text_color");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS text_align TEXT DEFAULT 'left'`, "add text_align");
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS text_font TEXT DEFAULT 'handwriting'`, "add text_font");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS group_id TEXT`, "add group_id");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS crop_scale FLOAT DEFAULT 1`, "add crop_scale");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS crop_dx FLOAT DEFAULT 0`, "add crop_dx");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS crop_dy FLOAT DEFAULT 0`, "add crop_dy");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS flip_h BOOLEAN DEFAULT FALSE`, "add flip_h");
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS flip_v BOOLEAN DEFAULT FALSE`, "add flip_v");
+    await safe(() => sql`CREATE INDEX IF NOT EXISTS idx_page_elements_group ON page_elements(group_id)`, "add group index");
     await safe(() => sql`ALTER TABLE album_pages ADD COLUMN IF NOT EXISTS background_id TEXT DEFAULT 'paper'`, "add background_id");
     await safe(() => sql`ALTER TABLE album_pages ADD COLUMN IF NOT EXISTS background_image_url TEXT`, "add background_image_url");
     // Eski CHECK constraint faqat 'photo'/'text'ga ruxsat berardi — 'sticker' turini qo'shish uchun kengaytiramiz.

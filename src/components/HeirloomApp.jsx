@@ -304,6 +304,9 @@ export default function HeirloomApp({
   deleteStoryAction,
   reorderAlbumPagesAction,
   duplicateAlbumPageAction,
+  groupElementsAction,
+  ungroupElementsAction,
+  updateElementCropAction,
 }) {
   const [view, setView] = useState(
     initialView === "tree" ? VIEWS.TREE
@@ -409,6 +412,9 @@ export default function HeirloomApp({
                 addPhotoElementAction={addPhotoElementAction}
                 reorderAlbumPagesAction={reorderAlbumPagesAction}
                 duplicateAlbumPageAction={duplicateAlbumPageAction}
+                groupElementsAction={groupElementsAction}
+                ungroupElementsAction={ungroupElementsAction}
+                updateElementCropAction={updateElementCropAction}
               />
             )}
             {view === VIEWS.PEOPLE && (
