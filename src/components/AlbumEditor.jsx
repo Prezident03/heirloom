@@ -13,7 +13,8 @@ import {
   Sparkles, Moon, Cloud, Gift, Cake, PartyPopper,
   Camera, Music, Crown, Umbrella,
   Snowflake, Smile, Feather, Type, Download,
-  Loader2, Undo2, Redo2, Lock, Unlock, Share2, Link2,
+  Loader2, Undo2, Redo2, Share2, Link2, Group, Ungroup, Check, FlipHorizontal2, FlipVertical2,
+  Maximize2, Minimize2, Layers,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
@@ -350,90 +351,6 @@ function ElementsPanel({ onAddElement }) {
   );
 }
 
-function PropertiesPanel({ element, onUpdate, onClose }) {
-  // Hooks must run unconditionally (before any early return) to comply
-  // with the Rules of Hooks — otherwise the number of hooks would change
-  // between renders whenever `element` toggles between null and a value.
-  const [opacity, setOpacity] = useState(element?.opacity !== undefined ? element.opacity : 100);
-  const [locked, setLocked] = useState(element?.locked || false);
-
-  if (!element) return null;
-
-  const handleChange = (field, value) => {
-    onUpdate({ ...element, [field]: value });
-  };
-
-  return (
-    <div style={{ width: 260, flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: 16, overflowY: "auto", maxHeight: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h3 style={{ fontFamily: "Fraunces, serif", fontSize: 16, fontWeight: 500, margin: 0 }}>Xususiyatlar</h3>
-        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, display: "block", marginBottom: 4 }}>Joylashuv</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 10, color: TOKENS.ink40 }}>X</span>
-            <input type="number" value={Math.round(element.position_x || 0)} onChange={(e) => handleChange("position_x", Number(e.target.value))} style={{ width: "100%", padding: "4px 6px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 12 }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 10, color: TOKENS.ink40 }}>Y</span>
-            <input type="number" value={Math.round(element.position_y || 0)} onChange={(e) => handleChange("position_y", Number(e.target.value))} style={{ width: "100%", padding: "4px 6px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 12 }} />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, display: "block", marginBottom: 4 }}>O‘lcham</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 10, color: TOKENS.ink40 }}>Kenglik</span>
-            <input type="number" value={Math.round(element.position_w || 40)} onChange={(e) => handleChange("position_w", Number(e.target.value))} style={{ width: "100%", padding: "4px 6px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 12 }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 10, color: TOKENS.ink40 }}>Balandlik</span>
-            <input type="number" value={Math.round(element.position_h || 40)} onChange={(e) => handleChange("position_h", Number(e.target.value))} style={{ width: "100%", padding: "4px 6px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, fontSize: 12 }} />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, display: "block", marginBottom: 4 }}>Aylantirish</label>
-        <input type="range" min={-180} max={180} value={element.rotation || 0} onChange={(e) => handleChange("rotation", Number(e.target.value))} style={{ width: "100%" }} />
-        <div style={{ fontSize: 12, textAlign: "center", color: TOKENS.ink60 }}>{element.rotation || 0}°</div>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, display: "block", marginBottom: 4 }}>Shaffoflik</label>
-        <input type="range" min={0} max={100} value={opacity} onChange={(e) => { setOpacity(Number(e.target.value)); handleChange("opacity", Number(e.target.value)); }} style={{ width: "100%" }} />
-        <div style={{ fontSize: 12, textAlign: "center", color: TOKENS.ink60 }}>{opacity}%</div>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, display: "block", marginBottom: 4 }}>Qatlam</label>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => handleChange("z_index", (element.z_index || 0) + 1)} style={{ flex: 1, padding: "6px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", cursor: "pointer", fontSize: 12 }}>⬆ Oldinga</button>
-          <button onClick={() => handleChange("z_index", Math.max(0, (element.z_index || 0) - 1))} style={{ flex: 1, padding: "6px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", cursor: "pointer", fontSize: 12 }}>⬇ Orqaga</button>
-        </div>
-        <div style={{ fontSize: 11, textAlign: "center", color: TOKENS.ink40, marginTop: 4 }}>Qatlam: {element.z_index || 0}</div>
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <button onClick={() => { setLocked(!locked); handleChange("locked", !locked); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, background: locked ? TOKENS.parchmentDeep : "transparent", cursor: "pointer", width: "100%", fontSize: 12 }}>
-          {locked ? <Lock size={14} /> : <Unlock size={14} />}
-          {locked ? "Qulflangan" : "Qulfni ochish"}
-        </button>
-      </div>
-
-      <div style={{ borderTop: `1px solid ${TOKENS.parchmentDeep}`, paddingTop: 12 }}>
-        <button onClick={() => handleChange("duplicate", true)} style={{ width: "100%", padding: "8px", borderRadius: 4, border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", cursor: "pointer", fontSize: 12, marginBottom: 6 }}>📋 Nusxalash</button>
-        <button onClick={() => handleChange("delete", true)} style={{ width: "100%", padding: "8px", borderRadius: 4, border: `1px solid ${TOKENS.danger}`, color: TOKENS.danger, background: "transparent", cursor: "pointer", fontSize: 12 }}>🗑 O‘chirish</button>
-      </div>
-    </div>
-  );
-}
-
 function TransformableElement({
   element,
   children,
@@ -444,6 +361,7 @@ function TransformableElement({
   onDuplicate,
   onLayerUp,
   onLayerDown,
+  onStyle,
   canEdit,
 }) {
   const [pos, setPos] = useState({
@@ -512,19 +430,38 @@ function TransformableElement({
     let newX = startPos.x;
     let newY = startPos.y;
     const minSize = 3;
+    const aspect = startPos.h > 0 ? startPos.w / startPos.h : 1;
+    const free = e.shiftKey === true; // Shift = erkin resize
+    const isCorner = handle === "se" || handle === "nw" || handle === "ne" || handle === "sw";
 
-    switch (handle) {
-      case "se": newW = Math.max(minSize, startPos.w + dx); newH = Math.max(minSize, startPos.h + dy); break;
-      case "nw": newW = Math.max(minSize, startPos.w - dx); newH = Math.max(minSize, startPos.h - dy); newX = startPos.x + (startPos.w - newW); newY = startPos.y + (startPos.h - newH); break;
-      case "ne": newW = Math.max(minSize, startPos.w + dx); newH = Math.max(minSize, startPos.h - dy); newY = startPos.y + (startPos.h - newH); break;
-      case "sw": newW = Math.max(minSize, startPos.w - dx); newH = Math.max(minSize, startPos.h + dy); newX = startPos.x + (startPos.w - newW); break;
-      case "n": newH = Math.max(minSize, startPos.h - dy); newY = startPos.y + (startPos.h - newH); break;
-      case "s": newH = Math.max(minSize, startPos.h + dy); break;
-      case "w": newW = Math.max(minSize, startPos.w - dx); newX = startPos.x + (startPos.w - newW); break;
-      case "e": newW = Math.max(minSize, startPos.w + dx); break;
+    const clampFree = (h) => {
+      switch (h) {
+        case "se": newW = Math.max(minSize, startPos.w + dx); newH = Math.max(minSize, startPos.h + dy); break;
+        case "nw": newW = Math.max(minSize, startPos.w - dx); newH = Math.max(minSize, startPos.h - dy); newX = startPos.x + (startPos.w - newW); newY = startPos.y + (startPos.h - newH); break;
+        case "ne": newW = Math.max(minSize, startPos.w + dx); newH = Math.max(minSize, startPos.h - dy); newY = startPos.y + (startPos.h - newH); break;
+        case "sw": newW = Math.max(minSize, startPos.w - dx); newH = Math.max(minSize, startPos.h + dy); newX = startPos.x + (startPos.w - newW); break;
+        case "n": newH = Math.max(minSize, startPos.h - dy); newY = startPos.y + (startPos.h - newH); break;
+        case "s": newH = Math.max(minSize, startPos.h + dy); break;
+        case "w": newW = Math.max(minSize, startPos.w - dx); newX = startPos.x + (startPos.w - newW); break;
+        case "e": newW = Math.max(minSize, startPos.w + dx); break;
+      }
+    };
+
+    if (free || !isCorner) {
+      clampFree(handle);
+    } else {
+      // Aspect-ratio saqlab, kattaroq harakat o'qi bo'yicha proporsional resize.
+      const relW = startPos.w > 0 ? dx / startPos.w : dx;
+      const relH = startPos.h > 0 ? dy / startPos.h : dy;
+      const rel = Math.abs(relW) > Math.abs(relH) ? relW : relH;
+      newW = Math.max(minSize, startPos.w * (1 + rel));
+      newH = newW / aspect;
+      if (handle === "nw") { newX = startPos.x + (startPos.w - newW); newY = startPos.y + (startPos.h - newH); }
+      else if (handle === "ne") { newY = startPos.y + (startPos.h - newH); }
+      else if (handle === "sw") { newX = startPos.x + (startPos.w - newW); }
     }
 
-    setPos({ ...pos, x: newX, y: newY, w: newW, h: newH });
+    setPos({ ...pos, x: Math.round(newX * 100) / 100, y: Math.round(newY * 100) / 100, w: Math.round(newW * 100) / 100, h: Math.round(newH * 100) / 100 });
   };
 
   const handleResizeEnd = (e) => {
@@ -557,7 +494,8 @@ function TransformableElement({
     if (centerX === undefined) return;
     const angle1 = Math.atan2(startY - centerY, startX - centerX) * 180 / Math.PI;
     const angle2 = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
-    const newRotate = startRotate + (angle2 - angle1);
+    let newRotate = startRotate + (angle2 - angle1);
+    if (e.shiftKey) newRotate = Math.round(newRotate / 15) * 15; // Shift = 15° snap
     setPos((p) => ({ ...p, rotate: newRotate }));
   };
 
@@ -603,7 +541,7 @@ function TransformableElement({
       onPointerMove={handleDragMove}
       onPointerUp={handleDragEnd}
       onPointerCancel={handleDragEnd}
-      onClick={(e) => { e.stopPropagation(); onSelect(element.id); }}
+      onClick={(e) => { e.stopPropagation(); onSelect(element.id, e.shiftKey); }}
     >
       {children}
 
@@ -680,6 +618,7 @@ function TransformableElement({
             onLayerUp={() => onLayerUp(element.id)}
             onLayerDown={() => onLayerDown(element.id)}
             onDelete={() => onDelete(element.id)}
+            onStyle={() => onStyle(element.id)}
           />
         </>
       )}
@@ -687,7 +626,7 @@ function TransformableElement({
   );
 }
 
-function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete }) {
+function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete, onStyle }) {
   return (
     <div
       style={{
@@ -708,6 +647,9 @@ function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete 
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
+      <button type="button" className="fm-toolbar-btn" title="Uslub" onClick={onStyle}>
+        <Palette size={14} />
+      </button>
       <button type="button" className="fm-toolbar-btn" title="Nusxalash" onClick={onDuplicate}>
         <Copy size={14} />
       </button>
@@ -747,11 +689,106 @@ function PageCanvas({
   onDuplicated,
   onZIndexChange,
   onElementSelect,
+  onStyleElement,
+  groupElementsAction,
+  ungroupElementsAction,
+  updateElementCropAction,
   selectedId,
 }) {
   const router = useRouter();
   const canvasRef = useRef(null);
   const elements = page.elements || [];
+
+  const [multiIds, setMultiIds] = useState([]);
+  const [multiGhost, setMultiGhost] = useState(null);
+  const multiDragRef = useRef(null);
+  const [groupState, groupFormAction] = useActionState(groupElementsAction, undefined);
+  const [ungroupState, ungroupFormAction] = useActionState(ungroupElementsAction, undefined);
+  const groupFormRef = useRef(null);
+  const ungroupFormRef = useRef(null);
+
+  const handleElementSelect = (id, shift) => {
+    if (shift && canEdit) {
+      setMultiIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    } else {
+      setMultiIds([]);
+      onElementSelect(id);
+    }
+  };
+
+  const multiElements = multiIds.length > 0 ? elements.filter((el) => multiIds.includes(el.id)) : [];
+
+  const submitGroup = () => {
+    if (multiElements.length < 2) return;
+    const f = groupFormRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.groupId.value = `g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    f.elements.elementIds.value = multiIds.join(",");
+    f.requestSubmit();
+    setMultiIds([]);
+    onElementSelect(null);
+  };
+
+  const submitUngroup = () => {
+    const f = ungroupFormRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.elementIds.value = multiIds.join(",");
+    f.requestSubmit();
+    setMultiIds([]);
+    onElementSelect(null);
+  };
+
+  const startMultiDrag = (e) => {
+    if (!canEdit || multiElements.length === 0) return;
+    e.stopPropagation();
+    multiDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      starts: multiElements.map((el) => ({ id: el.id, x: el.position_x ?? 0, y: el.position_y ?? 0 })),
+    };
+    setMultiGhost({ dx: 0, dy: 0 });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const moveMultiDrag = (e) => {
+    const d = multiDragRef.current;
+    if (!d) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect || rect.width === 0) return;
+    setMultiGhost({ dx: ((e.clientX - d.startX) / rect.width) * 100, dy: ((e.clientY - d.startY) / rect.height) * 100 });
+  };
+
+  const endMultiDrag = (e) => {
+    const d = multiDragRef.current;
+    if (!d) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    let dx = 0;
+    let dy = 0;
+    if (rect && rect.width > 0) {
+      dx = ((e.clientX - d.startX) / rect.width) * 100;
+      dy = ((e.clientY - d.startY) / rect.height) * 100;
+    }
+    if (Math.abs(dx) > 0.02 || Math.abs(dy) > 0.02) {
+      d.starts.forEach((s) => {
+        handleUpdate(s.id, { x: Math.round((s.x + dx) * 10) / 10, y: Math.round((s.y + dy) * 10) / 10 });
+      });
+    }
+    multiDragRef.current = null;
+    setMultiGhost(null);
+  };
+
+  const box = (() => {
+    if (multiElements.length === 0) return null;
+    const mx = Math.min(...multiElements.map((el) => el.position_x ?? 0));
+    const my = Math.min(...multiElements.map((el) => el.position_y ?? 0));
+    const mw = Math.max(...multiElements.map((el) => (el.position_x ?? 0) + (el.position_w ?? 40))) - mx;
+    const mh = Math.max(...multiElements.map((el) => (el.position_y ?? 0) + (el.position_h ?? 40))) - my;
+    return { mx, my, mw, mh };
+  })();
 
   const handleCanvasDrop = (e) => {
     if (!canEdit) return;
@@ -818,6 +855,21 @@ function PageCanvas({
     return result;
   }, [elements]);
 
+  const submitPositionForm = (elId, newPos) => {
+    const f = posRef.current;
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.elementId.value = elId;
+    f.elements.positionX.value = String(newPos.x);
+    f.elements.positionY.value = String(newPos.y);
+    f.elements.positionW.value = String(newPos.w);
+    f.elements.positionH.value = String(newPos.h);
+    f.elements.rotation.value = String(newPos.rotation);
+    f.elements.zIndex.value = "";
+    setTimeout(() => f.requestSubmit(), 0);
+  };
+
   const handleUpdate = (elId, updates) => {
     const el = elements.find((e) => e.id === elId);
     if (!el) return;
@@ -843,31 +895,17 @@ function PageCanvas({
       next: newPos,
     });
 
-    const f = posRef.current;
-    if (f) {
-      f.elements.familySlug.value = familySlug;
-      f.elements.pageId.value = page.id;
-      f.elements.elementId.value = elId;
-      f.elements.positionX.value = String(newPos.x);
-      f.elements.positionY.value = String(newPos.y);
-      f.elements.positionW.value = String(newPos.w);
-      f.elements.positionH.value = String(newPos.h);
-      f.elements.rotation.value = String(newPos.rotation);
-      f.elements.zIndex.value = "";
-      setTimeout(() => f.requestSubmit(), 0);
-    }
+    submitPositionForm(elId, newPos);
   };
 
   const handleDelete = (elId) => {
-    if (!confirm("Bu elementni o'chirishni xohlaysizmi?")) return;
     const f = delRef.current;
-    if (f) {
-      f.elements.familySlug.value = familySlug;
-      f.elements.pageId.value = page.id;
-      f.elements.albumId.value = albumId;
-      f.elements.elementId.value = elId;
-      f.requestSubmit();
-    }
+    if (!f) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.albumId.value = albumId;
+    f.elements.elementId.value = elId;
+    f.requestSubmit();
     onElementSelect(null);
   };
 
@@ -909,25 +947,75 @@ function PageCanvas({
   const delRef = useRef(null);
   const dupRef = useRef(null);
   const zRef = useRef(null);
+  const copiedRef = useRef([]);
 
   useEffect(() => {
     if (!canEdit) return;
     const onKeyDown = (e) => {
-      if (!selectedId) return;
       const tag = document.activeElement?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
+
+      const applyToAll = (fn) => { const ids = multiIds.length ? multiIds : (selectedId ? [selectedId] : []); ids.forEach(fn); };
 
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
-        handleDelete(selectedId);
+        applyToAll((id) => handleDelete(id));
+        return;
       }
       if (e.key === "Escape") {
+        if (multiIds.length) { setMultiIds([]); return; }
         onElementSelect(null);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+        if (multiIds.length === 0 && !selectedId) return;
+        e.preventDefault();
+        applyToAll((id) => handleDuplicate(id));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+        if (elements.length === 0) return;
+        e.preventDefault();
+        setMultiIds(elements.map((el) => el.id));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+        if (multiIds.length === 0 && !selectedId) return;
+        e.preventDefault();
+        copiedRef.current = multiIds.length ? multiIds : [selectedId];
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+        if (copiedRef.current.length === 0) return;
+        e.preventDefault();
+        copiedRef.current.slice().forEach((id) => handleDuplicate(id));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (e.shiftKey) submitUngroup(); else submitGroup();
+        return;
+      }
+      const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (dir) {
+        const ids = multiIds.length ? multiIds : (selectedId ? [selectedId] : []);
+        if (ids.length === 0) return;
+        const els = elements.filter((x) => ids.includes(x.id));
+        if (els.length === 0) return;
+        e.preventDefault();
+        const step = e.shiftKey ? 1 : 0.25;
+        els.forEach((el) => {
+          const prev = { x: el.position_x ?? 0, y: el.position_y ?? 0, w: el.position_w ?? 40, h: el.position_h ?? 40, r: el.rotation ?? 0 };
+          const next = { x: Math.round((prev.x + dir[0] * step) * 100) / 100, y: Math.round((prev.y + dir[1] * step) * 100) / 100, w: prev.w, h: prev.h, rotation: prev.r };
+          onCommitPosition?.({ pageId: page.id, elementId: el.id, prev, next });
+          submitPositionForm(el.id, next);
+        });
+        return;
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [canEdit, selectedId]);
+  }, [canEdit, selectedId, multiIds, elements, page.id, familySlug, onCommitPosition, handleDelete, handleDuplicate, submitPositionForm, submitGroup, submitUngroup]);
 
   const renderContent = (el) => {
     if (el.type === "photo") {
@@ -939,6 +1027,7 @@ function PageCanvas({
           pageId={page.id}
           saveElementPhotoUrlAction={saveElementPhotoUrlAction}
           deleteElementAction={deleteElementAction}
+          updateElementCropAction={updateElementCropAction}
           canEdit={canEdit}
         />
       );
@@ -963,7 +1052,7 @@ function PageCanvas({
   return (
     <div
       ref={canvasRef}
-      onClick={() => { onElementSelect(null); setSnapGuides({ vx: null, hy: null }); }}
+      onClick={() => { onElementSelect(null); setSnapGuides({ vx: null, hy: null }); setMultiIds([]); }}
       onDragOver={(e) => {
         if (!canEdit) return;
         if (Array.from(e.dataTransfer.types).includes("text/plain")) {
@@ -1026,23 +1115,63 @@ function PageCanvas({
         <input type="hidden" name="elementId" />
         <input type="hidden" name="direction" />
       </form>
+      <form ref={groupFormRef} action={groupFormAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="groupId" />
+        <input type="hidden" name="elementIds" />
+      </form>
+      <form ref={ungroupFormRef} action={ungroupFormAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementIds" />
+      </form>
 
       {elements.map((el, i) => (
         <TransformableElement
           key={el.id}
           element={el}
           isSelected={selectedId === el.id}
-          onSelect={onElementSelect}
+          onSelect={handleElementSelect}
           onUpdate={(updates) => handleUpdate(el.id, updates)}
           onDelete={handleDelete}
           onDuplicate={handleDuplicate}
           onLayerUp={handleLayerUp}
           onLayerDown={handleLayerDown}
+          onStyle={onStyleElement}
           canEdit={canEdit}
         >
           {renderContent(el)}
         </TransformableElement>
       ))}
+
+      {box && canEdit && (
+        <>
+          <div style={{ position: "absolute", left: `${box.mx}%`, top: `${box.my}%`, width: `${box.mw}%`, height: `${box.mh}%`, border: `1.5px dashed ${TOKENS.gold}`, borderRadius: 2, pointerEvents: "none", zIndex: 60 }} />
+          {multiGhost && (
+            <div style={{ position: "absolute", left: `${box.mx + multiGhost.dx}%`, top: `${box.my + multiGhost.dy}%`, width: `${box.mw}%`, height: `${box.mh}%`, border: "1.5px solid rgba(43,92,255,0.6)", background: "rgba(43,92,255,0.06)", borderRadius: 2, pointerEvents: "none", zIndex: 59 }} />
+          )}
+          <div
+            onPointerDown={startMultiDrag}
+            onPointerMove={moveMultiDrag}
+            onPointerUp={endMultiDrag}
+            onPointerCancel={endMultiDrag}
+            style={{ position: "absolute", left: `${box.mx}%`, top: `${box.my}%`, width: `${box.mw}%`, height: 14, cursor: "move", zIndex: 66, touchAction: "none" }}
+          />
+          <div
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            style={{ position: "absolute", left: `${box.mx}%`, top: `${box.my}%`, transform: "translateY(-108%)", zIndex: 70, display: "flex", alignItems: "center", gap: 3, background: TOKENS.ink, borderRadius: 9, padding: 4, boxShadow: "0 6px 16px rgba(30,26,15,0.3)", whiteSpace: "nowrap" }}
+          >
+            <span style={{ color: "#fff", fontSize: 10.5, padding: "0 6px", fontWeight: 600 }}>{multiElements.length}</span>
+            <button type="button" className="fm-toolbar-btn" title="Guruhlash" onClick={submitGroup}><Group size={14} /></button>
+            <button type="button" className="fm-toolbar-btn" title="Guruhdan chiqarish" onClick={submitUngroup}><Ungroup size={14} /></button>
+            <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.18)", margin: "0 2px" }} />
+            <button type="button" className="fm-toolbar-btn" title="Nusxalash (Ctrl+D)" onClick={() => { multiElements.forEach((el) => handleDuplicate(el.id)); }}><Copy size={14} /></button>
+            <button type="button" className="fm-toolbar-btn danger" title="O'chirish" onClick={() => { multiElements.forEach((el) => handleDelete(el.id)); }}><Trash2 size={14} /></button>
+          </div>
+        </>
+      )}
 
       <div style={{ position: "absolute", bottom: 10, right: 14, fontSize: 10, color: TOKENS.ink40, display: "flex", alignItems: "center", gap: 10 }}>
         {page.date_label && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={10} /> {page.date_label}</span>}
@@ -1052,12 +1181,17 @@ function PageCanvas({
   );
 }
 
-function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, deleteElementAction, canEdit }) {
+function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, deleteElementAction, updateElementCropAction, canEdit }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef(null);
   const [deleteState, deleteFormAction, deletePending] = useActionState(deleteElementAction, undefined);
+  const [cropState, cropFormAction] = useActionState(updateElementCropAction, undefined);
+  const cropFormRef = useRef(null);
+  const [cropMode, setCropMode] = useState(false);
+  const [crop, setCrop] = useState({ scale: 1, dx: 0, dy: 0, flipH: false, flipV: false });
+  const cropDragRef = useRef(null);
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -1095,9 +1229,52 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
     }
   };
 
+  const openCrop = () => {
+    if (!element.photo_url) return;
+    setCrop({ scale: element.crop_scale || 1, dx: element.crop_dx || 0, dy: element.crop_dy || 0, flipH: !!element.flip_h, flipV: !!element.flip_v });
+    setCropMode(true);
+  };
+
+  const commitCrop = () => {
+    const f = cropFormRef.current;
+    if (f) {
+      f.elements.familySlug.value = familySlug;
+      f.elements.pageId.value = pageId;
+      f.elements.elementId.value = element.id;
+      f.elements.scale.value = String(Math.round(crop.scale * 100) / 100);
+      f.elements.dx.value = String(Math.round(crop.dx * 100) / 100);
+      f.elements.dy.value = String(Math.round(crop.dy * 100) / 100);
+      f.elements.flipH.value = String(crop.flipH);
+      f.elements.flipV.value = String(crop.flipV);
+      f.requestSubmit();
+    }
+    setCropMode(false);
+    router.refresh();
+  };
+
+  const cropPointerDown = (e) => {
+    if (!cropMode || !canEdit) return;
+    e.stopPropagation();
+    e.preventDefault();
+    cropDragRef.current = { startX: e.clientX, startY: e.clientY, dx: crop.dx, dy: crop.dy };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const cropPointerMove = (e) => {
+    if (!cropMode || !cropDragRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect || rect.width === 0) return;
+    const dx = ((e.clientX - cropDragRef.current.startX) / rect.width) * 100;
+    const dy = ((e.clientY - cropDragRef.current.startY) / rect.height) * 100;
+    setCrop((c) => ({ ...c, dx: cropDragRef.current.dx + dx, dy: cropDragRef.current.dy + dy }));
+  };
+  const cropPointerUp = () => { cropDragRef.current = null; };
+
   const frameStyle = element.frame_style || "polaroid";
   const isPolaroid = frameStyle === "polaroid";
   const tilt = element.photo_url && isPolaroid ? (seeded(element.id, 1) * 4 - 2) : 0;
+  const flipSX = crop.flipH ? -1 : 1;
+  const flipSY = crop.flipV ? -1 : 1;
+  const imgTransform = `translate(${crop.dx}%, ${crop.dy}%) scale(${crop.scale}) scaleX(${flipSX}) scaleY(${flipSY})`;
 
   return (
     <div
@@ -1141,64 +1318,127 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
           position: "relative",
           overflow: "hidden",
           borderRadius: 1,
-          backgroundImage: element.photo_url ? `url(${element.photo_url})` : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
+        onDoubleClick={(e) => { e.stopPropagation(); if (element.photo_url && canEdit && !cropMode) openCrop(); }}
       >
-        {!element.photo_url && <BookImage size={20} color={TOKENS.ink40} />}
+        <form ref={cropFormRef} action={cropFormAction} style={{ display: "none" }}>
+          <input type="hidden" name="familySlug" />
+          <input type="hidden" name="pageId" />
+          <input type="hidden" name="elementId" />
+          <input type="hidden" name="scale" />
+          <input type="hidden" name="dx" />
+          <input type="hidden" name="dy" />
+          <input type="hidden" name="flipH" />
+          <input type="hidden" name="flipV" />
+        </form>
+        {element.photo_url ? (
+          <img
+            src={element.photo_url}
+            alt=""
+            draggable={false}
+            onPointerDown={cropPointerDown}
+            onPointerMove={cropPointerMove}
+            onPointerUp={cropPointerUp}
+            onPointerCancel={cropPointerUp}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transform: imgTransform,
+              transformOrigin: "center",
+              userSelect: "none",
+              pointerEvents: cropMode ? "auto" : "none",
+              cursor: cropMode ? "grab" : "inherit",
+            }}
+          />
+        ) : (
+          <BookImage size={20} color={TOKENS.ink40} />
+        )}
+        {cropMode && canEdit && (
+          <div
+            style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: 6, zIndex: 12, display: "flex", alignItems: "center", gap: 4, background: "rgba(30,38,33,0.92)", borderRadius: 8, padding: "4px 6px" }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input type="range" min={100} max={400} value={Math.round(crop.scale * 100)} onChange={(e) => setCrop((c) => ({ ...c, scale: Number(e.target.value) / 100 }))} style={{ width: 64 }} />
+            <button type="button" className="fm-toolbar-btn" title="Gorizontal aylantirish" onClick={() => setCrop((c) => ({ ...c, flipH: !c.flipH }))}><FlipHorizontal2 size={13} /></button>
+            <button type="button" className="fm-toolbar-btn" title="Vertikal aylantirish" onClick={() => setCrop((c) => ({ ...c, flipV: !c.flipV }))}><FlipVertical2 size={13} /></button>
+            <button type="button" className="fm-toolbar-btn" title="Bajarildi" onClick={commitCrop}><Check size={13} /></button>
+            <button type="button" className="fm-toolbar-btn" title="Bekor qilish" onClick={() => setCropMode(false)}><X size={13} /></button>
+          </div>
+        )}
+        {canEdit && !cropMode && (
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
+        )}
         {canEdit && (
           <>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-            />
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={pending}
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                background: "rgba(30,38,33,0.0)",
-                border: "none",
-                cursor: pending ? "default" : "pointer",
-              }}
-            >
-              {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
-            </button>
-            {element.photo_url && (
-              <form action={deleteFormAction} style={{ position: "absolute", top: 4, right: 4 }}>
-                <input type="hidden" name="familySlug" value={familySlug} />
-                <input type="hidden" name="albumId" value={albumId} />
-                <input type="hidden" name="pageId" value={pageId} />
-                <input type="hidden" name="elementId" value={element.id} />
+            {!element.photo_url && (
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={pending}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  background: "rgba(30,38,33,0.0)",
+                  border: "none",
+                  cursor: pending ? "default" : "pointer",
+                }}
+              >
+                {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
+              </button>
+            )}
+            {element.photo_url && !cropMode && (
+              <>
                 <button
-                  type="submit"
-                  disabled={deletePending}
-                  title="O'chirish"
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: "50%",
-                    background: "rgba(30,38,33,0.8)",
-                    border: "none",
-                    color: "#fff",
-                    cursor: deletePending ? "default" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: deletePending ? 0.6 : 1,
-                  }}
+                  type="button"
+                  onClick={() => inputRef.current?.click()}
+                  title="Rasmni almashtirish"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClickCapture={(e) => e.stopPropagation()}
+                  style={{ position: "absolute", top: 4, right: 32, width: 24, height: 24, borderRadius: "50%", background: "rgba(30,38,33,0.72)", border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9 }}
                 >
-                  <X size={14} />
+                  <Images size={12} />
                 </button>
-              </form>
+                <form action={deleteFormAction} style={{ position: "absolute", top: 4, right: 4, zIndex: 9 }} onPointerDown={(e) => e.stopPropagation()}>
+                  <input type="hidden" name="familySlug" value={familySlug} />
+                  <input type="hidden" name="albumId" value={albumId} />
+                  <input type="hidden" name="pageId" value={pageId} />
+                  <input type="hidden" name="elementId" value={element.id} />
+                  <button
+                    type="submit"
+                    disabled={deletePending}
+                    title="O'chirish"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      background: "rgba(30,38,33,0.8)",
+                      border: "none",
+                      color: "#fff",
+                      cursor: deletePending ? "default" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: deletePending ? 0.6 : 1,
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </form>
+              </>
             )}
           </>
         )}
@@ -2016,6 +2256,9 @@ function AlbumEditor({
   deleteAlbumAction,
   reorderAlbumPagesAction,
   duplicateAlbumPageAction,
+  groupElementsAction,
+  ungroupElementsAction,
+  updateElementCropAction,
   photos,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
@@ -2027,6 +2270,7 @@ function AlbumEditor({
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
+  const [stylePopupId, setStylePopupId] = useState(null);
   const [draggedPageIndex, setDraggedPageIndex] = useState(null);
   const router = useRouter();
 
@@ -2043,9 +2287,49 @@ function AlbumEditor({
 
   const ZOOM_MIN = 0.5, ZOOM_MAX = 2, ZOOM_STEP = 0.1;
   const [zoom, setZoom] = useState(1);
-  const zoomIn = () => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100));
-  const zoomOut = () => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100));
-  const zoomFit = () => setZoom(1);
+  const zoomIn = () => { setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100)); resetPan(); };
+  const zoomOut = () => { setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100)); resetPan(); };
+  const zoomFit = () => { setZoom(1); resetPan(); };
+
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const sceneRef = useRef(null);
+  const panAnchorRef = useRef(null);
+  const [isSpacePan, setIsSpacePan] = useState(false);
+  const resetPan = () => setPan((p) => (p.x === 0 && p.y === 0 ? p : { x: 0, y: 0 }));
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const h = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", h);
+    return () => document.removeEventListener("fullscreenchange", h);
+  }, []);
+  const toggleFullscreen = () => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else document.documentElement.requestFullscreen?.().catch(() => {});
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (!canEdit || previewMode) return;
+    const onKeyDown = (e) => {
+      if (e.code !== "Space") return;
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
+      e.preventDefault();
+      setIsSpacePan(true);
+    };
+    const onKeyUp = (e) => { if (e.code === "Space") setIsSpacePan(false); };
+    const onBlur = () => setIsSpacePan(false);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [canEdit, previewMode]);
 
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
@@ -2165,6 +2449,10 @@ function AlbumEditor({
       const tag = document.activeElement?.tagName;
       const isEditable = tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
       if (isEditable) return;
+      if (e.key === "Escape") {
+        setActivePanel(null);
+        return;
+      }
       if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
       e.preventDefault();
       if (e.shiftKey) handleRedo(); else handleUndo();
@@ -2176,6 +2464,10 @@ function AlbumEditor({
   const pages = album.pages;
   const currentPage = pages[Math.min(pageIndex, pages.length - 1)];
   const currentLayout = currentPage ? LAYOUTS.find((l) => l.id === currentPage.layout_id) || LAYOUTS[0] : LAYOUTS[0];
+  const stylePageForPopup = pages[Math.min(pageIndex + 1, pages.length - 1)] || null;
+  const styleElement = stylePopupId
+    ? [...(currentPage?.elements || []), ...(stylePageForPopup?.elements || [])].find((e) => e.id === stylePopupId) || null
+    : null;
 
   const [addPageState, addPageFormAction, addPagePending] = useActionState(addAlbumPageAction, undefined);
   const [layoutState, layoutFormAction] = useActionState(changePageLayoutAction, undefined);
@@ -2190,8 +2482,11 @@ function AlbumEditor({
   const addTextRef = useRef(null);
   const addPhotoRef = useRef(null);
   const stickerFormRef = useRef(null);
+  const [layerFormState, layerFormAction] = useActionState(changeZIndexAction, undefined);
+  const layerFormRef = useRef(null);
 
-  const selectedElement = currentPage?.elements?.find(e => e.id === selectedElementId) || null;
+  const layerPage = (activeSide === "right" && pages[pageIndex + 1]) ? pages[pageIndex + 1] : currentPage;
+  const layerElements = [...(layerPage?.elements || [])].sort((a, b) => (b.z_index || 0) - (a.z_index || 0));
 
   // ── Canva-style editable album title + Share ──
   const [titleDraft, setTitleDraft] = useState(album.title);
@@ -2290,6 +2585,10 @@ function AlbumEditor({
           <button type="button" onClick={zoomFit} title="Ekranga moslash" style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: "none", cursor: "pointer", padding: "0 8px", minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</button>
           <button type="button" onClick={zoomIn} disabled={zoom >= ZOOM_MAX} title="Kattalashtirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 5, color: zoom >= ZOOM_MAX ? "#C9C4BA" : TOKENS.ink60, cursor: zoom >= ZOOM_MAX ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>+</button>
         </div>
+
+        <button type="button" onClick={toggleFullscreen} title={isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran (F11)"} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 32, background: "transparent", border: "none", borderRadius: 8, color: TOKENS.ink60, cursor: "pointer" }}>
+          {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </button>
 
       <button onClick={() => { setPreviewMode((v) => !v); setActivePanel(null); }} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: previewMode ? "#fff" : TOKENS.ink, background: previewMode ? TOKENS.gold : "#F4F2ED", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>
           {previewMode ? <><X size={13} /> Tahrirlash</> : "Ko'rish"}
@@ -2410,11 +2709,17 @@ function AlbumEditor({
                 <input type="hidden" name="elementId" />
                 <input type="hidden" name="direction" />
               </form>
+              <form ref={layerFormRef} action={layerFormAction} style={{ display: "none" }}>
+                <input type="hidden" name="familySlug" />
+                <input type="hidden" name="pageId" />
+                <input type="hidden" name="elementId" />
+                <input type="hidden" name="direction" />
+              </form>
 
               {addTextState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addTextState.error}</div>}
               {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
 
-              <div style={{ display: "flex", gap: 12, alignItems: "stretch", overflowX: zoom > 1 ? "auto" : "visible" }}>
+              <div style={{ position: "relative", display: "flex", gap: 12, alignItems: "stretch", overflowX: zoom > 1 ? "auto" : "visible" }}>
                 {effectiveCanEdit && (
                   <div style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "#F4F2ED", borderRadius: 10, overflow: "hidden", paddingBottom: 4, boxShadow: "inset 0 0 0 1px rgba(30,26,15,0.05)" }}>
                     <RailButton icon={Sparkles} label="Shablon" active={activePanel === "template"} onClick={() => setActivePanel((p) => (p === "template" ? null : "template"))} />
@@ -2424,6 +2729,7 @@ function AlbumEditor({
                     <RailButton icon={ImagePlus} label="Fon rasmi" active={activePanel === "bgImage"} onClick={() => setActivePanel((p) => (p === "bgImage" ? null : "bgImage"))} />
                     <RailButton icon={Images} label="Rasmlar" active={activePanel === "photos"} onClick={() => setActivePanel((p) => (p === "photos" ? null : "photos"))} />
                     <RailButton icon={Shapes} label="Elementlar" active={activePanel === "elements"} onClick={() => setActivePanel((p) => (p === "elements" ? null : "elements"))} />
+                    <RailButton icon={Layers} label="Qatlamlar" active={activePanel === "layers"} onClick={() => setActivePanel((p) => (p === "layers" ? null : "layers"))} />
                     <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "4px 10px" }} />
                     <RailButton icon={Type} label="Matn" onClick={() => { const f = addTextRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
                     <RailButton icon={ImagePlus} label="Rasm" onClick={() => { const f = addPhotoRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
@@ -2431,7 +2737,15 @@ function AlbumEditor({
                 )}
 
                 {effectiveCanEdit && activePanel && (
-                  <div className="fm-flyout-panel" style={{ width: 250, flexShrink: 0, background: TOKENS.card, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, padding: 12, maxHeight: 560, overflowY: "auto" }}>
+                  <div className="fm-flyout-panel" style={{ position: "absolute", left: 62, top: 0, bottom: 0, zIndex: 45, width: 272, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, borderRight: `1px solid ${TOKENS.parchmentDeep}`, padding: "38px 12px 12px", overflowY: "auto", boxShadow: "10px 0 26px rgba(30,26,15,0.14)" }}>
+                    <button
+                      type="button"
+                      onClick={() => setActivePanel(null)}
+                      title="Panelni yopish"
+                      style={{ position: "absolute", top: 10, right: 10, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "rgba(30,26,15,0.06)", border: "none", borderRadius: 6, color: TOKENS.ink60, cursor: "pointer" }}
+                    >
+                      <X size={15} />
+                    </button>
                     {activePanel === "template" && (
                       <div>
                         <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Shablon {activeSide === "right" ? "o'ng" : "chap"} sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.</div>
@@ -2599,11 +2913,76 @@ function AlbumEditor({
                         />
                       </div>
                     )}
+
+                    {activePanel === "layers" && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
+                          Qatlamlar {activeSide === "right" ? "o'ng" : "chap"} sahifa uchun — tepadagilari oldinda. Qatlamga bosing, berilgan tugmalar bilan tartiblang.
+                        </div>
+                        {layerElements.length === 0 ? (
+                          <div style={{ fontSize: 11, color: TOKENS.ink40, padding: "10px 0" }}>Hozircha elementlar mavjud emas.</div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {layerElements.map((el, i) => (
+                              <div
+                                key={el.id}
+                                onPointerDown={(e) => { e.stopPropagation(); setSelectedElementId(el.id); }}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 6, padding: "5px 6px",
+                                  borderRadius: 6, background: selectedElementId === el.id ? `${TOKENS.gold}22` : "#FBF9F4",
+                                  border: `1px solid ${selectedElementId === el.id ? TOKENS.gold : TOKENS.parchmentDeep}`, cursor: "pointer",
+                                }}
+                              >
+                                <span style={{ width: 16, textAlign: "center", fontSize: 9.5, color: TOKENS.ink40 }}>{i + 1}</span>
+                                <span style={{ fontSize: 11.5, color: TOKENS.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textTransform: "capitalize" }}>
+                                  {el.type === "photo" ? "📷 Rasm" : el.type === "text" ? "✏️ Matn" : el.type === "sticker" ? "🏷 Stiker" : (el.type || "element")}
+                                </span>
+                                <button type="button" title="Oldinga chiqarish" onClick={(e) => { e.stopPropagation(); const f = layerFormRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.pageId.value = layerPage.id; f.elements.elementId.value = el.id; f.elements.direction.value = "up"; setTimeout(() => f.requestSubmit(), 0); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 4, border: "none", background: "transparent", color: TOKENS.ink60, cursor: "pointer" }}><ChevronUp size={13} /></button>
+                                <button type="button" title="Orqaga yuborish" onClick={(e) => { e.stopPropagation(); const f = layerFormRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.pageId.value = layerPage.id; f.elements.elementId.value = el.id; f.elements.direction.value = "down"; setTimeout(() => f.requestSubmit(), 0); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 4, border: "none", background: "transparent", color: TOKENS.ink60, cursor: "pointer" }}><ChevronDown size={13} /></button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {layerFormState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginTop: 8 }}>{layerFormState.error}</div>}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 10px rgba(30,26,15,0.22)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease" }}>
+                {styleElement && (
+                  <div
+                    style={{ position: "absolute", top: 12, right: 12, zIndex: 80, boxShadow: "0 14px 34px rgba(30,26,15,0.22)", borderRadius: 10 }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    {styleElement.type === "text" ? (
+                      <TextStylePanel element={styleElement} familySlug={familySlug} updateElementTextStyleAction={updateElementTextStyleAction} onClose={() => setStylePopupId(null)} />
+                    ) : styleElement.type === "photo" ? (
+                      <PhotoStylePanel element={styleElement} familySlug={familySlug} albumId={album.id} updateElementFrameAction={updateElementFrameAction} onClose={() => setStylePopupId(null)} />
+                    ) : (
+                      <StickerStylePanel element={styleElement} familySlug={familySlug} updateElementStickerColorAction={updateElementStickerColorAction} onClose={() => setStylePopupId(null)} />
+                    )}
+                  </div>
+                )}
+
+                <div style={{ flex: 1, minWidth: 0 }} onPointerDownCapture={() => { setActivePanel(null); if (stylePopupId) setStylePopupId(null); }}>
+                  <div
+                    ref={sceneRef}
+                    onPointerDownCapture={(e) => {
+                      if (!isSpacePan) return;
+                      e.stopPropagation();
+                      panAnchorRef.current = { x: e.clientX, y: e.clientY, start: { ...pan } };
+                      e.currentTarget.setPointerCapture?.(e.pointerId);
+                      e.preventDefault();
+                    }}
+                    onPointerMove={(e) => {
+                      const a = panAnchorRef.current;
+                      if (!a) return;
+                      setPan({ x: a.start.x + (e.clientX - a.x), y: a.start.y + (e.clientY - a.y) });
+                    }}
+                    onPointerUp={() => { panAnchorRef.current = null; }}
+                    onPointerCancel={() => { panAnchorRef.current = null; }}
+                    style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 10px rgba(30,26,15,0.22)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease", touchAction: "none", cursor: isSpacePan ? "grab" : "default", transform: pan.x || pan.y ? `translate(${pan.x}px, ${pan.y}px)` : undefined }}
+                  >
                     <div ref={pageNodeRef} onMouseDownCapture={() => effectiveCanEdit && setActiveSide("left")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "left" ? 2 : 1 }}>
                       <PageCanvas
                         page={currentPage}
@@ -2627,6 +3006,10 @@ function AlbumEditor({
                         onDuplicated={handleDuplicated}
                         onZIndexChange={handleZIndexChange}
                         onElementSelect={setSelectedElementId}
+                        onStyleElement={setStylePopupId}
+                        groupElementsAction={groupElementsAction}
+                        ungroupElementsAction={ungroupElementsAction}
+                        updateElementCropAction={updateElementCropAction}
                         selectedId={selectedElementId}
                       />
                     </div>
@@ -2655,6 +3038,10 @@ function AlbumEditor({
                           onDuplicated={handleDuplicated}
                           onZIndexChange={handleZIndexChange}
                           onElementSelect={setSelectedElementId}
+                          onStyleElement={setStylePopupId}
+                          groupElementsAction={groupElementsAction}
+                          ungroupElementsAction={ungroupElementsAction}
+                          updateElementCropAction={updateElementCropAction}
                           selectedId={selectedElementId}
                         />
                       ) : (
@@ -2793,16 +3180,6 @@ function AlbumEditor({
         })()
       )}
         </div>
-
-      {selectedElement && (
-        <PropertiesPanel
-          element={selectedElement}
-          onUpdate={(updated) => {
-            console.log("Element yangilandi:", updated);
-          }}
-          onClose={() => setSelectedElementId(null)}
-        />
-      )}
     </div>
   );
 }
@@ -2840,6 +3217,9 @@ export function AlbumsView({
   addPhotoElementAction,
   reorderAlbumPagesAction,
   duplicateAlbumPageAction,
+  groupElementsAction,
+  ungroupElementsAction,
+  updateElementCropAction,
   photos,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
@@ -2879,6 +3259,9 @@ export function AlbumsView({
           deleteAlbumAction={deleteAlbumAction}
           reorderAlbumPagesAction={reorderAlbumPagesAction}
           duplicateAlbumPageAction={duplicateAlbumPageAction}
+          groupElementsAction={groupElementsAction}
+          ungroupElementsAction={ungroupElementsAction}
+          updateElementCropAction={updateElementCropAction}
         />
       ) : (
         <AlbumGrid albums={albums} onOpen={(a) => setOpenAlbumId(a.id)} canEdit={canEdit} createAlbumAction={createAlbumAction} familySlug={familySlug} />
