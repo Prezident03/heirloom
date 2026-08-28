@@ -378,6 +378,11 @@ function TransformableElement({
 
   const handleDragStart = (e) => {
     if (!canEdit || element.locked) return;
+    // Ichki interaktiv boshqaruvlar (yuklash tugmasi, fayl input va h.k.) ustida
+    // bosilganda sudrashni boshlamaslik kerak — aks holda ularning click hodisasi
+    // pointer capture tufayli hech qachon yetib bormaydi (masalan, layout
+    // tanlangandan keyin bo'sh rasm slotiga bosib rasm yuklab bo'lmaydi).
+    if (e.target.closest?.("button, input, a, [data-no-drag], [contenteditable='true']")) return;
     const rect = e.currentTarget.getBoundingClientRect();
     dragRef.current = {
       startX: e.clientX,
@@ -1202,10 +1207,10 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
   const [crop, setCrop] = useState({ scale: 1, dx: 0, dy: 0, flipH: false, flipV: false });
   const cropDragRef = useRef(null);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const uploadFile = async (file) => {
     if (!file) return;
-    e.target.value = "";
 
     if (!file.type.startsWith("image/")) {
       setError("Faqat rasm fayllari qabul qilinadi.");
@@ -1236,6 +1241,35 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
     } finally {
       setPending(false);
     }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    await uploadFile(file);
+  };
+
+  const handlePhotoDragOver = (e) => {
+    if (!canEdit || cropMode) return;
+    if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handlePhotoDragLeave = (e) => {
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handlePhotoDrop = (e) => {
+    if (!canEdit || cropMode) return;
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    uploadFile(file);
   };
 
   const openCrop = () => {
@@ -1293,16 +1327,20 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
         borderRadius: isPolaroid ? 2 : 8,
         position: "relative",
         transform: `rotate(${tilt}deg)`,
-        background: element.photo_url ? (isPolaroid ? "#fff" : "transparent") : TOKENS.parchment,
+        background: element.photo_url ? (isPolaroid ? "#fff" : "transparent") : (isDragOver ? TOKENS.parchmentDeep : TOKENS.parchment),
         padding: element.photo_url && isPolaroid ? "5% 5% 9%" : 0,
         boxShadow: element.photo_url ? "0 8px 18px rgba(30,26,15,0.22), 0 2px 5px rgba(30,26,15,0.12)" : "none",
-        border: element.photo_url ? "none" : `1.5px dashed ${TOKENS.parchmentDeep}`,
+        border: element.photo_url ? "none" : `1.5px dashed ${isDragOver ? TOKENS.gold : TOKENS.parchmentDeep}`,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         boxSizing: "border-box",
         overflow: "hidden",
+        transition: "background 0.12s, border-color 0.12s",
       }}
+      onDragOver={canEdit && !element.photo_url ? handlePhotoDragOver : undefined}
+      onDragLeave={canEdit && !element.photo_url ? handlePhotoDragLeave : undefined}
+      onDrop={canEdit && !element.photo_url ? handlePhotoDrop : undefined}
     >
       {element.photo_url && (
         <div
@@ -1395,7 +1433,10 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
+                onDoubleClick={() => inputRef.current?.click()}
+                onPointerDown={(e) => e.stopPropagation()}
                 disabled={pending}
+                title="Rasm tanlash uchun bosing yoki shu yerga sudrab tashlang"
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -1404,9 +1445,18 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
                   background: "rgba(30,38,33,0.0)",
                   border: "none",
                   cursor: pending ? "default" : "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
                 }}
               >
-                {pending && <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>}
+                {pending ? (
+                  <span style={{ fontSize: 10, color: TOKENS.ink }}>Yuklanmoqda...</span>
+                ) : isDragOver ? (
+                  <span style={{ fontSize: 10, color: TOKENS.gold, fontWeight: 600 }}>Shu yerga tashlang</span>
+                ) : null}
               </button>
             )}
             {element.photo_url && !cropMode && (
@@ -2093,7 +2143,7 @@ function slugifyFilename(name) {
   return (name || "albom").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "albom";
 }
 
-function ExportMenu({ album, exporting, setExporting, exportError, setExportError, pageNodeRef, rightPageNodeRef, activeSide, previewMode, setPreviewMode, activePanel, setActivePanel, pages, pageIndex, setPageIndex }) {
+function ExportMenu({ album, exporting, setExporting, exportError, setExportError, pageNodeRef, previewMode, setPreviewMode, activePanel, setActivePanel, pages, pageIndex, setPageIndex }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -2126,8 +2176,7 @@ function ExportMenu({ album, exporting, setExporting, exportError, setExportErro
 
   const exportImage = (format) => runExport(async () => {
     await waitFrames(2);
-    const targetNode = (activeSide === "right" && rightPageNodeRef.current) ? rightPageNodeRef.current : pageNodeRef.current;
-    const canvas = await captureNodeToCanvas(targetNode);
+    const canvas = await captureNodeToCanvas(pageNodeRef.current);
     const mime = format === "jpg" ? "image/jpeg" : "image/png";
     const quality = format === "jpg" ? 0.92 : undefined;
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, mime, quality));
@@ -2243,14 +2292,12 @@ function AlbumEditor({
   photos,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
-  const [activeSide, setActiveSide] = useState("left");
   const [activePanel, setActivePanel] = useState(null);
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
-  const rightPageNodeRef = useRef(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [stylePopupId, setStylePopupId] = useState(null);
   const [draggedPageIndex, setDraggedPageIndex] = useState(null);
@@ -2447,9 +2494,8 @@ function AlbumEditor({
   const pages = album.pages;
   const currentPage = pages[Math.min(pageIndex, pages.length - 1)];
   const currentLayout = currentPage ? LAYOUTS.find((l) => l.id === currentPage.layout_id) || LAYOUTS[0] : LAYOUTS[0];
-  const stylePageForPopup = pages[Math.min(pageIndex + 1, pages.length - 1)] || null;
   const styleElement = stylePopupId
-    ? [...(currentPage?.elements || []), ...(stylePageForPopup?.elements || [])].find((e) => e.id === stylePopupId) || null
+    ? (currentPage?.elements || []).find((e) => e.id === stylePopupId) || null
     : null;
 
   const [addPageState, addPageFormAction, addPagePending] = useActionState(addAlbumPageAction, undefined);
@@ -2468,7 +2514,7 @@ function AlbumEditor({
   const [layerFormState, layerFormAction] = useActionState(changeZIndexAction, undefined);
   const layerFormRef = useRef(null);
 
-  const layerPage = (activeSide === "right" && pages[pageIndex + 1]) ? pages[pageIndex + 1] : currentPage;
+  const layerPage = currentPage;
   const layerElements = [...(layerPage?.elements || [])].sort((a, b) => (b.z_index || 0) - (a.z_index || 0));
 
   // ── Canva-style editable album title + Share ──
@@ -2516,8 +2562,7 @@ function AlbumEditor({
   };
 
   const handleDropPhoto = async (url, x, y) => {
-    const rightPage = pages[pageIndex + 1] || null;
-    const dropTargetPage = (activeSide === "right" && rightPage) ? rightPage : currentPage;
+    const dropTargetPage = currentPage;
     if (!canEdit || previewMode || !dropTargetPage || !url) return;
     try {
       const fd = new FormData();
@@ -2594,7 +2639,7 @@ function AlbumEditor({
           )}
         </div>
 
-        <ExportMenu album={album} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} pageNodeRef={pageNodeRef} rightPageNodeRef={rightPageNodeRef} activeSide={activeSide} previewMode={previewMode} setPreviewMode={setPreviewMode} activePanel={activePanel} setActivePanel={setActivePanel} pages={pages} pageIndex={pageIndex} setPageIndex={setPageIndex} />
+        <ExportMenu album={album} exporting={exporting} setExporting={setExporting} exportError={exportError} setExportError={setExportError} pageNodeRef={pageNodeRef} previewMode={previewMode} setPreviewMode={setPreviewMode} activePanel={activePanel} setActivePanel={setActivePanel} pages={pages} pageIndex={pageIndex} setPageIndex={setPageIndex} />
 
         {canEdit && (
           !confirmDeleteAlbum ? (
@@ -2620,31 +2665,21 @@ function AlbumEditor({
         <div style={{ textAlign: "center", padding: "60px 0", color: TOKENS.ink60, fontSize: 13.5 }}>Bu albomda hali sahifa yo'q.</div>
       ) : (
         (() => {
-          const rightPage = pages[pageIndex + 1] || null;
-          const rightLayout = rightPage ? (LAYOUTS.find((l) => l.id === rightPage.layout_id) || LAYOUTS[0]) : null;
-          const totalSpreads = Math.ceil(pages.length / 2);
-          const spreadNum = Math.floor(pageIndex / 2) + 1;
-          const targetPage = activeSide === "right" && rightPage ? rightPage : currentPage;
+          const targetPage = currentPage;
   const allPhotos = (photos && photos.length > 0)
     ? photos.map((p) => ({ id: p.id, url: p.photo_url || "" }))
     : (pages || []).flatMap((p) =>
         (p.elements || []).filter((e) => e.type === "photo" && e.photo_url).map((e) => ({ id: e.id, url: e.photo_url }))
       );
-          const targetLayout = activeSide === "right" && rightLayout ? rightLayout : currentLayout;
+          const targetLayout = currentLayout;
           const effectiveCanEdit = canEdit && !previewMode;
 
           return (
             <div style={{ background: "#EDEAE4", borderRadius: 0, padding: "24px 28px 36px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18, padding: "0 4px" }}>
-                <button onClick={() => { setPageIndex(Math.max(0, pageIndex - 2)); setActiveSide("left"); }} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex === 0 ? 0.35 : 0.9 }}><ChevronLeft size={20} /></button>
-                <span style={{ fontSize: 12.5, color: TOKENS.ink60, fontWeight: 500 }}>Sahifa {spreadNum} / {totalSpreads}</span>
-                <button onClick={() => { setPageIndex(Math.min(pages.length - (pages.length % 2 === 0 ? 2 : 1), pageIndex + 2)); setActiveSide("left"); }} disabled={pageIndex + 2 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 2 >= pages.length ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex + 2 >= pages.length ? 0.35 : 0.9 }}><ChevronRight size={20} /></button>
-                {effectiveCanEdit && rightPage && (
-                  <div style={{ display: "flex", gap: 4, marginLeft: 6, background: "#fff", boxShadow: "0 1px 3px rgba(30,26,15,0.12)", borderRadius: 20, padding: 3 }}>
-                    <button onClick={() => setActiveSide("left")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "left" ? TOKENS.gold : "transparent", color: activeSide === "left" ? "#fff" : TOKENS.ink60 }}>Chap</button>
-                    <button onClick={() => setActiveSide("right")} style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 10px", borderRadius: 16, border: "none", cursor: "pointer", background: activeSide === "right" ? TOKENS.gold : "transparent", color: activeSide === "right" ? "#fff" : TOKENS.ink60 }}>O'ng</button>
-                  </div>
-                )}
+                <button onClick={() => setPageIndex(Math.max(0, pageIndex - 1))} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex === 0 ? 0.35 : 0.9 }}><ChevronLeft size={20} /></button>
+                <span style={{ fontSize: 12.5, color: TOKENS.ink60, fontWeight: 500 }}>Sahifa {pageIndex + 1} / {pages.length}</span>
+                <button onClick={() => setPageIndex(Math.min(pages.length - 1, pageIndex + 1))} disabled={pageIndex + 1 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 1 >= pages.length ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex + 1 >= pages.length ? 0.35 : 0.9 }}><ChevronRight size={20} /></button>
               </div>
 
               <form ref={addTextRef} action={addTextFormAction} style={{ display: "none" }}>
@@ -2731,7 +2766,7 @@ function AlbumEditor({
                     </button>
                     {activePanel === "template" && (
                       <div>
-                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Shablon {activeSide === "right" ? "o'ng" : "chap"} sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.</div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Shablon sahifaga qo'llanadi — mavjud elementlar shablon bilan almashtiriladi.</div>
                         {TEMPLATE_CATEGORIES.map((cat) => (
                           <div key={cat} style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{cat}</div>
@@ -2757,7 +2792,7 @@ function AlbumEditor({
 
                     {activePanel === "layout" && (
                       <div>
-                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifa uchun joylashuv.</div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Sahifa uchun joylashuv.</div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                           {LAYOUTS.map((l) => (
                             <form key={l.id} action={layoutFormAction} onSubmit={() => setActivePanel(null)}>
@@ -2780,7 +2815,7 @@ function AlbumEditor({
 
                     {activePanel === "sticker" && (
                       <div>
-                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Sahifaga qo'shiladi, keyin sudrab joylashtiring.</div>
                         {STICKER_GROUPS.map((group) => (
                           <div key={group.label} style={{ marginBottom: 12 }}>
                             <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{group.label}</div>
@@ -2806,7 +2841,7 @@ function AlbumEditor({
 
                     {activePanel === "bg" && (
                       <div>
-                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>{activeSide === "right" ? "O'ng" : "Chap"} sahifaning foniga qo'llanadi.</div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Sahifaning foniga qo'llanadi.</div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                           {BACKGROUND_LIST.map((b) => (
                             <form key={b.id} action={bgFormAction} onSubmit={() => setActivePanel(null)}>
@@ -2828,7 +2863,7 @@ function AlbumEditor({
                     {activePanel === "bgImage" && (
                       <div>
                         <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
-                          {activeSide === "right" ? "O'ng" : "Chap"} sahifaga fon rasmi qo'shing.
+                          Sahifaga fon rasmi qo'shing.
                         </div>
                         <input
                           type="file"
@@ -2902,7 +2937,7 @@ function AlbumEditor({
                     {activePanel === "layers" && (
                       <div>
                         <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
-                          Qatlamlar {activeSide === "right" ? "o'ng" : "chap"} sahifa uchun — tepadagilari oldinda. Qatlamga bosing, berilgan tugmalar bilan tartiblang.
+                          Qatlamlar sahifa uchun — tepadagilari oldinda. Qatlamga bosing, berilgan tugmalar bilan tartiblang.
                         </div>
                         {layerElements.length === 0 ? (
                           <div style={{ fontSize: 11, color: TOKENS.ink40, padding: "10px 0" }}>Hozircha elementlar mavjud emas.</div>
@@ -2968,7 +3003,7 @@ function AlbumEditor({
                     onPointerCancel={() => { panAnchorRef.current = null; }}
                     style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 10px rgba(30,26,15,0.22)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease", touchAction: "none", cursor: isSpacePan ? "grab" : "default", transform: pan.x || pan.y ? `translate(${pan.x}px, ${pan.y}px)` : undefined }}
                   >
-                    <div ref={pageNodeRef} onMouseDownCapture={() => effectiveCanEdit && setActiveSide("left")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "left" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "left" ? 2 : 1 }}>
+                    <div ref={pageNodeRef} style={{ flex: 1, position: "relative" }}>
                       <PageCanvas
                         page={currentPage}
                         layout={currentLayout}
@@ -2998,51 +3033,6 @@ function AlbumEditor({
                         selectedId={selectedElementId}
                       />
                     </div>
-                    <div style={{ width: 22, marginLeft: -11, marginRight: -11, zIndex: 5, background: "linear-gradient(90deg, transparent, rgba(30,26,15,0.22) 45%, rgba(30,26,15,0.22) 55%, transparent)", pointerEvents: "none" }} />
-                    <div ref={rightPageNodeRef} onMouseDownCapture={() => effectiveCanEdit && rightPage && setActiveSide("right")} style={{ flex: 1, position: "relative", boxShadow: effectiveCanEdit && rightPage && activeSide === "right" ? `inset 0 0 0 3px ${TOKENS.gold}` : "none", zIndex: effectiveCanEdit && rightPage && activeSide === "right" ? 2 : 1 }}>
-                      {rightPage ? (
-                        <PageCanvas
-                          page={rightPage}
-                          layout={rightLayout}
-                          familySlug={familySlug}
-                          albumId={album.id}
-                          canEdit={effectiveCanEdit}
-                          saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-                          updateElementTextAction={updateElementTextAction}
-                          deleteElementAction={deleteElementAction}
-                          updateElementPositionAction={updateElementPositionAction}
-                          changeZIndexAction={changeZIndexAction}
-                          duplicateElementAction={duplicateElementAction}
-                          updateElementFrameAction={updateElementFrameAction}
-                          updateElementTextStyleAction={updateElementTextStyleAction}
-                          updateElementStickerColorAction={updateElementStickerColorAction}
-                          backgroundId={rightPage.background_id || "paper"}
-                          backgroundImageUrl={rightPage.background_image_url || null}
-                          onDropPhoto={handleDropPhoto}
-                          onCommitPosition={handleCommitPosition}
-                          onDuplicated={handleDuplicated}
-                          onZIndexChange={handleZIndexChange}
-                          onElementSelect={setSelectedElementId}
-                          onStyleElement={setStylePopupId}
-                          groupElementsAction={groupElementsAction}
-                          ungroupElementsAction={ungroupElementsAction}
-                          updateElementCropAction={updateElementCropAction}
-                          selectedId={selectedElementId}
-                        />
-                      ) : (
-                        <div style={{ width: "100%", aspectRatio: "4/3", background: `linear-gradient(180deg, ${TOKENS.paper}, #ECE2C8)` }}>
-                          {effectiveCanEdit && (
-                            <form action={addPageFormAction} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <input type="hidden" name="familySlug" value={familySlug} />
-                              <input type="hidden" name="albumId" value={album.id} />
-                              <button type="submit" disabled={addPagePending} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "transparent", border: `1.5px dashed ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "16px 22px", color: TOKENS.ink40, cursor: addPagePending ? "default" : "pointer" }}>
-                                <Plus size={18} /><span style={{ fontSize: 11.5 }}>Sahifa qo'shish</span>
-                              </button>
-                            </form>
-                          )}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
               </div>
@@ -3054,7 +3044,7 @@ function AlbumEditor({
                     <input type="hidden" name="albumId" value={album.id} />
                     <input type="hidden" name="pageId" value={targetPage.id} />
                     <button type="submit" disabled={pages.length <= 1} style={{ fontSize: 11.5, color: pages.length <= 1 ? TOKENS.ink40 : TOKENS.danger, background: "none", border: "none", cursor: pages.length <= 1 ? "default" : "pointer" }}>
-                      {activeSide === "right" ? "O'ng" : "Chap"} sahifani o'chirish
+                      Sahifani o'chirish
                     </button>
                   </form>
                 </div>
@@ -3065,7 +3055,7 @@ function AlbumEditor({
               <div style={{ display: "flex", gap: 10, overflowX: "auto", marginTop: 22, paddingTop: 4, paddingBottom: 2 }}>
                 {pages.map((p, i) => {
                   const firstPhoto = p.elements.find((e) => e.type === "photo" && e.photo_url);
-                  const inSpread = i === pageIndex || i === pageIndex + 1;
+                  const isActive = i === pageIndex;
                   const isDragging = draggedPageIndex === i;
                   
                   return (
@@ -3094,19 +3084,16 @@ function AlbumEditor({
                         flexShrink: 0,
                         borderRadius: 4,
                         background: "#fff",
-                        border: inSpread ? `2px solid ${TOKENS.gold}` : "1px solid rgba(30,26,19,0.18)",
+                        border: isActive ? `2px solid ${TOKENS.gold}` : "1px solid rgba(30,26,19,0.18)",
                         cursor: "pointer",
                         position: "relative",
                         overflow: "hidden",
-                        boxShadow: inSpread ? `0 0 0 2px rgba(184,134,59,0.25)` : "none",
+                        boxShadow: isActive ? `0 0 0 2px rgba(184,134,59,0.25)` : "none",
                         opacity: isDragging ? 0.4 : 1,
                         transform: isDragging ? "scale(0.9)" : "scale(1)",
                         transition: "opacity 0.2s, transform 0.2s",
                       }}
-                      onClick={() => {
-                        setPageIndex(i % 2 === 0 ? i : i - 1);
-                        setActiveSide(i % 2 === 0 ? "left" : "right");
-                      }}
+                      onClick={() => setPageIndex(i)}
                       title={`Sahifa ${i + 1}`}
                     >
                       {firstPhoto ? (
