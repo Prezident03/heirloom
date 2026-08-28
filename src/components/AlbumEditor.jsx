@@ -2364,11 +2364,13 @@ function AlbumEditor({
   ungroupElementsAction,
   updateElementCropAction,
   photos,
+  onToolbarChange,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [activePanel, setActivePanel] = useState(null);
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const effectiveCanEdit = canEdit && !previewMode;
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
@@ -2394,6 +2396,35 @@ function AlbumEditor({
   const zoomIn = () => { setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100)); resetPan(); };
   const zoomOut = () => { setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100)); resetPan(); };
   const zoomFit = () => { setZoom(1); resetPan(); };
+
+  // ── "100%" endi ekranga (kengligi VA balandligi) to'liq sig'adigan eng katta
+  // o'lcham sifatida hisoblanadi — statik foizga emas, o'lchangan bo'sh joyga asoslanadi.
+  const canvasAreaRef = useRef(null);
+  const topToolbarRef = useRef(null);
+  const pageNavRowRef = useRef(null);
+  const [fitWidth, setFitWidth] = useState(null);
+
+  useEffect(() => {
+    const recomputeFit = () => {
+      const areaEl = canvasAreaRef.current;
+      if (!areaEl) return;
+      const availableWidthPx = areaEl.clientWidth;
+      const toolbarH = topToolbarRef.current?.offsetHeight || 0;
+      const navH = pageNavRowRef.current?.offsetHeight || 0;
+      // 24+36 = sahifa konteyneri padding'i, 18 = nav qatori marginBottom'i, 10 = zaxira
+      const availableHeightPx = Math.max(200, window.innerHeight - toolbarH - navH - 24 - 36 - 18 - 10);
+      const next = Math.max(240, Math.min(availableWidthPx, availableHeightPx * (4 / 3)));
+      setFitWidth(next);
+    };
+    recomputeFit();
+    window.addEventListener("resize", recomputeFit);
+    const ro = new ResizeObserver(recomputeFit);
+    if (canvasAreaRef.current) ro.observe(canvasAreaRef.current);
+    return () => {
+      window.removeEventListener("resize", recomputeFit);
+      ro.disconnect();
+    };
+  }, []);
 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const sceneRef = useRef(null);
@@ -2588,6 +2619,42 @@ function AlbumEditor({
   const [layerFormState, layerFormAction] = useActionState(changeZIndexAction, undefined);
   const layerFormRef = useRef(null);
 
+  const onQuickText = useCallback(() => {
+    const f = addTextRef.current;
+    if (!f || !currentPage) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.albumId.value = album.id;
+    f.elements.pageId.value = currentPage.id;
+    setTimeout(() => f.requestSubmit(), 0);
+  }, [familySlug, album.id, currentPage?.id]);
+
+  const onQuickPhoto = useCallback(() => {
+    const f = addPhotoRef.current;
+    if (!f || !currentPage) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.albumId.value = album.id;
+    f.elements.pageId.value = currentPage.id;
+    setTimeout(() => f.requestSubmit(), 0);
+  }, [familySlug, album.id, currentPage?.id]);
+
+  // ── Chap sidebar'dagi Shablon/Layout/Stiker... asboblarini global Sidebar'ga
+  // "ro'yxatdan o'tkazish" — Sidebar HeirloomApp darajasida joylashgani uchun
+  // AlbumEditor o'z holatini (activePanel va h.k.) yuqoriga uzatadi.
+  useEffect(() => {
+    onToolbarChange?.({
+      canEdit: effectiveCanEdit,
+      activePanel,
+      setActivePanel,
+      onQuickText,
+      onQuickPhoto,
+      onBackToAlbums: onBack,
+    });
+  }, [effectiveCanEdit, activePanel, onQuickText, onQuickPhoto, onBack, onToolbarChange]);
+
+  useEffect(() => {
+    return () => { onToolbarChange?.(null); };
+  }, [onToolbarChange]);
+
   const layerPage = currentPage;
   const layerElements = [...(layerPage?.elements || [])].sort((a, b) => (b.z_index || 0) - (a.z_index || 0));
 
@@ -2658,7 +2725,7 @@ function AlbumEditor({
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", background: "#EDEAE4" }}>
       {/* ── Canva-style top toolbar ── */}
-      <div style={{ position: "sticky", top: 0, zIndex: 60, display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: "#fff", borderBottom: "1px solid #DFDBD2", boxShadow: "0 1px 4px rgba(30,26,15,0.06)", flexWrap: "wrap" }}>
+      <div ref={topToolbarRef} style={{ position: "sticky", top: 0, zIndex: 60, display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", background: "#fff", borderBottom: "1px solid #DFDBD2", boxShadow: "0 1px 4px rgba(30,26,15,0.06)", flexWrap: "wrap" }}>
         <button onClick={onBack} title="Albomlarga qaytish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, background: "transparent", border: "none", borderRadius: 8, color: TOKENS.ink60, cursor: "pointer" }}>
           <ChevronLeft size={18} />
         </button>
@@ -2746,11 +2813,10 @@ function AlbumEditor({
         (p.elements || []).filter((e) => e.type === "photo" && e.photo_url).map((e) => ({ id: e.id, url: e.photo_url }))
       );
           const targetLayout = currentLayout;
-          const effectiveCanEdit = canEdit && !previewMode;
 
           return (
             <div style={{ background: "#EDEAE4", borderRadius: 0, padding: "24px 28px 36px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18, padding: "0 4px" }}>
+              <div ref={pageNavRowRef} style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18, padding: "0 4px" }}>
                 <button onClick={() => setPageIndex(Math.max(0, pageIndex - 1))} disabled={pageIndex === 0} style={{ background: "none", border: "none", cursor: pageIndex === 0 ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex === 0 ? 0.35 : 0.9 }}><ChevronLeft size={20} /></button>
                 <span style={{ fontSize: 12.5, color: TOKENS.ink60, fontWeight: 500 }}>Sahifa {pageIndex + 1} / {pages.length}</span>
                 <button onClick={() => setPageIndex(Math.min(pages.length - 1, pageIndex + 1))} disabled={pageIndex + 1 >= pages.length} style={{ background: "none", border: "none", cursor: pageIndex + 1 >= pages.length ? "default" : "pointer", color: TOKENS.ink60, opacity: pageIndex + 1 >= pages.length ? 0.35 : 0.9 }}><ChevronRight size={20} /></button>
@@ -2811,9 +2877,9 @@ function AlbumEditor({
               {addTextState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addTextState.error}</div>}
               {addPhotoState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 10, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{addPhotoState.error}</div>}
 
-              <div style={{ position: "relative", display: "flex", gap: 12, alignItems: "stretch", overflowX: zoom > 1 ? "auto" : "visible" }}>
+              <div ref={canvasAreaRef} style={{ position: "relative", display: "flex", gap: 12, alignItems: "stretch", overflowX: zoom > 1 ? "auto" : "visible" }}>
                 {effectiveCanEdit && (
-                  <div style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "#F4F2ED", borderRadius: 10, overflow: "hidden", paddingBottom: 4, boxShadow: "inset 0 0 0 1px rgba(30,26,15,0.05)" }}>
+                  <div className="fm-album-rail-inline" style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "#F4F2ED", borderRadius: 10, overflow: "hidden", paddingBottom: 4, boxShadow: "inset 0 0 0 1px rgba(30,26,15,0.05)" }}>
                     <RailButton icon={Sparkles} label="Shablon" active={activePanel === "template"} onClick={() => setActivePanel((p) => (p === "template" ? null : "template"))} />
                     <RailButton icon={LayoutGrid} label="Layout" active={activePanel === "layout"} onClick={() => setActivePanel((p) => (p === "layout" ? null : "layout"))} />
                     <RailButton icon={StickerIcon} label="Stiker" active={activePanel === "sticker"} onClick={() => setActivePanel((p) => (p === "sticker" ? null : "sticker"))} />
@@ -2823,13 +2889,13 @@ function AlbumEditor({
                     <RailButton icon={Shapes} label="Elementlar" active={activePanel === "elements"} onClick={() => setActivePanel((p) => (p === "elements" ? null : "elements"))} />
                     <RailButton icon={Layers} label="Qatlamlar" active={activePanel === "layers"} onClick={() => setActivePanel((p) => (p === "layers" ? null : "layers"))} />
                     <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "4px 10px" }} />
-                    <RailButton icon={Type} label="Matn" onClick={() => { const f = addTextRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
-                    <RailButton icon={ImagePlus} label="Rasm" onClick={() => { const f = addPhotoRef.current; if (!f) return; f.elements.familySlug.value = familySlug; f.elements.albumId.value = album.id; f.elements.pageId.value = targetPage.id; setTimeout(() => f.requestSubmit(), 0); }} />
+                    <RailButton icon={Type} label="Matn" onClick={onQuickText} />
+                    <RailButton icon={ImagePlus} label="Rasm" onClick={onQuickPhoto} />
                   </div>
                 )}
 
                 {effectiveCanEdit && activePanel && (
-                  <div className="fm-flyout-panel" style={{ position: "absolute", left: 62, top: 0, bottom: 0, zIndex: 45, width: 272, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, borderRight: `1px solid ${TOKENS.parchmentDeep}`, padding: "38px 12px 12px", overflowY: "auto", boxShadow: "10px 0 26px rgba(30,26,15,0.14)" }}>
+                  <div className="fm-flyout-panel fm-album-flyout" style={{ zIndex: 45, width: 272, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, borderRight: `1px solid ${TOKENS.parchmentDeep}`, padding: "38px 12px 12px", overflowY: "auto", boxShadow: "10px 0 26px rgba(30,26,15,0.14)" }}>
                     <button
                       type="button"
                       onClick={() => setActivePanel(null)}
@@ -3075,7 +3141,7 @@ function AlbumEditor({
                     }}
                     onPointerUp={() => { panAnchorRef.current = null; }}
                     onPointerCancel={() => { panAnchorRef.current = null; }}
-                    style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 10px rgba(30,26,15,0.22)", position: "relative", width: `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease", touchAction: "none", cursor: isSpacePan ? "grab" : "default", transform: pan.x || pan.y ? `translate(${pan.x}px, ${pan.y}px)` : undefined }}
+                    style={{ display: "flex", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 10px rgba(30,26,15,0.22)", position: "relative", width: fitWidth ? `${fitWidth * zoom}px` : `${zoom * 100}%`, margin: "0 auto", transition: "width 0.15s ease", touchAction: "none", cursor: isSpacePan ? "grab" : "default", transform: pan.x || pan.y ? `translate(${pan.x}px, ${pan.y}px)` : undefined }}
                   >
                     <div ref={pageNodeRef} style={{ flex: 1, position: "relative" }}>
                       <PageCanvas
@@ -3267,6 +3333,7 @@ export function AlbumsView({
   ungroupElementsAction,
   updateElementCropAction,
   photos,
+  onToolbarChange,
 }) {
   const effectiveOpenId = openAlbumId ?? activeAlbumId;
   const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
@@ -3308,6 +3375,7 @@ export function AlbumsView({
           groupElementsAction={groupElementsAction}
           ungroupElementsAction={ungroupElementsAction}
           updateElementCropAction={updateElementCropAction}
+          onToolbarChange={onToolbarChange}
         />
       ) : (
         <AlbumGrid albums={albums} onOpen={(a) => setOpenAlbumId(a.id)} canEdit={canEdit} createAlbumAction={createAlbumAction} familySlug={familySlug} />

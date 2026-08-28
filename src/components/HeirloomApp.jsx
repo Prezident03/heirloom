@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useActionState } from "react";
+import React, { useState, useRef, useEffect, useActionState, useCallback } from "react";
 import {
   Home, BookImage, TreePine, Plus, X,
   MapPinned, Settings, LogOut, Camera, Users,
-  History, Link2, Images,
+  History, Link2, Images, ChevronLeft,
+  Sparkles, LayoutGrid, Sticker as StickerIcon, Palette,
+  ImagePlus, Shapes, Layers, Type,
 } from "lucide-react";
 import { TOKENS, FONT_IMPORT, inputStyle } from "@/lib/uiTokens";
 import { relationLabelBetween, personLabel, personYears } from "@/lib/relationshipLabels";
@@ -28,6 +30,22 @@ const NAV_CONFIG = [
   { id: VIEWS.MEMORIES, icon: Camera, label: "Xotiralar" },
   { id: VIEWS.STORIES, icon: Link2, label: "Hikoyalar" },
   { id: VIEWS.PLACES, icon: MapPinned, label: "Joylar" },
+];
+
+// Albom muharriri ochilganda Sidebar'da NAV_CONFIG o'rniga shu asboblar chiqadi
+const ALBUM_TOOL_ITEMS = [
+  { id: "template", icon: Sparkles, label: "Shablon" },
+  { id: "layout", icon: LayoutGrid, label: "Layout" },
+  { id: "sticker", icon: StickerIcon, label: "Stiker" },
+  { id: "bg", icon: Palette, label: "Fon" },
+  { id: "bgImage", icon: ImagePlus, label: "Fon rasmi" },
+  { id: "photos", icon: Images, label: "Rasmlar" },
+  { id: "elements", icon: Shapes, label: "Elementlar" },
+  { id: "layers", icon: Layers, label: "Qatlamlar" },
+];
+const ALBUM_QUICK_ITEMS = [
+  { id: "text", icon: Type, label: "Matn" },
+  { id: "photo", icon: ImagePlus, label: "Rasm" },
 ];
 
 function GlobalStyle() {
@@ -137,33 +155,85 @@ function GlobalStyle() {
         .fm-mobile-bottomnav { display: flex; }
         .fm-main { padding-bottom: 76px; }
       }
+
+      /* Album Editor ichidagi eski, canvas yonidagi asboblar ustuni endi
+         faqat mobil ekranda ko'rinadi — desktopda bu asboblar chap Sidebar'ga
+         ko'chirilgan. */
+      @media (min-width: 769px) {
+        .fm-album-rail-inline { display: none !important; }
+      }
+      /* Asbob bosilganda ochiladigan qo'shimcha panel: mobilda joyida (rail
+         yonida) suzib chiqadi, desktopda esa global Sidebar'ning o'ng
+         tomonidan, canvas ustiga suzib chiqadi. */
+      .fm-album-flyout { position: absolute; left: 62px; top: 0; bottom: 0; }
+      @media (min-width: 769px) {
+        .fm-album-flyout { position: fixed !important; left: 220px; top: 0; bottom: 0; }
+      }
+      .fm-sidebar-tool-back { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 8px; border-radius: 8px; color: rgba(242,237,226,0.6); font-size: 12px; font-weight: 600; cursor: pointer; }
+      .fm-sidebar-tool-back:hover { background: rgba(242,237,226,0.08); color: ${TOKENS.parchment}; }
     `}</style>
   );
 }
 
-function Sidebar({ current, onNavigate, onLogout, familySlug }) {
+function Sidebar({ current, onNavigate, onLogout, familySlug, albumToolbar, onNavigateHome }) {
+  const inAlbumEditor = !!albumToolbar;
   return (
     <aside className="fm-desktop-sidebar" style={{ width: 220, background: TOKENS.ink, padding: "26px 14px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 10px 28px" }}>
+      <div
+        onClick={onNavigateHome}
+        title="Bosh sahifaga qaytish"
+        style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 10px 28px", cursor: "pointer" }}
+      >
         <div style={{ width: 26, height: 26, borderRadius: 6, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})` }} />
         <span style={{ fontFamily: "Fraunces, serif", fontSize: 17, color: TOKENS.parchment, fontWeight: 600 }}>Heirloom</span>
       </div>
-      <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV_CONFIG.map((item) => (
-          <div
-            key={item.id}
-            className={`fm-nav-item ${current === item.id ? "active" : ""}`}
-            onClick={() => onNavigate(item.id)}
-          >
-            <item.icon size={16} strokeWidth={2} />
-            {item.label}
+
+      {inAlbumEditor ? (
+        <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div className="fm-sidebar-tool-back" onClick={albumToolbar.onBackToAlbums}>
+            <ChevronLeft size={15} /> Albomlarga qaytish
           </div>
-        ))}
-        <a href={`/${familySlug}/photos`} className="fm-nav-item" style={{ textDecoration: "none" }}>
-          <Images size={16} strokeWidth={2} />
-          Rasmlar
-        </a>
-      </nav>
+          {albumToolbar.canEdit && ALBUM_TOOL_ITEMS.map((item) => (
+            <div
+              key={item.id}
+              className={`fm-nav-item ${albumToolbar.activePanel === item.id ? "active" : ""}`}
+              onClick={() => albumToolbar.setActivePanel((p) => (p === item.id ? null : item.id))}
+            >
+              <item.icon size={16} strokeWidth={2} />
+              {item.label}
+            </div>
+          ))}
+          {albumToolbar.canEdit && <div style={{ height: 1, background: "rgba(242,237,226,0.1)", margin: "8px 10px" }} />}
+          {albumToolbar.canEdit && ALBUM_QUICK_ITEMS.map((item) => (
+            <div
+              key={item.id}
+              className="fm-nav-item"
+              onClick={() => (item.id === "text" ? albumToolbar.onQuickText() : albumToolbar.onQuickPhoto())}
+            >
+              <item.icon size={16} strokeWidth={2} />
+              {item.label}
+            </div>
+          ))}
+        </nav>
+      ) : (
+        <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {NAV_CONFIG.map((item) => (
+            <div
+              key={item.id}
+              className={`fm-nav-item ${current === item.id ? "active" : ""}`}
+              onClick={() => onNavigate(item.id)}
+            >
+              <item.icon size={16} strokeWidth={2} />
+              {item.label}
+            </div>
+          ))}
+          <a href={`/${familySlug}/photos`} className="fm-nav-item" style={{ textDecoration: "none" }}>
+            <Images size={16} strokeWidth={2} />
+            Rasmlar
+          </a>
+        </nav>
+      )}
+
       <div style={{ marginTop: "auto", paddingTop: 20, borderTop: "1px solid rgba(242,237,226,0.1)" }}>
         <div
           className={`fm-nav-item ${current === VIEWS.SETTINGS ? "active" : ""}`}
@@ -321,11 +391,14 @@ export default function HeirloomApp({
   );
   const [openAlbumId, setOpenAlbumId] = useState(null);
   const [globalModal, setGlobalModal] = useState(null);
+  const [albumToolbar, setAlbumToolbar] = useState(null);
 
   const navigate = (target) => {
     if (target === VIEWS.ALBUMS) setOpenAlbumId(null);
     setView(target);
   };
+
+  const handleAlbumToolbarChange = useCallback((toolbar) => setAlbumToolbar(toolbar), []);
 
   const openAlbumFromDashboard = (album) => {
     setOpenAlbumId(album.id);
@@ -336,7 +409,14 @@ export default function HeirloomApp({
     <div style={{ fontFamily: "Inter, sans-serif", background: TOKENS.parchment, height: "100%", color: TOKENS.ink }}>
       <GlobalStyle />
       <div style={{ display: "flex", height: "100%" }}>
-        <Sidebar current={view} onNavigate={navigate} onLogout={onLogout} familySlug={familySlug} />
+        <Sidebar
+          current={view}
+          onNavigate={navigate}
+          onLogout={onLogout}
+          familySlug={familySlug}
+          albumToolbar={view === VIEWS.ALBUMS ? albumToolbar : null}
+          onNavigateHome={() => navigate(VIEWS.DASHBOARD)}
+        />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
           <MobileTopBar familyName={familyName} familySlug={familySlug} onLogout={onLogout} />
           <main className="fm-main" style={{ flex: 1, overflow: "auto" }}>
@@ -415,6 +495,7 @@ export default function HeirloomApp({
                 groupElementsAction={groupElementsAction}
                 ungroupElementsAction={ungroupElementsAction}
                 updateElementCropAction={updateElementCropAction}
+                onToolbarChange={handleAlbumToolbarChange}
               />
             )}
             {view === VIEWS.PEOPLE && (
