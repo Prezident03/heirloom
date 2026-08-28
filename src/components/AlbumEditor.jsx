@@ -1801,11 +1801,23 @@ export function CreateAlbumModal({ familySlug, createAlbumAction, onClose }) {
 }
 
 export function UploadPhotosModal({ familySlug, albums, bulkUploadPhotosAction, onClose }) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(bulkUploadPhotosAction, undefined);
   const [target, setTarget] = useState(albums.length > 0 ? "existing" : "new");
   const [albumId, setAlbumId] = useState(albums[0]?.id || "");
   const [newAlbumTitle, setNewAlbumTitle] = useState("");
   const [fileCount, setFileCount] = useState(0);
+
+  // Muvaffaqiyatli yuklangandan keyin: server ma'lumotini yangilash
+  // (router.refresh()) va modalni yopish — aks holda o'zgarish faqat
+  // F5'dan keyin ko'rinardi (redirect() bir xil URL'ga bo'lgani uchun
+  // hech narsa qilmasdi).
+  useEffect(() => {
+    if (state?.ok) {
+      router.refresh();
+      onClose();
+    }
+  }, [state, router, onClose]);
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,38,33,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, padding: 20 }}>
@@ -1932,11 +1944,16 @@ function StylePanelShell({ title, onClose, children }) {
 }
 
 function TextStylePanel({ element, familySlug, updateElementTextStyleAction, onClose }) {
-  const [, formAction] = useActionState(updateElementTextStyleAction, undefined);
+  const router = useRouter();
+  const [textStyleState, formAction] = useActionState(updateElementTextStyleAction, undefined);
   const formRef = useRef(null);
   const [size, setSize] = useState(element.text_size || 22);
 
   useEffect(() => { setSize(element.text_size || 22); }, [element.id]);
+  // Rang/tekislash/shrift tanlovlari to'g'ridan-to'g'ri `element` propidan
+  // ko'rsatiladi — server javobidan keyin yangilanmasa, eski tanlov
+  // ko'rsatilaverardi.
+  useEffect(() => { if (textStyleState?.ok) router.refresh(); }, [textStyleState, router]);
 
   const submit = (overrides) => {
     const f = formRef.current;
@@ -2033,8 +2050,11 @@ function TextStylePanel({ element, familySlug, updateElementTextStyleAction, onC
 }
 
 function StickerStylePanel({ element, familySlug, updateElementStickerColorAction, onClose }) {
-  const [, formAction] = useActionState(updateElementStickerColorAction, undefined);
+  const router = useRouter();
+  const [stickerColorState, formAction] = useActionState(updateElementStickerColorAction, undefined);
   const formRef = useRef(null);
+
+  useEffect(() => { if (stickerColorState?.ok) router.refresh(); }, [stickerColorState, router]);
 
   const submit = (color) => {
     const f = formRef.current;
@@ -2088,8 +2108,14 @@ function FramePreviewSwatch({ frameId }) {
 }
 
 function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameAction, onClose }) {
-  const [, formAction] = useActionState(updateElementFrameAction, undefined);
+  const router = useRouter();
+  const [frameState, formAction] = useActionState(updateElementFrameAction, undefined);
   const formRef = useRef(null);
+
+  // "current" pastda to'g'ridan-to'g'ri `element` propidan olinadi, shu
+  // sabab server javobidan keyin sahifani yangilamasak, tugma bosilgandan
+  // keyin ham eski ramka tanlangandek ko'rinaverardi.
+  useEffect(() => { if (frameState?.ok) router.refresh(); }, [frameState, router]);
 
   const submit = (frameId) => {
     const f = formRef.current;
