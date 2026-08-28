@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useActionState, useCallback } from "react";
+import React, { useState, useRef, useEffect, useActionState, useCallback, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import {
@@ -768,12 +768,12 @@ function PageCanvas({
   // yakunlangach (state?.ok) QO'LDA router.refresh() chaqiriladi — bu
   // page.tsx'dagi `force-dynamic` bilan birga har doim eng yangi
   // ma'lumotni serverdan qayta oladi.
-  useEffect(() => { if (delState?.ok) router.refresh(); }, [delState, router]);
-  useEffect(() => { if (posState?.ok) router.refresh(); }, [posState, router]);
-  useEffect(() => { if (zState?.ok) router.refresh(); }, [zState, router]);
-  useEffect(() => { if (dupState?.ok) router.refresh(); }, [dupState, router]);
-  useEffect(() => { if (groupState?.ok) router.refresh(); }, [groupState, router]);
-  useEffect(() => { if (ungroupState?.ok) router.refresh(); }, [ungroupState, router]);
+  useEffect(() => { if (delState?.ok) startTransition(() => router.refresh()); }, [delState, router]);
+  useEffect(() => { if (posState?.ok) startTransition(() => router.refresh()); }, [posState, router]);
+  useEffect(() => { if (zState?.ok) startTransition(() => router.refresh()); }, [zState, router]);
+  useEffect(() => { if (dupState?.ok) startTransition(() => router.refresh()); }, [dupState, router]);
+  useEffect(() => { if (groupState?.ok) startTransition(() => router.refresh()); }, [groupState, router]);
+  useEffect(() => { if (ungroupState?.ok) startTransition(() => router.refresh()); }, [ungroupState, router]);
 
   useEffect(() => {
     if (dupState?.ok && dupState.elementId) {
@@ -897,7 +897,7 @@ function PageCanvas({
       try {
         const result = await saveElementPhotoUrlAction(familySlug, albumId, targetSlot.id, data.url, false);
         if (result?.error) console.error(result.error);
-        else router.refresh();
+        else startTransition(() => router.refresh());
       } catch (err) {
         console.error("Rasmni slotga joylashtirishda xato:", err);
       }
@@ -1323,7 +1323,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
       if (result?.error) {
         setError(result.error);
       } else {
-        router.refresh();
+        startTransition(() => router.refresh());
       }
     } catch (err) {
       setError("Rasm yuklashda xato yuz berdi: " + (err?.message || String(err)));
@@ -1381,7 +1381,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
       f.requestSubmit();
     }
     setCropMode(false);
-    router.refresh();
+    startTransition(() => router.refresh());
   };
 
   const cropPointerDown = (e) => {
@@ -1814,7 +1814,7 @@ export function UploadPhotosModal({ familySlug, albums, bulkUploadPhotosAction, 
   // hech narsa qilmasdi).
   useEffect(() => {
     if (state?.ok) {
-      router.refresh();
+      startTransition(() => router.refresh());
       onClose();
     }
   }, [state, router, onClose]);
@@ -1953,7 +1953,7 @@ function TextStylePanel({ element, familySlug, updateElementTextStyleAction, onC
   // Rang/tekislash/shrift tanlovlari to'g'ridan-to'g'ri `element` propidan
   // ko'rsatiladi — server javobidan keyin yangilanmasa, eski tanlov
   // ko'rsatilaverardi.
-  useEffect(() => { if (textStyleState?.ok) router.refresh(); }, [textStyleState, router]);
+  useEffect(() => { if (textStyleState?.ok) startTransition(() => router.refresh()); }, [textStyleState, router]);
 
   const submit = (overrides) => {
     const f = formRef.current;
@@ -2054,7 +2054,7 @@ function StickerStylePanel({ element, familySlug, updateElementStickerColorActio
   const [stickerColorState, formAction] = useActionState(updateElementStickerColorAction, undefined);
   const formRef = useRef(null);
 
-  useEffect(() => { if (stickerColorState?.ok) router.refresh(); }, [stickerColorState, router]);
+  useEffect(() => { if (stickerColorState?.ok) startTransition(() => router.refresh()); }, [stickerColorState, router]);
 
   const submit = (color) => {
     const f = formRef.current;
@@ -2115,7 +2115,7 @@ function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameActio
   // "current" pastda to'g'ridan-to'g'ri `element` propidan olinadi, shu
   // sabab server javobidan keyin sahifani yangilamasak, tugma bosilgandan
   // keyin ham eski ramka tanlangandek ko'rinaverardi.
-  useEffect(() => { if (frameState?.ok) router.refresh(); }, [frameState, router]);
+  useEffect(() => { if (frameState?.ok) startTransition(() => router.refresh()); }, [frameState, router]);
 
   const submit = (frameId) => {
     const f = formRef.current;
@@ -2675,16 +2675,16 @@ function AlbumEditor({
   // matn/rasm qo'shish, qatlam) ham muvaffaqiyatli tugagach QO'LDA
   // router.refresh() qilinadi — aks holda o'zgarish faqat F5'dan keyin
   // ko'rinardi.
-  useEffect(() => { if (addPageState?.ok) router.refresh(); }, [addPageState, router]);
-  useEffect(() => { if (layoutState?.ok) router.refresh(); }, [layoutState, router]);
-  useEffect(() => { if (templateState?.ok) router.refresh(); }, [templateState, router]);
-  useEffect(() => { if (deletePageState?.ok) router.refresh(); }, [deletePageState, router]);
-  useEffect(() => { if (bgState?.ok) router.refresh(); }, [bgState, router]);
-  useEffect(() => { if (bgImageState?.ok) router.refresh(); }, [bgImageState, router]);
-  useEffect(() => { if (stickerState?.ok) router.refresh(); }, [stickerState, router]);
-  useEffect(() => { if (addTextState?.ok) router.refresh(); }, [addTextState, router]);
-  useEffect(() => { if (addPhotoState?.ok) router.refresh(); }, [addPhotoState, router]);
-  useEffect(() => { if (layerFormState?.ok) router.refresh(); }, [layerFormState, router]);
+  useEffect(() => { if (addPageState?.ok) startTransition(() => router.refresh()); }, [addPageState, router]);
+  useEffect(() => { if (layoutState?.ok) startTransition(() => router.refresh()); }, [layoutState, router]);
+  useEffect(() => { if (templateState?.ok) startTransition(() => router.refresh()); }, [templateState, router]);
+  useEffect(() => { if (deletePageState?.ok) startTransition(() => router.refresh()); }, [deletePageState, router]);
+  useEffect(() => { if (bgState?.ok) startTransition(() => router.refresh()); }, [bgState, router]);
+  useEffect(() => { if (bgImageState?.ok) startTransition(() => router.refresh()); }, [bgImageState, router]);
+  useEffect(() => { if (stickerState?.ok) startTransition(() => router.refresh()); }, [stickerState, router]);
+  useEffect(() => { if (addTextState?.ok) startTransition(() => router.refresh()); }, [addTextState, router]);
+  useEffect(() => { if (addPhotoState?.ok) startTransition(() => router.refresh()); }, [addPhotoState, router]);
+  useEffect(() => { if (layerFormState?.ok) startTransition(() => router.refresh()); }, [layerFormState, router]);
 
   const onQuickText = useCallback(() => {
     const f = addTextRef.current;
@@ -2750,7 +2750,7 @@ function AlbumEditor({
         console.error("Albom nomini saqlashda xatolik:", res.error);
       } else {
         lastSavedTitleRef.current = trimmed;
-        router.refresh();
+        startTransition(() => router.refresh());
       }
     } catch (err) {
       console.error("Albom nomini saqlashda xatolik:", err);
@@ -2790,7 +2790,7 @@ function AlbumEditor({
       // chaqirilmagan edi — server rasmni saqlagan bo'lsa ham, mijozning
       // ekrani yangilanmasdi ("rasm tushmayapti" effekti). Endi shu yerda
       // ham chaqiriladi.
-      else router.refresh();
+      else startTransition(() => router.refresh());
     } catch (err) {
       console.error("Rasm qo'shishda xato:", err);
     }
