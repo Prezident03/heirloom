@@ -389,7 +389,12 @@ export default function HeirloomApp({
       : initialView === "places" ? VIEWS.PLACES
       : VIEWS.DASHBOARD
   );
-  const [openAlbumId, setOpenAlbumId] = useState(null);
+  // activeAlbumId — URL'dagi ?album= parametridan FAQAT bir martalik (server
+  // render paytidagi) qiymat; keyingi renderlarda o'zgarmaydi. Shuning uchun
+  // uni faqat DASTLABKI holatni belgilash uchun ishlatamiz — har render
+  // safar unga qaytib tushmaymiz (aks holda "Albomlarga qaytish" ishlamay
+  // qoladi, chunki activeAlbumId hamon eski albomni ko'rsatib turaveradi).
+  const [openAlbumId, setOpenAlbumId] = useState(activeAlbumId ?? null);
   const [globalModal, setGlobalModal] = useState(null);
   const [albumToolbar, setAlbumToolbar] = useState(null);
 

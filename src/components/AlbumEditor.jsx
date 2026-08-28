@@ -3335,8 +3335,7 @@ export function AlbumsView({
   photos,
   onToolbarChange,
 }) {
-  const effectiveOpenId = openAlbumId ?? activeAlbumId;
-  const openAlbum = albums.find((a) => a.id === effectiveOpenId) || null;
+  const openAlbum = albums.find((a) => a.id === openAlbumId) || null;
 
   return (
     <div className="fm-fade" style={{ height: "100%", overflow: "auto" }}>
