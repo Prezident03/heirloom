@@ -1058,6 +1058,7 @@ export async function updateElementPositionAction(_prevState: ActionState, formD
       zIndex: zRaw != null && zRaw !== "" ? Number(zRaw) : undefined,
       rotation: rRaw != null && rRaw !== "" ? Number(rRaw) : undefined,
     });
+    revalidatePath(`/${familySlug}/dashboard`);
     return { ok: true };
   } catch {
     return { error: "Element joylashuvini saqlashda xato." };
