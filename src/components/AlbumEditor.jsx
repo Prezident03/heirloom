@@ -377,15 +377,29 @@ function TransformableElement({
   const dragRef = useRef({ startX: 0, startY: 0, startPos: pos });
   const resizeRef = useRef({ handle: null, startX: 0, startY: 0, startPos: pos });
   const rotatingRef = useRef(false);
+  // isDragging/isResizing (state) faqat render uchun (kursor, o'tish animatsiyasi).
+  // interactingRef esa quyidagi effekt ichida darhol o'qiladigan "hozir faol
+  // sudrayapmi/cho'zyapmimi/buryapmimi" bayrog'i — buni useEffect'ning dependency
+  // massiviga QO'SHMASLIK kerak edi: aks holda faqat isDragging/isResizing state
+  // false'ga o'tgani sababli effekt o'zi ishga tushib, hali serverdan yangi
+  // (revalidatePath'dan keyingi) qiymat kelmagan eski `element` prop'ini qaytarib
+  // qo'yardi — natijada foydalanuvchi o'zgartirgan zahoti bir zumga ESKI holatga
+  // "sakrab qaytib", keyin bir necha yuz millisekundan so'ng server javobi kelib,
+  // YANGI holatga qaytar edi (ko'rinishda: kichraytirasan → birdan avvalgi
+  // holatga qaytadi → keyin sen o'zgartirgan holatga o'tadi).
+  const interactingRef = useRef(false);
 
   // element.position_x/y/w/h/rotation faqat mahalliy `pos` bilan sinxron
   // saqlanadi (masalan, bekor qilish/qaytarish tugmasi bosilganda, yoki
   // boshqa foydalanuvchi joylashuvni o'zgartirganda). Faol sudrash/cho'zish/
   // burish davomida esa mahalliy holat ustunlik qiladi — aks holda server
   // javobi kelib, foydalanuvchi hali sudrayotgan elementni orqaga tortib
-  // yuborishi mumkin.
+  // yuborishi mumkin. MUHIM: bu effekt faqat `element`dagi HAQIQIY
+  // pozitsiya qiymatlari o'zgarganda ishga tushishi kerak — isDragging/
+  // isResizing state o'zgarishi (masalan, gesture tugaganda) buni ishga
+  // tushirmasligi kerak, aks holda yuqoridagi "orqaga sakrash" bug'i qaytadi.
   useEffect(() => {
-    if (isDragging || isResizing || rotatingRef.current) return;
+    if (interactingRef.current) return;
     setPos({
       x: element.position_x || 0,
       y: element.position_y || 0,
@@ -393,7 +407,7 @@ function TransformableElement({
       h: element.position_h || 40,
       rotate: element.rotation || 0,
     });
-  }, [element.position_x, element.position_y, element.position_w, element.position_h, element.rotation, isDragging, isResizing]);
+  }, [element.position_x, element.position_y, element.position_w, element.position_h, element.rotation]);
 
   const handleDragStart = (e) => {
     if (!canEdit || element.locked) return;
@@ -409,6 +423,7 @@ function TransformableElement({
       startPos: { ...pos },
     };
     setIsDragging(true);
+    interactingRef.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -424,6 +439,7 @@ function TransformableElement({
   const handleDragEnd = (e) => {
     if (!isDragging) return;
     setIsDragging(false);
+    interactingRef.current = false;
     const sp = dragRef.current.startPos;
     onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate, prev: { x: sp.x, y: sp.y, w: sp.w, h: sp.h, rotate: sp.rotate } });
   };
@@ -439,6 +455,7 @@ function TransformableElement({
       startPos: { ...pos },
     };
     setIsResizing(true);
+    interactingRef.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -491,6 +508,7 @@ function TransformableElement({
   const handleResizeEnd = (e) => {
     if (!isResizing) return;
     setIsResizing(false);
+    interactingRef.current = false;
     resizeRef.current.handle = null;
     const sp = resizeRef.current.startPos;
     onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate, prev: { x: sp.x, y: sp.y, w: sp.w, h: sp.h, rotate: sp.rotate } });
@@ -512,6 +530,7 @@ function TransformableElement({
       centerY,
     };
     rotatingRef.current = true;
+    interactingRef.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -529,6 +548,7 @@ function TransformableElement({
     const startRotate = rotateRef.current.startRotate;
     rotateRef.current.centerX = undefined;
     rotatingRef.current = false;
+    interactingRef.current = false;
     onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate, prev: { x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: startRotate } });
   };
 
