@@ -754,11 +754,26 @@ function PageCanvas({
   const [ungroupState, ungroupFormAction] = useActionState(ungroupElementsAction, undefined);
   const groupFormRef = useRef(null);
   const ungroupFormRef = useRef(null);
-  const [, delFormAction] = useActionState(deleteElementAction, undefined);
-  const [, posFormAction] = useActionState(updateElementPositionAction, undefined);
+  const [delState, delFormAction] = useActionState(deleteElementAction, undefined);
+  const [posState, posFormAction] = useActionState(updateElementPositionAction, undefined);
   const [dupState, dupFormAction] = useActionState(duplicateElementAction, undefined);
-  const [, zFormAction] = useActionState(changeZIndexAction, undefined);
+  const [zState, zFormAction] = useActionState(changeZIndexAction, undefined);
   const lastDupSourceRef = useRef(null);
+
+  // MUHIM: bu forma amallari (o'chirish, joylashuv, nusxalash, qatlam) real
+  // Server Action'larga ulangan va DBga to'g'ri yozadi — lekin Next.js'ning
+  // <form action> orqali "avtomatik" client-refresh mexanizmiga tayanib
+  // bo'lmaydi (amaliyotda ishonchli ishlamadi, foydalanuvchi har safar F5
+  // bosishga majbur bo'lardi). Shu sabab har bir amal muvaffaqiyatli
+  // yakunlangach (state?.ok) QO'LDA router.refresh() chaqiriladi — bu
+  // page.tsx'dagi `force-dynamic` bilan birga har doim eng yangi
+  // ma'lumotni serverdan qayta oladi.
+  useEffect(() => { if (delState?.ok) router.refresh(); }, [delState, router]);
+  useEffect(() => { if (posState?.ok) router.refresh(); }, [posState, router]);
+  useEffect(() => { if (zState?.ok) router.refresh(); }, [zState, router]);
+  useEffect(() => { if (dupState?.ok) router.refresh(); }, [dupState, router]);
+  useEffect(() => { if (groupState?.ok) router.refresh(); }, [groupState, router]);
+  useEffect(() => { if (ungroupState?.ok) router.refresh(); }, [ungroupState, router]);
 
   useEffect(() => {
     if (dupState?.ok && dupState.elementId) {
@@ -2628,6 +2643,22 @@ function AlbumEditor({
   const stickerFormRef = useRef(null);
   const [layerFormState, layerFormAction] = useActionState(changeZIndexAction, undefined);
   const layerFormRef = useRef(null);
+
+  // Yuqoridagi PageCanvas'dagi izohdagi kabi: bu forma amallari (sahifa
+  // qo'shish, layout, shablon, sahifa o'chirish, fon, fon rasmi, stiker,
+  // matn/rasm qo'shish, qatlam) ham muvaffaqiyatli tugagach QO'LDA
+  // router.refresh() qilinadi — aks holda o'zgarish faqat F5'dan keyin
+  // ko'rinardi.
+  useEffect(() => { if (addPageState?.ok) router.refresh(); }, [addPageState, router]);
+  useEffect(() => { if (layoutState?.ok) router.refresh(); }, [layoutState, router]);
+  useEffect(() => { if (templateState?.ok) router.refresh(); }, [templateState, router]);
+  useEffect(() => { if (deletePageState?.ok) router.refresh(); }, [deletePageState, router]);
+  useEffect(() => { if (bgState?.ok) router.refresh(); }, [bgState, router]);
+  useEffect(() => { if (bgImageState?.ok) router.refresh(); }, [bgImageState, router]);
+  useEffect(() => { if (stickerState?.ok) router.refresh(); }, [stickerState, router]);
+  useEffect(() => { if (addTextState?.ok) router.refresh(); }, [addTextState, router]);
+  useEffect(() => { if (addPhotoState?.ok) router.refresh(); }, [addPhotoState, router]);
+  useEffect(() => { if (layerFormState?.ok) router.refresh(); }, [layerFormState, router]);
 
   const onQuickText = useCallback(() => {
     const f = addTextRef.current;
