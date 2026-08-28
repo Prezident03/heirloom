@@ -2404,6 +2404,15 @@ function AlbumEditor({
   const pageNavRowRef = useRef(null);
   const [fitWidth, setFitWidth] = useState(null);
 
+  // Chap asboblar paneli (Shablon/Layout/Stiker/...) desktopda global
+  // Sidebar'ning o'ng tomonidan canvas ustiga suzib chiqishi kerak — buning
+  // uchun avval faqat CSS media-query (`position: fixed !important`) ga
+  // tayanilgan edi, lekin bu ba'zan ishlamay (yoki canvasAreaRef balandligi
+  // auto bo'lgani uchun `bottom:0` to'g'ri cho'zilmay), panel sahifa
+  // (canvas) orqasida "yashirinib"/kesilib qolardi. Endi buni JS orqali
+  // ANIQ hisoblab, inline style bilan beramiz — CSS'ga bog'liq bo'lmaydi.
+  const [flyoutMetrics, setFlyoutMetrics] = useState({ isDesktop: false, topOffset: 0 });
+
   useEffect(() => {
     const recomputeFit = () => {
       const areaEl = canvasAreaRef.current;
@@ -2415,6 +2424,7 @@ function AlbumEditor({
       const availableHeightPx = Math.max(200, window.innerHeight - toolbarH - navH - 24 - 36 - 18 - 10);
       const next = Math.max(240, Math.min(availableWidthPx, availableHeightPx * (4 / 3)));
       setFitWidth(next);
+      setFlyoutMetrics({ isDesktop: window.innerWidth >= 769, topOffset: toolbarH });
     };
     recomputeFit();
     window.addEventListener("resize", recomputeFit);
@@ -2717,6 +2727,13 @@ function AlbumEditor({
       fd.append("positionH", "30");
       const res = await addPhotoWithUrlAction(null, fd);
       if (res?.error) console.error(res.error);
+      // Mavjud bo'sh slotga tushirilganda (handleCanvasDrop'dagi targetSlot
+      // shoxobchasi) router.refresh() chaqiriladi, lekin bo'sh fon ustiga
+      // tashlab YANGI suzuvchi element yaratilganda bu yerda refresh
+      // chaqirilmagan edi — server rasmni saqlagan bo'lsa ham, mijozning
+      // ekrani yangilanmasdi ("rasm tushmayapti" effekti). Endi shu yerda
+      // ham chaqiriladi.
+      else router.refresh();
     } catch (err) {
       console.error("Rasm qo'shishda xato:", err);
     }
@@ -2895,7 +2912,26 @@ function AlbumEditor({
                 )}
 
                 {effectiveCanEdit && activePanel && (
-                  <div className="fm-flyout-panel fm-album-flyout" style={{ zIndex: 45, width: 272, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, borderRight: `1px solid ${TOKENS.parchmentDeep}`, padding: "38px 12px 12px", overflowY: "auto", boxShadow: "10px 0 26px rgba(30,26,15,0.14)" }}>
+                  <div
+                    className="fm-flyout-panel fm-album-flyout"
+                    style={{
+                      zIndex: 90,
+                      width: 272,
+                      background: TOKENS.card,
+                      borderLeft: `1px solid ${TOKENS.parchmentDeep}`,
+                      borderRight: `1px solid ${TOKENS.parchmentDeep}`,
+                      padding: "38px 12px 12px",
+                      overflowY: "auto",
+                      boxShadow: "10px 0 26px rgba(30,26,15,0.14)",
+                      // CSS media-query'ga tayanish o'rniga aniq JS-hisoblangan
+                      // pozitsiya: desktopda global Sidebar yonidan (220px)
+                      // top toolbar tagidan boshlab butun balandlikka fixed
+                      // qilib chiqadi, canvas ustida to'liq ko'rinadi.
+                      ...(flyoutMetrics.isDesktop
+                        ? { position: "fixed", left: 220, top: flyoutMetrics.topOffset, bottom: 0 }
+                        : {}),
+                    }}
+                  >
                     <button
                       type="button"
                       onClick={() => setActivePanel(null)}
