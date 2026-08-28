@@ -598,7 +598,8 @@ export async function addAlbumPageAction(_prevState: ActionState, formData: Form
 
   const albumId = String(formData.get("albumId") || "").trim();
   await createAlbumPage(albumId, "l1");
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function deleteAlbumPageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -609,7 +610,8 @@ export async function deleteAlbumPageAction(_prevState: ActionState, formData: F
   const albumId = String(formData.get("albumId") || "").trim();
   const pageId = String(formData.get("pageId") || "").trim();
   await deletePage(pageId);
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function changePageLayoutAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -621,7 +623,8 @@ export async function changePageLayoutAction(_prevState: ActionState, formData: 
   const pageId = String(formData.get("pageId") || "").trim();
   const layoutId = String(formData.get("layoutId") || "l1") as LayoutId;
   await changePageLayout(pageId, layoutId);
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function applyPageTemplateAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -636,7 +639,8 @@ export async function applyPageTemplateAction(_prevState: ActionState, formData:
   if (!templateId) return { error: "Shablon ID kerak." };
 
   await applyPageTemplate(pageId, templateId);
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function updatePageMetaAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -647,7 +651,8 @@ export async function updatePageMetaAction(_prevState: ActionState, formData: Fo
   const albumId = String(formData.get("albumId") || "").trim();
   const pageId = String(formData.get("pageId") || "").trim();
   await updatePageMeta(pageId, String(formData.get("dateLabel") || ""), String(formData.get("location") || ""));
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function updateElementTextAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -658,7 +663,8 @@ export async function updateElementTextAction(_prevState: ActionState, formData:
   const albumId = String(formData.get("albumId") || "").trim();
   const elementId = String(formData.get("elementId") || "").trim();
   await updateElementText(elementId, String(formData.get("text") || ""));
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function uploadElementPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -694,7 +700,8 @@ export async function uploadElementPhotoAction(_prevState: ActionState, formData
     return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
   }
 
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function saveElementPhotoUrlAction(
@@ -851,7 +858,8 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
     }
   }
 
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true, albumId };
 }
 
 export async function createMemoryAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1211,7 +1219,8 @@ export async function changePageBackgroundAction(_prevState: ActionState, formDa
   if (!pageId) return { error: "Page ID kerak." };
 
   await updatePageBackground(pageId, backgroundId);
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function updateElementFrameAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1225,7 +1234,8 @@ export async function updateElementFrameAction(_prevState: ActionState, formData
   if (!elementId) return { error: "Element ID kerak." };
 
   await updateElementFrame(elementId, frameStyle);
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function updateElementTextStyleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1242,7 +1252,8 @@ export async function updateElementTextStyleAction(_prevState: ActionState, form
   const font = String(formData.get("textFont") || "handwriting") as TextFont;
 
   await updateElementTextStyle(elementId, { size, color, align, font });
-  return undefined;
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function addStickerElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1259,7 +1270,8 @@ export async function addStickerElementAction(_prevState: ActionState, formData:
   const pos = kind === "tape" ? { x: 32, y: 40, w: 28, h: 8 } : { x: 38, y: 38, w: 16, h: 16 };
 
   await addStickerElement(pageId, stickerId, pos);
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function updateElementStickerColorAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1273,7 +1285,8 @@ export async function updateElementStickerColorAction(_prevState: ActionState, f
   if (!color) return { error: "Rang kerak." };
 
   await updateElementStickerColor(elementId, color);
-  return undefined;
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function addTextElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1286,7 +1299,8 @@ export async function addTextElementAction(_prevState: ActionState, formData: Fo
   if (!pageId) return { error: "Page ID kerak." };
 
   await addTextElement(pageId, { x: 30, y: 40, w: 40, h: 20 });
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function addPhotoElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
@@ -1299,7 +1313,8 @@ export async function addPhotoElementAction(_prevState: ActionState, formData: F
   if (!pageId) return { error: "Page ID kerak." };
 
   await addPhotoElement(pageId, { x: 30, y: 30, w: 32, h: 32 });
-  redirect(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 export async function addPhotoWithUrlAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
