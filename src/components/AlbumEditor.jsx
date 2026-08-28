@@ -1425,7 +1425,6 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
         )}
       </div>
       {error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{error}</div>}
-      {deleteState?.error && <div style={{ fontSize: 9.5, color: TOKENS.danger, marginTop: 3 }}>{deleteState.error}</div>}
     </div>
   );
 }
@@ -2261,18 +2260,6 @@ function AlbumEditor({
   const [saveStatus, setSaveStatus] = useState("saved");
   const saveTimeoutRef = useRef(null);
 
-  // ── Hydration xavfsizligi ──
-  // Albom muharriri juda interaktiv va dinamik. Agar sahifa URL orqali
-  // shu muharrir bilanoq yuklansa (masalan Ulashish havolasi yoki yangilash),
-  // server-rendered HTML bilan client o'rtasida React #418 hydration xatosi
-  // yuzaga kelishi mumkin. Shu sababli muharrir faqat mount'dan keyin
-  // (client tomonda) render qilinadi — server va client ikkalasi ham
-  // bir xil placeholder ko'rsatadi, shunda hydration mos kelmay qolmaydi.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const triggerAutosave = useCallback(() => {
     setSaveStatus("saving");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -2548,18 +2535,6 @@ function AlbumEditor({
       console.error("Rasm qo'shishda xato:", err);
     }
   };
-
-  // Placeholder — server va birinchi client render da ko'rsatiladi.
-  // Hooks hammasi tepada chaqirilgan, shuning uchun bu yerda erta
-  // qaytish xavfsiz.
-  if (!mounted) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", background: "#EDEAE4", alignItems: "center", justifyContent: "center", padding: "60px 20px" }}>
-        <div style={{ width: 26, height: 26, border: "3px solid rgba(184,134,59,0.25)", borderTopColor: TOKENS.gold, borderRadius: "50%", animation: "fm-spin 0.7s linear infinite" }} />
-        <div style={{ marginTop: 14, fontSize: 13, color: TOKENS.ink60 }}>Albom yuklanmoqda…</div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", background: "#EDEAE4" }}>
