@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useActionState, useCallback, startTransition } from "react";
+import React, { useState, useRef, useEffect, useActionState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import {
-  BookImage, Plus, X, ImagePlus, Images, Shapes, LayoutGrid,
+  BookImage, Plus, X, ImagePlus, Images, Shapes, LayoutGrid, Layout,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown,
   Copy, Trash2, Calendar, MapPinned,
   Leaf, Flower2, Heart, Star, Sun, Palette,
@@ -19,6 +19,8 @@ import {
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
 import { updatePageBackgroundImageAction, addPhotoWithUrlAction, renameAlbumAction } from "@/lib/actions";
+import { TEMPLATE_LIST as CATALOG_TEMPLATE_LIST } from "@/lib/templates";
+import { COLLAGE_TEMPLATES, CollageCreator } from "./CollageCreator";
 
 const LAYOUTS = [
   { id: "l1", name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
@@ -165,7 +167,12 @@ const TEMPLATES = {
     stickers: [{ stickerId: "smile", kind: "icon", x: 46, y: 3, w: 9, h: 9, color: "#B8863B" }, { stickerId: "crown", kind: "icon", x: 2, y: 2, w: 9, h: 9, color: "#B8863B" }, { stickerId: "star", kind: "icon", x: 90, y: 2, w: 8, h: 8, color: "#B8863B" }],
   },
 };
-const TEMPLATE_LIST = Object.entries(TEMPLATES).map(([id, t]) => ({ id, ...t }));
+// Shablonlar ro'yxati: eski inline katalog + yangi 30 lik professional katalog.
+// Yangi katalogning eski id'lari bilan takrorlanadiganlari chiqarib tashlanadi.
+const TEMPLATE_LIST = [
+  ...Object.entries(TEMPLATES).map(([id, t]) => ({ id, ...t })),
+  ...CATALOG_TEMPLATE_LIST.filter((t) => !(t.id in TEMPLATES)),
+];
 const TEMPLATE_CATEGORIES = [...new Set(TEMPLATE_LIST.map((t) => t.category))];
 
 const FONT_FAMILIES = {
@@ -768,12 +775,12 @@ function PageCanvas({
   // yakunlangach (state?.ok) QO'LDA router.refresh() chaqiriladi — bu
   // page.tsx'dagi `force-dynamic` bilan birga har doim eng yangi
   // ma'lumotni serverdan qayta oladi.
-  useEffect(() => { if (delState?.ok) startTransition(() => router.refresh()); }, [delState, router]);
-  useEffect(() => { if (posState?.ok) startTransition(() => router.refresh()); }, [posState, router]);
-  useEffect(() => { if (zState?.ok) startTransition(() => router.refresh()); }, [zState, router]);
-  useEffect(() => { if (dupState?.ok) startTransition(() => router.refresh()); }, [dupState, router]);
-  useEffect(() => { if (groupState?.ok) startTransition(() => router.refresh()); }, [groupState, router]);
-  useEffect(() => { if (ungroupState?.ok) startTransition(() => router.refresh()); }, [ungroupState, router]);
+  useEffect(() => { if (delState?.ok) router.refresh(); }, [delState, router]);
+  useEffect(() => { if (posState?.ok) router.refresh(); }, [posState, router]);
+  useEffect(() => { if (zState?.ok) router.refresh(); }, [zState, router]);
+  useEffect(() => { if (dupState?.ok) router.refresh(); }, [dupState, router]);
+  useEffect(() => { if (groupState?.ok) router.refresh(); }, [groupState, router]);
+  useEffect(() => { if (ungroupState?.ok) router.refresh(); }, [ungroupState, router]);
 
   useEffect(() => {
     if (dupState?.ok && dupState.elementId) {
@@ -897,7 +904,7 @@ function PageCanvas({
       try {
         const result = await saveElementPhotoUrlAction(familySlug, albumId, targetSlot.id, data.url, false);
         if (result?.error) console.error(result.error);
-        else startTransition(() => router.refresh());
+        else router.refresh();
       } catch (err) {
         console.error("Rasmni slotga joylashtirishda xato:", err);
       }
@@ -1323,7 +1330,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
       if (result?.error) {
         setError(result.error);
       } else {
-        startTransition(() => router.refresh());
+        router.refresh();
       }
     } catch (err) {
       setError("Rasm yuklashda xato yuz berdi: " + (err?.message || String(err)));
@@ -1381,7 +1388,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
       f.requestSubmit();
     }
     setCropMode(false);
-    startTransition(() => router.refresh());
+    router.refresh();
   };
 
   const cropPointerDown = (e) => {
@@ -1814,7 +1821,7 @@ export function UploadPhotosModal({ familySlug, albums, bulkUploadPhotosAction, 
   // hech narsa qilmasdi).
   useEffect(() => {
     if (state?.ok) {
-      startTransition(() => router.refresh());
+      router.refresh();
       onClose();
     }
   }, [state, router, onClose]);
@@ -1953,7 +1960,7 @@ function TextStylePanel({ element, familySlug, updateElementTextStyleAction, onC
   // Rang/tekislash/shrift tanlovlari to'g'ridan-to'g'ri `element` propidan
   // ko'rsatiladi — server javobidan keyin yangilanmasa, eski tanlov
   // ko'rsatilaverardi.
-  useEffect(() => { if (textStyleState?.ok) startTransition(() => router.refresh()); }, [textStyleState, router]);
+  useEffect(() => { if (textStyleState?.ok) router.refresh(); }, [textStyleState, router]);
 
   const submit = (overrides) => {
     const f = formRef.current;
@@ -2054,7 +2061,7 @@ function StickerStylePanel({ element, familySlug, updateElementStickerColorActio
   const [stickerColorState, formAction] = useActionState(updateElementStickerColorAction, undefined);
   const formRef = useRef(null);
 
-  useEffect(() => { if (stickerColorState?.ok) startTransition(() => router.refresh()); }, [stickerColorState, router]);
+  useEffect(() => { if (stickerColorState?.ok) router.refresh(); }, [stickerColorState, router]);
 
   const submit = (color) => {
     const f = formRef.current;
@@ -2115,7 +2122,7 @@ function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameActio
   // "current" pastda to'g'ridan-to'g'ri `element` propidan olinadi, shu
   // sabab server javobidan keyin sahifani yangilamasak, tugma bosilgandan
   // keyin ham eski ramka tanlangandek ko'rinaverardi.
-  useEffect(() => { if (frameState?.ok) startTransition(() => router.refresh()); }, [frameState, router]);
+  useEffect(() => { if (frameState?.ok) router.refresh(); }, [frameState, router]);
 
   const submit = (frameId) => {
     const f = formRef.current;
@@ -2419,6 +2426,8 @@ function AlbumEditor({
   const [stylePopupId, setStylePopupId] = useState(null);
   const [draggedPageIndex, setDraggedPageIndex] = useState(null);
   const [sessionUploads, setSessionUploads] = useState([]);
+  const [collageOpen, setCollageOpen] = useState(false);
+  const [collageTemplate, setCollageTemplate] = useState(null);
   const router = useRouter();
 
   const [saveStatus, setSaveStatus] = useState("saved");
@@ -2648,6 +2657,10 @@ function AlbumEditor({
   }, [canEdit, previewMode]);
 
   const pages = album.pages;
+  // Kollaj yaratuvchisi uchun oilaviy rasmlar (id + url + nom)
+  const collagePhotos = (photos && photos.length > 0)
+    ? photos.filter((p) => p && (p.photo_url || p.url)).map((p) => ({ id: p.id || p.photo_url || p.url, url: p.photo_url || p.url, name: p.name || "Rasm" }))
+    : [];
   const currentPage = pages[Math.min(pageIndex, pages.length - 1)];
   const currentLayout = currentPage ? LAYOUTS.find((l) => l.id === currentPage.layout_id) || LAYOUTS[0] : LAYOUTS[0];
   const styleElement = stylePopupId
@@ -2675,16 +2688,16 @@ function AlbumEditor({
   // matn/rasm qo'shish, qatlam) ham muvaffaqiyatli tugagach QO'LDA
   // router.refresh() qilinadi — aks holda o'zgarish faqat F5'dan keyin
   // ko'rinardi.
-  useEffect(() => { if (addPageState?.ok) startTransition(() => router.refresh()); }, [addPageState, router]);
-  useEffect(() => { if (layoutState?.ok) startTransition(() => router.refresh()); }, [layoutState, router]);
-  useEffect(() => { if (templateState?.ok) startTransition(() => router.refresh()); }, [templateState, router]);
-  useEffect(() => { if (deletePageState?.ok) startTransition(() => router.refresh()); }, [deletePageState, router]);
-  useEffect(() => { if (bgState?.ok) startTransition(() => router.refresh()); }, [bgState, router]);
-  useEffect(() => { if (bgImageState?.ok) startTransition(() => router.refresh()); }, [bgImageState, router]);
-  useEffect(() => { if (stickerState?.ok) startTransition(() => router.refresh()); }, [stickerState, router]);
-  useEffect(() => { if (addTextState?.ok) startTransition(() => router.refresh()); }, [addTextState, router]);
-  useEffect(() => { if (addPhotoState?.ok) startTransition(() => router.refresh()); }, [addPhotoState, router]);
-  useEffect(() => { if (layerFormState?.ok) startTransition(() => router.refresh()); }, [layerFormState, router]);
+  useEffect(() => { if (addPageState?.ok) router.refresh(); }, [addPageState, router]);
+  useEffect(() => { if (layoutState?.ok) router.refresh(); }, [layoutState, router]);
+  useEffect(() => { if (templateState?.ok) router.refresh(); }, [templateState, router]);
+  useEffect(() => { if (deletePageState?.ok) router.refresh(); }, [deletePageState, router]);
+  useEffect(() => { if (bgState?.ok) router.refresh(); }, [bgState, router]);
+  useEffect(() => { if (bgImageState?.ok) router.refresh(); }, [bgImageState, router]);
+  useEffect(() => { if (stickerState?.ok) router.refresh(); }, [stickerState, router]);
+  useEffect(() => { if (addTextState?.ok) router.refresh(); }, [addTextState, router]);
+  useEffect(() => { if (addPhotoState?.ok) router.refresh(); }, [addPhotoState, router]);
+  useEffect(() => { if (layerFormState?.ok) router.refresh(); }, [layerFormState, router]);
 
   const onQuickText = useCallback(() => {
     const f = addTextRef.current;
@@ -2750,7 +2763,7 @@ function AlbumEditor({
         console.error("Albom nomini saqlashda xatolik:", res.error);
       } else {
         lastSavedTitleRef.current = trimmed;
-        startTransition(() => router.refresh());
+        router.refresh();
       }
     } catch (err) {
       console.error("Albom nomini saqlashda xatolik:", err);
@@ -2790,9 +2803,36 @@ function AlbumEditor({
       // chaqirilmagan edi — server rasmni saqlagan bo'lsa ham, mijozning
       // ekrani yangilanmasdi ("rasm tushmayapti" effekti). Endi shu yerda
       // ham chaqiriladi.
-      else startTransition(() => router.refresh());
+      else router.refresh();
     } catch (err) {
       console.error("Rasm qo'shishda xato:", err);
+    }
+  };
+
+  // Kollaj yaratuvchisi "Sahifaga qo'shish" tugmasidan chaqiriladi.
+  // items: [{ url, x, y, w, h }] — joriy sahifaga rasm elementlari qo'shiladi.
+  const handleCollageSave = async (items) => {
+    const page = currentPage;
+    if (!items || items.length === 0 || !page || !canEdit) return;
+    setCollageOpen(false);
+    try {
+      for (const it of items) {
+        const fd = new FormData();
+        fd.append("familySlug", familySlug);
+        fd.append("albumId", album.id);
+        fd.append("pageId", page.id);
+        fd.append("photoUrl", it.url);
+        fd.append("positionX", String(it.x));
+        fd.append("positionY", String(it.y));
+        fd.append("positionW", String(it.w));
+        fd.append("positionH", String(it.h));
+        const res = await addPhotoWithUrlAction(null, fd);
+        if (res?.error) console.error(res.error);
+      }
+      router.refresh();
+      triggerAutosave();
+    } catch (err) {
+      console.error("Kollajni saqlashda xato:", err);
     }
   };
 
@@ -2954,7 +2994,8 @@ function AlbumEditor({
               <div ref={canvasAreaRef} style={{ position: "relative", display: "flex", gap: 12, alignItems: "stretch", overflowX: zoom > 1 ? "auto" : "visible" }}>
                 {effectiveCanEdit && (
                   <div className="fm-album-rail-inline" style={{ display: "flex", flexShrink: 0, width: 58, flexDirection: "column", background: "#F4F2ED", borderRadius: 10, overflow: "hidden", paddingBottom: 4, boxShadow: "inset 0 0 0 1px rgba(30,26,15,0.05)" }}>
-                    <RailButton icon={Sparkles} label="Shablon" active={activePanel === "template"} onClick={() => setActivePanel((p) => (p === "template" ? null : "template"))} />
+                    <RailButton icon={Sparkles} label="Shablonlar" active={activePanel === "template"} onClick={() => setActivePanel((p) => (p === "template" ? null : "template"))} />
+                    <RailButton icon={Layout} label="Kollej" active={activePanel === "collage"} onClick={() => setActivePanel((p) => (p === "collage" ? null : "collage"))} />
                     <RailButton icon={LayoutGrid} label="Layout" active={activePanel === "layout"} onClick={() => setActivePanel((p) => (p === "layout" ? null : "layout"))} />
                     <RailButton icon={StickerIcon} label="Stiker" active={activePanel === "sticker"} onClick={() => setActivePanel((p) => (p === "sticker" ? null : "sticker"))} />
                     <RailButton icon={Palette} label="Fon" active={activePanel === "bg"} onClick={() => setActivePanel((p) => (p === "bg" ? null : "bg"))} />
@@ -3020,6 +3061,31 @@ function AlbumEditor({
                           </div>
                         ))}
                         {templateState?.error && <div style={{ fontSize: 11.5, color: TOKENS.danger, background: "#fff1f0", padding: "6px 10px", borderRadius: 6 }}>{templateState.error}</div>}
+                      </div>
+                    )}
+
+                    {activePanel === "collage" && (
+                      <div>
+                        <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>
+                          Tayyor kollej shablonlaridan birini tanlang — rasmlaringizni joylarga sudrab tashlang.
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                          {COLLAGE_TEMPLATES.map((tpl) => (
+                            <button
+                              key={tpl.id}
+                              type="button"
+                              onClick={() => { setCollageTemplate(tpl); setCollageOpen(true); }}
+                              style={{ padding: 8, borderRadius: 8, border: `1px solid ${TOKENS.parchmentDeep}`, background: "#fff", cursor: "pointer", textAlign: "center" }}
+                            >
+                              <div style={{ position: "relative", width: "100%", aspectRatio: `${tpl.cols}/${tpl.rows}`, background: TOKENS.parchment, borderRadius: 4, overflow: "hidden" }}>
+                                {tpl.slots.map((s, i) => (
+                                  <div key={i} style={{ position: "absolute", left: `${s[0]}%`, top: `${s[1]}%`, width: `${s[2]}%`, height: `${s[3]}%`, background: i % 2 ? TOKENS.goldSoft : TOKENS.tealSoft, borderRadius: 2, opacity: 0.75 }} />
+                                ))}
+                              </div>
+                              <div style={{ fontSize: 10.5, color: TOKENS.ink60, marginTop: 6 }}>{tpl.name}</div>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -3385,6 +3451,16 @@ function AlbumEditor({
         })()
       )}
         </div>
+
+      {collageOpen && collageTemplate && (
+        <CollageCreator
+          photos={collagePhotos}
+          familySlug={familySlug}
+          initialTemplate={collageTemplate}
+          onClose={() => setCollageOpen(false)}
+          onSave={handleCollageSave}
+        />
+      )}
     </div>
   );
 }
