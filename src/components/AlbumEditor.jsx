@@ -375,6 +375,24 @@ function TransformableElement({
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef({ startX: 0, startY: 0, startPos: pos });
   const resizeRef = useRef({ handle: null, startX: 0, startY: 0, startPos: pos });
+  const rotatingRef = useRef(false);
+
+  // element.position_x/y/w/h/rotation faqat mahalliy `pos` bilan sinxron
+  // saqlanadi (masalan, bekor qilish/qaytarish tugmasi bosilganda, yoki
+  // boshqa foydalanuvchi joylashuvni o'zgartirganda). Faol sudrash/cho'zish/
+  // burish davomida esa mahalliy holat ustunlik qiladi — aks holda server
+  // javobi kelib, foydalanuvchi hali sudrayotgan elementni orqaga tortib
+  // yuborishi mumkin.
+  useEffect(() => {
+    if (isDragging || isResizing || rotatingRef.current) return;
+    setPos({
+      x: element.position_x || 0,
+      y: element.position_y || 0,
+      w: element.position_w || 40,
+      h: element.position_h || 40,
+      rotate: element.rotation || 0,
+    });
+  }, [element.position_x, element.position_y, element.position_w, element.position_h, element.rotation, isDragging, isResizing]);
 
   const handleDragStart = (e) => {
     if (!canEdit || element.locked) return;
@@ -405,7 +423,8 @@ function TransformableElement({
   const handleDragEnd = (e) => {
     if (!isDragging) return;
     setIsDragging(false);
-    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
+    const sp = dragRef.current.startPos;
+    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate, prev: { x: sp.x, y: sp.y, w: sp.w, h: sp.h, rotate: sp.rotate } });
   };
 
   const handleResizeStart = (e, handle) => {
@@ -472,7 +491,8 @@ function TransformableElement({
     if (!isResizing) return;
     setIsResizing(false);
     resizeRef.current.handle = null;
-    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
+    const sp = resizeRef.current.startPos;
+    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate, prev: { x: sp.x, y: sp.y, w: sp.w, h: sp.h, rotate: sp.rotate } });
   };
 
   const rotateRef = useRef({ startX: 0, startY: 0, startRotate: 0, centerX: 0, centerY: 0 });
@@ -490,6 +510,7 @@ function TransformableElement({
       centerX,
       centerY,
     };
+    rotatingRef.current = true;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -504,8 +525,10 @@ function TransformableElement({
   };
 
   const handleRotateEnd = (e) => {
+    const startRotate = rotateRef.current.startRotate;
     rotateRef.current.centerX = undefined;
-    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate });
+    rotatingRef.current = false;
+    onUpdate({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: pos.rotate, prev: { x: pos.x, y: pos.y, w: pos.w, h: pos.h, rotate: startRotate } });
   };
 
   const resizeHandles = [
@@ -923,16 +946,19 @@ function PageCanvas({
       rotation: updates.rotate ?? el.rotation ?? 0,
     };
 
+    // TransformableElement gesture boshida o'zining mahalliy holatidan aniq
+    // `prev`ni yuboradi (updates.prev) — bu `elements` prop'i hali server bilan
+    // qayta sinxronlanmagan bo'lsa ham (masalan, ketma-ket ikki marta cho'zishda)
+    // to'g'ri tarixni ta'minlaydi. Agar berilmagan bo'lsa (masalan boshqa chaqiruv
+    // yo'llaridan), eski usulga — joriy prop qiymatiga — qaytiladi.
+    const prevBox = updates.prev
+      ? { x: updates.prev.x ?? 0, y: updates.prev.y ?? 0, w: updates.prev.w ?? 40, h: updates.prev.h ?? 40, r: updates.prev.rotate ?? 0 }
+      : { x: el.position_x ?? 0, y: el.position_y ?? 0, w: el.position_w ?? 40, h: el.position_h ?? 40, r: el.rotation ?? 0 };
+
     onCommitPosition?.({
       pageId: page.id,
       elementId: elId,
-      prev: {
-        x: el.position_x ?? 0,
-        y: el.position_y ?? 0,
-        w: el.position_w ?? 40,
-        h: el.position_h ?? 40,
-        r: el.rotation ?? 0,
-      },
+      prev: prevBox,
       next: newPos,
     });
 
