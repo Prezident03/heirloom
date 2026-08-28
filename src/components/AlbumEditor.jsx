@@ -805,7 +805,7 @@ function PageCanvas({
     return { mx, my, mw, mh };
   })();
 
-  const handleCanvasDrop = (e) => {
+  const handleCanvasDrop = async (e) => {
     if (!canEdit) return;
     e.preventDefault();
     const raw = e.dataTransfer.getData("text/plain");
@@ -819,10 +819,36 @@ function PageCanvas({
     if (!data || data.type !== "photo" || !data.url) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect || rect.width === 0) return;
+    const dropX = ((e.clientX - rect.left) / rect.width) * 100;
+    const dropY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // If the drop lands on top of an existing empty photo slot (e.g. from a
+    // layout template), fill that slot instead of creating a new free-
+    // floating photo element on top of it.
+    const targetSlot = elements.find((el) => {
+      if (el.type !== "photo" || el.photo_url) return false;
+      const ex = el.position_x ?? 0;
+      const ey = el.position_y ?? 0;
+      const ew = el.position_w ?? 40;
+      const eh = el.position_h ?? 30;
+      return dropX >= ex && dropX <= ex + ew && dropY >= ey && dropY <= ey + eh;
+    });
+
+    if (targetSlot) {
+      try {
+        const result = await saveElementPhotoUrlAction(familySlug, albumId, targetSlot.id, data.url, false);
+        if (result?.error) console.error(result.error);
+        else router.refresh();
+      } catch (err) {
+        console.error("Rasmni slotga joylashtirishda xato:", err);
+      }
+      return;
+    }
+
     const dw = 40;
     const dh = 30;
-    const x = Math.max(0, Math.min(100 - dw, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100 - dh, ((e.clientY - rect.top) / rect.height) * 100));
+    const x = Math.max(0, Math.min(100 - dw, dropX));
+    const y = Math.max(0, Math.min(100 - dh, dropY));
     onDropPhoto?.(data.url, Math.round(x * 10) / 10, Math.round(y * 10) / 10);
   };
 
