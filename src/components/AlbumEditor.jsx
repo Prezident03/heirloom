@@ -362,6 +362,7 @@ function TransformableElement({
   onLayerDown,
   onStyle,
   canEdit,
+  canvasRef,
 }) {
   const [pos, setPos] = useState({
     x: element.position_x || 0,
@@ -444,7 +445,7 @@ function TransformableElement({
   const handleResizeMove = (e) => {
     if (!isResizing) return;
     const { handle, startX, startY, startPos } = resizeRef.current;
-    const parentRect = e.currentTarget.parentElement.getBoundingClientRect();
+    const parentRect = (canvasRef?.current || e.currentTarget.parentElement).getBoundingClientRect();
     const dx = ((e.clientX - startX) / parentRect.width) * 100;
     const dy = ((e.clientY - startY) / parentRect.height) * 100;
 
@@ -500,7 +501,7 @@ function TransformableElement({
   const handleRotateStart = (e) => {
     if (!canEdit || element.locked) return;
     e.stopPropagation();
-    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+    const rect = (canvasRef?.current || e.currentTarget.parentElement).getBoundingClientRect();
     const centerX = rect.left + rect.width * (pos.x + pos.w / 2) / 100;
     const centerY = rect.top + rect.height * (pos.y + pos.h / 2) / 100;
     rotateRef.current = {
@@ -1207,6 +1208,7 @@ function PageCanvas({
           onLayerDown={handleLayerDown}
           onStyle={onStyleElement}
           canEdit={canEdit}
+          canvasRef={canvasRef}
         >
           {renderContent(el)}
         </TransformableElement>
