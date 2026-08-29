@@ -2431,6 +2431,11 @@ function AlbumEditor({
   onToolbarChange,
 }) {
   const [pageIndex, setPageIndex] = useState(0);
+  // Layout/fon tanlash ham (element o'chirish/rasm yuklash kabi) Next.js
+  // router-keshiga tayanmasdan, DARHOL ko'rinishi uchun — tanlangan
+  // layoutId/backgroundId shu yerda lokal saqlanadi va currentPage'ga
+  // real serverdan kelgan qiymat ustiga qo'shib qo'yiladi.
+  const [pageOverrides, setPageOverrides] = useState({});
   const [activePanel, setActivePanel] = useState(null);
   const [confirmDeleteAlbum, setConfirmDeleteAlbum] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
@@ -2677,7 +2682,11 @@ function AlbumEditor({
   const collagePhotos = (photos && photos.length > 0)
     ? photos.filter((p) => p && (p.photo_url || p.url)).map((p) => ({ id: p.id || p.photo_url || p.url, url: p.photo_url || p.url, name: p.name || "Rasm" }))
     : [];
-  const currentPage = pages[Math.min(pageIndex, pages.length - 1)];
+  const currentPage = (() => {
+    const p = pages[Math.min(pageIndex, pages.length - 1)];
+    const ov = p ? pageOverrides[p.id] : null;
+    return ov ? { ...p, ...ov } : p;
+  })();
   const currentLayout = currentPage ? LAYOUTS.find((l) => l.id === currentPage.layout_id) || LAYOUTS[0] : LAYOUTS[0];
   const styleElement = stylePopupId
     ? (currentPage?.elements || []).find((e) => e.id === stylePopupId) || null
@@ -3110,7 +3119,7 @@ function AlbumEditor({
                         <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Sahifa uchun joylashuv.</div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                           {LAYOUTS.map((l) => (
-                            <form key={l.id} action={layoutFormAction} onSubmit={() => setActivePanel(null)}>
+                            <form key={l.id} action={layoutFormAction} onSubmit={() => { setPageOverrides((prev) => ({ ...prev, [targetPage.id]: { ...prev[targetPage.id], layout_id: l.id } })); setActivePanel(null); }}>
                               <input type="hidden" name="familySlug" value={familySlug} />
                               <input type="hidden" name="albumId" value={album.id} />
                               <input type="hidden" name="pageId" value={targetPage.id} />
@@ -3159,7 +3168,7 @@ function AlbumEditor({
                         <div style={{ fontSize: 10.5, color: TOKENS.ink40, marginBottom: 10 }}>Sahifaning foniga qo'llanadi.</div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                           {BACKGROUND_LIST.map((b) => (
-                            <form key={b.id} action={bgFormAction} onSubmit={() => setActivePanel(null)}>
+                            <form key={b.id} action={bgFormAction} onSubmit={() => { setPageOverrides((prev) => ({ ...prev, [targetPage.id]: { ...prev[targetPage.id], background_id: b.id } })); setActivePanel(null); }}>
                               <input type="hidden" name="familySlug" value={familySlug} />
                               <input type="hidden" name="albumId" value={album.id} />
                               <input type="hidden" name="pageId" value={targetPage.id} />
@@ -3196,6 +3205,7 @@ function AlbumEditor({
                             fd.append("familySlug", familySlug);
                             fd.append("pageId", targetPage.id);
                             fd.append("imageUrl", blob.url);
+                            setPageOverrides((prev) => ({ ...prev, [targetPage.id]: { ...prev[targetPage.id], background_image_url: blob.url } }));
                             bgImageFormAction(fd);
                             e.target.value = "";
                           }}
@@ -3209,6 +3219,7 @@ function AlbumEditor({
                             fd.append("familySlug", familySlug);
                             fd.append("pageId", targetPage.id);
                             fd.append("imageUrl", "");
+                            setPageOverrides((prev) => ({ ...prev, [targetPage.id]: { ...prev[targetPage.id], background_image_url: "" } }));
                             bgImageFormAction(fd);
                           }}
                           style={{ marginTop: 8, width: "100%", padding: 8, borderRadius: 4, border: `1px solid ${TOKENS.danger}`, color: TOKENS.danger, background: "transparent", cursor: "pointer" }}
