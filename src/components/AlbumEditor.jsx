@@ -752,7 +752,17 @@ function PageCanvas({
 }) {
   const router = useRouter();
   const canvasRef = useRef(null);
-  const elements = page.elements || [];
+  // MUHIM: Next.js 16'ning router.refresh()/revalidatePath keshini qayta
+  // yangilash mexanizmi bir necha usulda sinovdan o'tkazildi, lekin real
+  // muhitda barqaror ishlamadi (serverga yozilgan, lekin ekran F5siz
+  // yangilanmaydi). Shu sabab elementlar ro'yxati endi LOKAL holatda
+  // saqlanadi va serverdan muvaffaqiyatli javob kelgach (yoki keyingi
+  // haqiqiy sahifa yangilanishida) `page.elements`dan qayta sinxronlanadi —
+  // lekin o'chirish/qo'shish kabi amallar ekranda serverni kutmasdan,
+  // DARHOL (optimistic) ko'rinadi.
+  const [localElements, setLocalElements] = useState(page.elements || []);
+  useEffect(() => { setLocalElements(page.elements || []); }, [page.elements]);
+  const elements = localElements;
 
   const [multiIds, setMultiIds] = useState([]);
   const [multiGhost, setMultiGhost] = useState(null);
@@ -904,7 +914,10 @@ function PageCanvas({
       try {
         const result = await saveElementPhotoUrlAction(familySlug, albumId, targetSlot.id, data.url, false);
         if (result?.error) console.error(result.error);
-        else startTransition(() => router.refresh());
+        else {
+          setLocalElements((prev) => prev.map((el) => (el.id === targetSlot.id ? { ...el, photo_url: data.url } : el)));
+          startTransition(() => router.refresh());
+        }
       } catch (err) {
         console.error("Rasmni slotga joylashtirishda xato:", err);
       }
@@ -1011,6 +1024,7 @@ function PageCanvas({
   const handleDelete = (elId) => {
     const f = delRef.current;
     if (!f) return;
+    setLocalElements((prev) => prev.filter((el) => el.id !== elId));
     f.elements.familySlug.value = familySlug;
     f.elements.pageId.value = page.id;
     f.elements.albumId.value = albumId;
@@ -1139,6 +1153,7 @@ function PageCanvas({
           saveElementPhotoUrlAction={saveElementPhotoUrlAction}
           updateElementCropAction={updateElementCropAction}
           canEdit={canEdit}
+          onPhotoSaved={(url) => setLocalElements((prev) => prev.map((x) => (x.id === el.id ? { ...x, photo_url: url } : x)))}
         />
       );
     }
@@ -1292,7 +1307,7 @@ function PageCanvas({
   );
 }
 
-function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, updateElementCropAction, canEdit }) {
+function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, updateElementCropAction, canEdit, onPhotoSaved }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -1330,6 +1345,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
       if (result?.error) {
         setError(result.error);
       } else {
+        onPhotoSaved?.(blob.url);
         startTransition(() => router.refresh());
       }
     } catch (err) {
