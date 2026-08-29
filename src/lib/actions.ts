@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, refresh } from "next/cache";
 import { findUserByEmail, createUser } from "@/lib/user";
 import { verifyPassword } from "@/lib/password";
 import { createSession, destroySession, getSession } from "@/lib/session";
@@ -588,6 +588,7 @@ export async function renameAlbumAction(_prevState: ActionState, formData: FormD
 
   await updateAlbumTitle(albumId, title);
   revalidatePath(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -599,6 +600,7 @@ export async function addAlbumPageAction(_prevState: ActionState, formData: Form
   const albumId = String(formData.get("albumId") || "").trim();
   await createAlbumPage(albumId, "l1");
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -611,6 +613,7 @@ export async function deleteAlbumPageAction(_prevState: ActionState, formData: F
   const pageId = String(formData.get("pageId") || "").trim();
   await deletePage(pageId);
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -624,6 +627,7 @@ export async function changePageLayoutAction(_prevState: ActionState, formData: 
   const layoutId = String(formData.get("layoutId") || "l1") as LayoutId;
   await changePageLayout(pageId, layoutId);
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -640,6 +644,7 @@ export async function applyPageTemplateAction(_prevState: ActionState, formData:
 
   await applyPageTemplate(pageId, templateId);
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -652,6 +657,7 @@ export async function updatePageMetaAction(_prevState: ActionState, formData: Fo
   const pageId = String(formData.get("pageId") || "").trim();
   await updatePageMeta(pageId, String(formData.get("dateLabel") || ""), String(formData.get("location") || ""));
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -664,6 +670,7 @@ export async function updateElementTextAction(_prevState: ActionState, formData:
   const elementId = String(formData.get("elementId") || "").trim();
   await updateElementText(elementId, String(formData.get("text") || ""));
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -701,6 +708,7 @@ export async function uploadElementPhotoAction(_prevState: ActionState, formData
   }
 
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -727,6 +735,7 @@ export async function saveElementPhotoUrlAction(
       }
     }
     revalidatePath(`/${familySlug}/dashboard`);
+    refresh();
     return { ok: true };
   } catch (e) {
     return { error: "Saqlashda xato: " + String(e) };
@@ -859,6 +868,7 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
   }
 
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true, albumId };
 }
 
@@ -897,6 +907,7 @@ export async function createMemoryAction(_prevState: ActionState, formData: Form
     );
 
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Xotira yaratishda xato: " + String(e) };
@@ -920,6 +931,7 @@ export async function updateMemoryAction(_prevState: ActionState, formData: Form
     const updated = await updateMemory(memoryId, check.family.id, title, description, memoryDate, location, personId || null);
     if (!updated) return { error: "Xotira topilmadi." };
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Xotira yangilashda xato: " + String(e) };
@@ -945,6 +957,7 @@ export async function updateMemoryPhotoAction(_prevState: ActionState, formData:
     const updated = await updateMemoryPhoto(memoryId, check.family.id, blob.url);
     if (!updated) return { error: "Xotira topilmadi." };
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Rasm yuklashda xato: " + String(e) };
@@ -961,6 +974,7 @@ export async function deleteMemoryAction(_prevState: ActionState, formData: Form
   try {
     await deleteMemory(memoryId, check.family.id);
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Xotira o'chirishda xato: " + String(e) };
@@ -981,6 +995,7 @@ export async function deleteElementAction(_prevState: ActionState, formData: For
   try {
     await deleteElement(elementId, pageId);
     revalidatePath(`/${familySlug}/dashboard`);
+    refresh();
     return { ok: true };
   } catch {
     return { error: "Element o'chirishda xato yuz berdi." };
@@ -1067,6 +1082,7 @@ export async function updateElementPositionAction(_prevState: ActionState, formD
       rotation: rRaw != null && rRaw !== "" ? Number(rRaw) : undefined,
     });
     revalidatePath(`/${familySlug}/dashboard`);
+    refresh();
     return { ok: true };
   } catch {
     return { error: "Element joylashuvini saqlashda xato." };
@@ -1220,6 +1236,7 @@ export async function changePageBackgroundAction(_prevState: ActionState, formDa
 
   await updatePageBackground(pageId, backgroundId);
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -1235,6 +1252,7 @@ export async function updateElementFrameAction(_prevState: ActionState, formData
 
   await updateElementFrame(elementId, frameStyle);
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -1253,6 +1271,7 @@ export async function updateElementTextStyleAction(_prevState: ActionState, form
 
   await updateElementTextStyle(elementId, { size, color, align, font });
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -1271,6 +1290,7 @@ export async function addStickerElementAction(_prevState: ActionState, formData:
 
   await addStickerElement(pageId, stickerId, pos);
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -1286,6 +1306,7 @@ export async function updateElementStickerColorAction(_prevState: ActionState, f
 
   await updateElementStickerColor(elementId, color);
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -1300,6 +1321,7 @@ export async function addTextElementAction(_prevState: ActionState, formData: Fo
 
   await addTextElement(pageId, { x: 30, y: 40, w: 40, h: 20 });
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -1314,6 +1336,7 @@ export async function addPhotoElementAction(_prevState: ActionState, formData: F
 
   await addPhotoElement(pageId, { x: 30, y: 30, w: 32, h: 32 });
   revalidatePath(`/${familySlug}/dashboard`);
+  refresh();
   return { ok: true };
 }
 
@@ -1336,6 +1359,7 @@ export async function addPhotoWithUrlAction(_prevState: ActionState, formData: F
     const elementId = await addPhotoElement(pageId, { x, y, w, h });
     await updateElementPhoto(elementId, photoUrl);
     revalidatePath(`/${familySlug}/dashboard`);
+    refresh();
     return { ok: true };
   } catch {
     return { error: "Rasm qo'shishda xato yuz berdi." };
@@ -1375,6 +1399,7 @@ export async function createStoryAction(_prevState: ActionState, formData: FormD
     });
 
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Hikoya yaratishda xato: " + String(e) };
@@ -1403,6 +1428,7 @@ export async function updateStoryAction(_prevState: ActionState, formData: FormD
       storyDate,
     });
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Hikoya yangilashda xato: " + String(e) };
@@ -1427,6 +1453,7 @@ export async function updateStoryPhotoAction(_prevState: ActionState, formData: 
     });
     await updateStoryPhoto(storyId, blob.url);
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Rasm yuklashda xato: " + String(e) };
@@ -1443,6 +1470,7 @@ export async function deleteStoryAction(_prevState: ActionState, formData: FormD
   try {
     await deleteStory(storyId, check.family.id);
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Hikoya o'chirishda xato: " + String(e) };
@@ -1468,6 +1496,7 @@ export async function createPlaceAction(_prevState: ActionState, formData: FormD
       address: String(formData.get("address") || "").trim() || undefined,
     });
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Joy qo'shishda xato: " + String(e) };
@@ -1493,6 +1522,7 @@ export async function updatePlaceAction(_prevState: ActionState, formData: FormD
       address: String(formData.get("address") || "").trim() || undefined,
     });
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Joy yangilashda xato: " + String(e) };
@@ -1509,6 +1539,7 @@ export async function deletePlaceAction(_prevState: ActionState, formData: FormD
   try {
     await deletePlace(placeId, check.family.id);
     revalidatePath(`/${check.family.slug}/dashboard`);
+    refresh();
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Joy o'chirishda xato: " + String(e) };
@@ -1533,6 +1564,7 @@ export async function reorderAlbumPagesAction(_prevState: ActionState, formData:
     const pageIds = pageIdsRaw.split(",").filter(Boolean);
     await reorderAlbumPages(albumId, pageIds);
     revalidatePath(`/${familySlug}/dashboard`);
+    refresh();
     return { ok: true };
   } catch {
     return { error: "Sahifalarni tartiblashda xato." };
@@ -1552,6 +1584,7 @@ export async function duplicateAlbumPageAction(_prevState: ActionState, formData
   try {
     await duplicateAlbumPage(pageId, albumId);
     revalidatePath(`/${familySlug}/dashboard`);
+    refresh();
     return { ok: true };
   } catch {
     return { error: "Sahifani nusxalashda xato." };
@@ -1575,6 +1608,7 @@ export async function updatePageBackgroundImageAction(_prevState: ActionState, f
   try {
     await updatePageBackgroundImage(pageId, imageUrl || null);
     revalidatePath(`/${familySlug}/dashboard`);
+    refresh();
     return { ok: true };
   } catch {
     return { error: "Fon rasmini saqlashda xato." };
