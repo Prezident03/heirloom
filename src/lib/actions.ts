@@ -57,6 +57,7 @@ import {
   groupElements,
   ungroupElements,
   updateElementCrop,
+  updateElementFilter,
   addPhotoElement,
   applyPageTemplate,
   reorderAlbumPages,
@@ -1147,6 +1148,26 @@ export async function updateElementCropAction(_prevState: ActionState, formData:
     return { ok: true };
   } catch {
     return { error: "Cropni saqlashda xato." };
+  }
+}
+
+export async function updateElementFilterAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const elementId = String(formData.get("elementId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
+  const filterJson = String(formData.get("filterJson") || "").trim();
+
+  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
+  if (filterJson.length > 500) return { error: "Filtr ma'lumoti noto'g'ri." };
+
+  try {
+    await updateElementFilter(elementId, pageId, filterJson);
+    return { ok: true };
+  } catch {
+    return { error: "Filtrni saqlashda xato." };
   }
 }
 

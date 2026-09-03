@@ -53,6 +53,7 @@ export type PageElement = {
   crop_dy: number | null;
   flip_h: boolean | null;
   flip_v: boolean | null;
+  photo_filter: string | null;
 };
 
 export const BACKGROUNDS = {
@@ -139,11 +140,16 @@ export type Template = {
 
 const TEMPLATE_IDS = [
   "classic-cream", "ikki-esdalik", "uch-lavha", "minimal-oq",
-  "sayohat", "tabiat-sayri",
-  "tugilgan-kun", "yubiley", "bayram-kechasi",
+  "klassik-katta", "ikki-foto-tort",
+  "kollej-2", "kollej-3", "kollej-4-grid", "kollej-4-mixed", "kollej-5", "kollej-6",
+  "sayohat", "tabiat-sayri", "sayohat-duo", "sayohat-trilogiya",
+  "bolalik-lahzalari", "oila-surati", "oila-avlodlari",
+  "toy-marosimi", "toy-tantana",
+  "tugilgan-kun", "tugilgan-kun-muborak",
+  "tabiat-manzarasi", "tabiat-qoyasi",
+  "yubiley", "bayram-kechasi",
   "bahor", "qish-ertagi",
   "romantik-kech",
-  "bolalik-lahzalari",
 ] as const;
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
@@ -332,6 +338,227 @@ export const TEMPLATES: Record<TemplateId, Template> = {
       { stickerId: "smile", x: 46, y: 3, w: 9, h: 9, color: "#B8863B", rotation: -6 },
       { stickerId: "crown", x: 2, y: 2, w: 9, h: 9, color: "#B8863B", rotation: -8 },
       { stickerId: "star", x: 90, y: 2, w: 8, h: 8, color: "#B8863B", rotation: 8 },
+    ],
+  },
+  "klassik-katta": {
+    name: "Klassik katta",
+    category: "Oddiy",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 6, y: 6, w: 88, h: 62, frame: "polaroid", rotation: -2 },
+      { type: "text", x: 6, y: 72, w: 88, h: 20, textStyle: { align: "center", font: "serif" } },
+    ],
+    stickers: [{ stickerId: "tape-gold", x: 38, y: 2, w: 24, h: 6, rotation: -2 }],
+  },
+  "ikki-foto-tort": {
+    name: "Ikki foto (tort)",
+    category: "Oddiy",
+    backgroundId: "slate",
+    slots: [
+      { type: "photo", x: 8, y: 6, w: 84, h: 44, frame: "soft", rotation: 2 },
+      { type: "photo", x: 8, y: 54, w: 84, h: 38, rotation: -3 },
+    ],
+    stickers: [],
+  },
+  "kollej-2": {
+    name: "2 rasm kolleji",
+    category: "Kollej",
+    backgroundId: "sage",
+    slots: [
+      { type: "photo", x: 4, y: 8, w: 44, h: 84, rotation: -3 },
+      { type: "photo", x: 52, y: 8, w: 44, h: 84, rotation: 3 },
+    ],
+    stickers: [{ stickerId: "tape-teal", x: 46, y: 2, w: 10, h: 6 }],
+  },
+  "kollej-3": {
+    name: "3 rasm kolleji",
+    category: "Kollej",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 4, y: 14, w: 29, h: 72, rotation: -6 },
+      { type: "photo", x: 35, y: 6, w: 29, h: 80, rotation: 3 },
+      { type: "photo", x: 66, y: 12, w: 29, h: 74, rotation: -4 },
+    ],
+    stickers: [],
+  },
+  "kollej-4-grid": {
+    name: "4 rasm (2x2)",
+    category: "Kollej",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 2, y: 2, w: 48, h: 48, rotation: -4 },
+      { type: "photo", x: 50, y: 2, w: 48, h: 48, rotation: 3 },
+      { type: "photo", x: 2, y: 50, w: 48, h: 48, rotation: -2 },
+      { type: "photo", x: 50, y: 50, w: 48, h: 48, rotation: 5 },
+    ],
+    stickers: [],
+  },
+  "kollej-4-mixed": {
+    name: "4 rasm (aralash)",
+    category: "Kollej",
+    backgroundId: "slate",
+    slots: [
+      { type: "photo", x: 2, y: 2, w: 60, h: 60, rotation: -3 },
+      { type: "photo", x: 66, y: 2, w: 32, h: 28, rotation: 2 },
+      { type: "photo", x: 66, y: 34, w: 32, h: 28, rotation: -2 },
+      { type: "photo", x: 2, y: 66, w: 96, h: 32, rotation: 1 },
+    ],
+    stickers: [],
+  },
+  "kollej-5": {
+    name: "5 rasm kolleji",
+    category: "Kollej",
+    backgroundId: "blush",
+    slots: [
+      { type: "photo", x: 2, y: 2, w: 48, h: 48, rotation: -4 },
+      { type: "photo", x: 50, y: 2, w: 48, h: 48, rotation: 3 },
+      { type: "photo", x: 2, y: 54, w: 31, h: 44, rotation: -2 },
+      { type: "photo", x: 34.5, y: 54, w: 31, h: 44, rotation: 2 },
+      { type: "photo", x: 67, y: 54, w: 31, h: 44, rotation: -3 },
+    ],
+    stickers: [],
+  },
+  "kollej-6": {
+    name: "6 rasm (3x2)",
+    category: "Kollej",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 0, y: 0, w: 33.3, h: 50, rotation: -3 },
+      { type: "photo", x: 33.3, y: 0, w: 33.3, h: 50, rotation: 2 },
+      { type: "photo", x: 66.6, y: 0, w: 33.4, h: 50, rotation: -2 },
+      { type: "photo", x: 0, y: 50, w: 33.3, h: 50, rotation: 3 },
+      { type: "photo", x: 33.3, y: 50, w: 33.3, h: 50, rotation: -4 },
+      { type: "photo", x: 66.6, y: 50, w: 33.4, h: 50, rotation: 1 },
+    ],
+    stickers: [],
+  },
+  "sayohat-duo": {
+    name: "Sayohat duo",
+    category: "Sayohat",
+    backgroundId: "sage",
+    slots: [
+      { type: "photo", x: 4, y: 6, w: 58, h: 88, rotation: -4 },
+      { type: "photo", x: 66, y: 8, w: 30, h: 44, rotation: 3 },
+      { type: "text", x: 66, y: 56, w: 30, h: 36, textStyle: { font: "handwriting", color: "#2F4C48" } },
+    ],
+    stickers: [
+      { stickerId: "camera", x: 3, y: 90, w: 10, h: 10, color: "#1E2621" },
+      { stickerId: "sun", x: 88, y: 2, w: 10, h: 10, color: "#B8863B" },
+    ],
+  },
+  "sayohat-trilogiya": {
+    name: "Sayohat trilogiyasi",
+    category: "Sayohat",
+    backgroundId: "blush",
+    slots: [
+      { type: "photo", x: 4, y: 7, w: 30, h: 50, rotation: -7 },
+      { type: "photo", x: 35, y: 4, w: 30, h: 54, rotation: 4 },
+      { type: "photo", x: 66, y: 8, w: 30, h: 48, rotation: -5 },
+      { type: "text", x: 4, y: 62, w: 92, h: 32, textStyle: { align: "center" } },
+    ],
+    stickers: [
+      { stickerId: "camera", x: 2, y: 2, w: 9, h: 9, color: "#1E2621" },
+      { stickerId: "feather", x: 90, y: 2, w: 8, h: 8, color: "#5C7A73" },
+    ],
+  },
+  "oila-surati": {
+    name: "Oila surati",
+    category: "Oila",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 5, y: 5, w: 90, h: 62, frame: "polaroid", rotation: -2 },
+      { type: "text", x: 5, y: 70, w: 90, h: 22, textStyle: { align: "center", font: "serif" } },
+    ],
+    stickers: [
+      { stickerId: "flower", x: 2, y: 2, w: 10, h: 10, color: "#A8453A" },
+      { stickerId: "leaf", x: 88, y: 2, w: 9, h: 9, color: "#2F4C48" },
+    ],
+  },
+  "oila-avlodlari": {
+    name: "Oila avlodlari",
+    category: "Oila",
+    backgroundId: "blush",
+    slots: [
+      { type: "photo", x: 3, y: 4, w: 46, h: 78, rotation: -5 },
+      { type: "photo", x: 51, y: 4, w: 46, h: 78, rotation: 4 },
+      { type: "text", x: 3, y: 84, w: 94, h: 12, textStyle: { align: "center" } },
+    ],
+    stickers: [
+      { stickerId: "heart", x: 46, y: 3, w: 9, h: 9, color: "#A8453A", rotation: 8 },
+      { stickerId: "star", x: 2, y: 2, w: 8, h: 8, color: "#B8863B", rotation: -8 },
+    ],
+  },
+  "toy-marosimi": {
+    name: "To'y marosimi",
+    category: "To'y",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 4, y: 6, w: 44, h: 70, rotation: -4 },
+      { type: "photo", x: 52, y: 6, w: 44, h: 70, rotation: 5 },
+      { type: "text", x: 4, y: 80, w: 92, h: 12, textStyle: { align: "center", font: "serif", color: "#B8863B" } },
+    ],
+    stickers: [
+      { stickerId: "heart", x: 2, y: 2, w: 9, h: 9, color: "#A8453A", rotation: -8 },
+      { stickerId: "tape-gold", x: 38, y: 78, w: 24, h: 6, rotation: -3 },
+    ],
+  },
+  "toy-tantana": {
+    name: "To'y tantanasi",
+    category: "To'y",
+    backgroundId: "blush",
+    slots: [
+      { type: "photo", x: 12, y: 6, w: 76, h: 60, frame: "polaroid", rotation: -3 },
+      { type: "text", x: 12, y: 70, w: 76, h: 20, textStyle: { align: "center", font: "handwriting", color: "#A8453A" } },
+    ],
+    stickers: [
+      { stickerId: "heart", x: 4, y: 4, w: 9, h: 9, color: "#A8453A", rotation: -8 },
+      { stickerId: "flower", x: 88, y: 4, w: 9, h: 9, color: "#A8453A", rotation: 10 },
+    ],
+  },
+  "tugilgan-kun-muborak": {
+    name: "Tug'ilgan kun (kollej)",
+    category: "Tug'ilgan kun",
+    backgroundId: "paper",
+    slots: [
+      { type: "photo", x: 6, y: 6, w: 52, h: 60, rotation: -3 },
+      { type: "photo", x: 62, y: 6, w: 32, h: 28, rotation: 2 },
+      { type: "photo", x: 62, y: 38, w: 32, h: 28, rotation: -2 },
+      { type: "text", x: 6, y: 70, w: 88, h: 24, textStyle: { align: "center", font: "handwriting", color: "#A8453A" } },
+    ],
+    stickers: [
+      { stickerId: "cake", x: 2, y: 2, w: 10, h: 10, color: "#A8453A" },
+      { stickerId: "party", x: 88, y: 2, w: 10, h: 10, color: "#B8863B" },
+      { stickerId: "sparkles", x: 2, y: 88, w: 9, h: 9, color: "#B8863B" },
+      { stickerId: "gift", x: 88, y: 88, w: 9, h: 9, color: "#2F4C48" },
+    ],
+  },
+  "tabiat-manzarasi": {
+    name: "Tabiat manzarasi",
+    category: "Tabiat",
+    backgroundId: "sage",
+    slots: [
+      { type: "photo", x: 4, y: 6, w: 92, h: 58, frame: "soft", rotation: 2 },
+      { type: "text", x: 4, y: 68, w: 92, h: 26, textStyle: { align: "center", font: "serif", color: "#2F4C48" } },
+    ],
+    stickers: [
+      { stickerId: "leaf", x: 2, y: 2, w: 10, h: 10, color: "#2F4C48" },
+      { stickerId: "feather", x: 88, y: 2, w: 9, h: 9, color: "#5C7A73" },
+      { stickerId: "sun", x: 2, y: 88, w: 9, h: 9, color: "#B8863B" },
+    ],
+  },
+  "tabiat-qoyasi": {
+    name: "Tabiat qo'ynida",
+    category: "Tabiat",
+    backgroundId: "slate",
+    slots: [
+      { type: "photo", x: 4, y: 8, w: 44, h: 84, rotation: -4 },
+      { type: "photo", x: 52, y: 8, w: 44, h: 44, rotation: 3 },
+      { type: "photo", x: 52, y: 56, w: 44, h: 36, rotation: -2 },
+    ],
+    stickers: [
+      { stickerId: "cloud", x: 2, y: 2, w: 9, h: 9, color: "#5C7A73" },
+      { stickerId: "snowflake", x: 88, y: 2, w: 8, h: 8, color: "#5C7A73" },
+      { stickerId: "leaf", x: 2, y: 90, w: 8, h: 8, color: "#2F4C48" },
     ],
   },
 };
@@ -594,6 +821,11 @@ export async function updateElementCrop(
   if (crop.flipV !== undefined) await sql`UPDATE page_elements SET flip_v = ${crop.flipV} WHERE id = ${elementId} AND page_id = ${pageId}`;
 }
 
+export async function updateElementFilter(elementId: string, pageId: string, filterJson: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE page_elements SET photo_filter = ${filterJson} WHERE id = ${elementId} AND page_id = ${pageId}`;
+}
+
 export async function updateElementCaption(elementId: string, caption: string): Promise<void> {
   await ensureSchema();
   await sql`UPDATE page_elements SET caption = ${caption.trim() || null} WHERE id = ${elementId}`;
@@ -712,7 +944,7 @@ export async function duplicateElement(elementId: string, pageId: string): Promi
   const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
   const now = new Date().toISOString();
   await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style, sticker_id, sticker_color, text_size, text_color, text_align, text_font)
+    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style, sticker_id, sticker_color, text_size, text_color, text_align, text_font, crop_scale, crop_dx, crop_dy, flip_h, flip_v, photo_filter)
     VALUES (
       ${newId},
       ${pageId},
@@ -735,7 +967,13 @@ export async function duplicateElement(elementId: string, pageId: string): Promi
       ${src.text_size ?? 22},
       ${src.text_color ?? "#2E362F"},
       ${src.text_align ?? "left"},
-      ${src.text_font ?? "handwriting"}
+      ${src.text_font ?? "handwriting"},
+      ${src.crop_scale ?? 1},
+      ${src.crop_dx ?? 0},
+      ${src.crop_dy ?? 0},
+      ${src.flip_h ?? false},
+      ${src.flip_v ?? false},
+      ${src.photo_filter ?? null}
     )
   `;
   return newId;

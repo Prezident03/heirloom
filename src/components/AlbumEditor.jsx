@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useActionState, useCallback, startTransition } from "react";
+import React, { useState, useRef, useEffect, useMemo, useActionState, useCallback, startTransition, useImperativeHandle } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import {
@@ -14,7 +14,7 @@ import {
   Camera, Music, Crown, Umbrella,
   Snowflake, Smile, Feather, Type, Download,
   Loader2, Undo2, Redo2, Share2, Link2, Group, Ungroup, Check, FlipHorizontal2, FlipVertical2, AlignCenterHorizontal,
-  Maximize2, Minimize2, Layers,
+  Maximize2, Minimize2, Layers, SlidersHorizontal,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
@@ -99,6 +99,40 @@ const FRAME_LIST = [
   { id: "soft", name: "Yumshoq soya" },
   { id: "none", name: "Ramkasiz" },
 ];
+
+// ============================================================
+// 🆕 Rasm filtrlari (Canva-uslubidagi tayyor filtrlar + sozlash)
+// ============================================================
+const DEFAULT_PHOTO_FILTER = { brightness: 100, contrast: 100, saturate: 100, grayscale: 0, sepia: 0 };
+
+const PHOTO_FILTER_PRESETS = [
+  { id: "original", name: "Original", values: { brightness: 100, contrast: 100, saturate: 100, grayscale: 0, sepia: 0 } },
+  { id: "vivid", name: "Yorqin", values: { brightness: 108, contrast: 110, saturate: 122, grayscale: 0, sepia: 0 } },
+  { id: "soft", name: "Yumshoq", values: { brightness: 106, contrast: 92, saturate: 86, grayscale: 0, sepia: 8 } },
+  { id: "bw", name: "Qora-oq", values: { brightness: 104, contrast: 114, saturate: 0, grayscale: 100, sepia: 0 } },
+  { id: "vintage", name: "Vintage", values: { brightness: 103, contrast: 96, saturate: 78, grayscale: 0, sepia: 42 } },
+  { id: "dramatic", name: "Dramatik", values: { brightness: 94, contrast: 132, saturate: 108, grayscale: 0, sepia: 0 } },
+];
+
+function parsePhotoFilter(raw) {
+  if (!raw) return { ...DEFAULT_PHOTO_FILTER };
+  try {
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_PHOTO_FILTER, ...parsed };
+  } catch {
+    return { ...DEFAULT_PHOTO_FILTER };
+  }
+}
+
+function photoFilterCss(vals) {
+  const v = { ...DEFAULT_PHOTO_FILTER, ...vals };
+  return `brightness(${v.brightness / 100}) contrast(${v.contrast / 100}) saturate(${v.saturate / 100}) grayscale(${v.grayscale / 100}) sepia(${v.sepia / 100})`;
+}
+
+function isDefaultPhotoFilter(vals) {
+  const v = { ...DEFAULT_PHOTO_FILTER, ...vals };
+  return v.brightness === 100 && v.contrast === 100 && v.saturate === 100 && v.grayscale === 0 && v.sepia === 0;
+}
 
 const TEMPLATES = {
   "classic-cream": {
@@ -411,14 +445,7 @@ function TransformableElement({
   isSelected,
   onSelect,
   onUpdate,
-  onDelete,
-  onDuplicate,
-  onLayerUp,
-  onLayerDown,
   onStyle,
-  onCenter,
-  onFlipH,
-  onFlipV,
   canEdit,
   canvasRef,
 }) {
@@ -720,14 +747,7 @@ function TransformableElement({
           />
 
           <ElementFloatingToolbar
-            onDuplicate={() => onDuplicate(element.id)}
-            onLayerUp={() => onLayerUp(element.id)}
-            onLayerDown={() => onLayerDown(element.id)}
-            onDelete={() => onDelete(element.id)}
             onStyle={() => onStyle(element.id)}
-            onCenter={() => onCenter(element.id)}
-            onFlipH={element.type === "photo" ? () => onFlipH(element.id) : null}
-            onFlipV={element.type === "photo" ? () => onFlipV(element.id) : null}
           />
         </>
       )}
@@ -735,7 +755,7 @@ function TransformableElement({
   );
 }
 
-function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete, onStyle, onCenter, onFlipH, onFlipV }) {
+function ElementFloatingToolbar({ onStyle }) {
   return (
     <div
       style={{
@@ -759,37 +779,11 @@ function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete,
       <button type="button" className="fm-toolbar-btn" title="Uslub" onClick={onStyle}>
         <Palette size={14} />
       </button>
-      {onFlipH && (
-        <button type="button" className="fm-toolbar-btn" title="Gorizontal aylantirish" onClick={onFlipH}>
-          <FlipHorizontal2 size={14} />
-        </button>
-      )}
-      {onFlipV && (
-        <button type="button" className="fm-toolbar-btn" title="Vertikal aylantirish" onClick={onFlipV}>
-          <FlipVertical2 size={14} />
-        </button>
-      )}
-      <button type="button" className="fm-toolbar-btn" title="Markazga joylashtirish" onClick={onCenter}>
-        <AlignCenterHorizontal size={14} />
-      </button>
-      <button type="button" className="fm-toolbar-btn" title="Nusxalash" onClick={onDuplicate}>
-        <Copy size={14} />
-      </button>
-      <button type="button" className="fm-toolbar-btn" title="Tepaga chiqarish" onClick={onLayerUp}>
-        <ChevronUp size={16} />
-      </button>
-      <button type="button" className="fm-toolbar-btn" title="Pastga tushirish" onClick={onLayerDown}>
-        <ChevronDown size={16} />
-      </button>
-      <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.18)", margin: "0 2px" }} />
-      <button type="button" className="fm-toolbar-btn danger" title="O'chirish" onClick={onDelete}>
-        <Trash2 size={14} />
-      </button>
     </div>
   );
 }
 
-function PageCanvas({
+const PageCanvas = React.forwardRef(function PageCanvas({
   page,
   layout,
   familySlug,
@@ -816,7 +810,7 @@ function PageCanvas({
   ungroupElementsAction,
   updateElementCropAction,
   selectedId,
-}) {
+}, ref) {
   const router = useRouter();
   const canvasRef = useRef(null);
   // MUHIM: Next.js 16'ning router.refresh()/revalidatePath keshini qayta
@@ -870,7 +864,7 @@ function PageCanvas({
       setMultiIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
     } else {
       setMultiIds([]);
-      onElementSelect(id);
+      onElementSelect(id, elements.find((e) => e.id === id)?.type || null);
     }
   };
 
@@ -1270,6 +1264,18 @@ function PageCanvas({
     return null;
   };
 
+  // Tepadagi doimiy toolbar (AlbumEditor darajasida) tanlangan element
+  // ustida amal bajarishi uchun — bu komponentning ichki holatiga
+  // (elements, selectedId) to'g'ridan-to'g'ri kirish imkonini beradi.
+  useImperativeHandle(ref, () => ({
+    centerSelected: () => selectedId && handleCenter(selectedId),
+    flipSelected: (axis) => selectedId && handleFlip(selectedId, axis),
+    duplicateSelected: () => selectedId && handleDuplicate(selectedId),
+    layerUpSelected: () => selectedId && handleLayerUp(selectedId),
+    layerDownSelected: () => selectedId && handleLayerDown(selectedId),
+    deleteSelected: () => selectedId && handleDelete(selectedId),
+  }), [selectedId, elements]);
+
   return (
     <div
       ref={canvasRef}
@@ -1365,14 +1371,7 @@ function PageCanvas({
           isSelected={selectedId === el.id}
           onSelect={handleElementSelect}
           onUpdate={(updates) => handleUpdate(el.id, updates)}
-          onDelete={handleDelete}
-          onDuplicate={handleDuplicate}
-          onLayerUp={handleLayerUp}
-          onLayerDown={handleLayerDown}
           onStyle={onStyleElement}
-          onCenter={handleCenter}
-          onFlipH={(id) => handleFlip(id, "h")}
-          onFlipV={(id) => handleFlip(id, "v")}
           canEdit={canEdit}
           canvasRef={canvasRef}
         >
@@ -1414,7 +1413,7 @@ function PageCanvas({
       </div>
     </div>
   );
-}
+});
 
 function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPhotoUrlAction, updateElementCropAction, canEdit, onPhotoSaved }) {
   const router = useRouter();
@@ -1539,6 +1538,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
   const flipSX = crop.flipH ? -1 : 1;
   const flipSY = crop.flipV ? -1 : 1;
   const imgTransform = `translate(${crop.dx}%, ${crop.dy}%) scale(${crop.scale}) scaleX(${flipSX}) scaleY(${flipSY})`;
+  const imgFilterCss = useMemo(() => photoFilterCss(parsePhotoFilter(element.photo_filter)), [element.photo_filter]);
 
   return (
     <div
@@ -1618,6 +1618,7 @@ function PhotoSlotContent({ element, familySlug, albumId, pageId, saveElementPho
               objectFit: "cover",
               transform: imgTransform,
               transformOrigin: "center",
+              filter: imgFilterCss,
               userSelect: "none",
               pointerEvents: cropMode ? "auto" : "none",
               cursor: cropMode ? "grab" : "inherit",
@@ -2063,7 +2064,7 @@ const PANEL_LABEL_STYLE = { fontSize: 10.5, fontWeight: 600, color: TOKENS.ink60
 
 function StylePanelShell({ title, onClose, children }) {
   return (
-    <div style={{ width: 208, flexShrink: 0, background: TOKENS.card, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, padding: 14, alignSelf: "flex-start" }}>
+    <div style={{ width: 208, flexShrink: 0, background: TOKENS.card, borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, padding: 14, alignSelf: "flex-start", maxHeight: "min(560px, 80vh)", overflowY: "auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: TOKENS.ink }}>{title}</span>
         <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 2 }}>
@@ -2239,15 +2240,21 @@ function FramePreviewSwatch({ frameId }) {
   return <div style={{ width: 30, height: 30, borderRadius: 2, background: TOKENS.parchmentDeep, border: `1px dashed ${TOKENS.ink40}` }} />;
 }
 
-function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameAction, onClose }) {
+function PhotoStylePanel({ element, familySlug, albumId, pageId, updateElementFrameAction, updateElementFilterAction, onClose }) {
   const router = useRouter();
   const [frameState, formAction] = useActionState(updateElementFrameAction, undefined);
   const formRef = useRef(null);
+  const [filterState, filterFormAction] = useActionState(updateElementFilterAction, undefined);
+  const filterFormRef = useRef(null);
+  const [tab, setTab] = useState("frame");
+  const [filterVals, setFilterVals] = useState(() => parsePhotoFilter(element.photo_filter));
 
   // "current" pastda to'g'ridan-to'g'ri `element` propidan olinadi, shu
   // sabab server javobidan keyin sahifani yangilamasak, tugma bosilgandan
   // keyin ham eski ramka tanlangandek ko'rinaverardi.
   useEffect(() => { if (frameState?.ok) startTransition(() => router.refresh()); }, [frameState, router]);
+  useEffect(() => { if (filterState?.ok) startTransition(() => router.refresh()); }, [filterState, router]);
+  useEffect(() => { setFilterVals(parsePhotoFilter(element.photo_filter)); }, [element.photo_filter]);
 
   const submit = (frameId) => {
     const f = formRef.current;
@@ -2259,34 +2266,167 @@ function PhotoStylePanel({ element, familySlug, albumId, updateElementFrameActio
     f.requestSubmit();
   };
 
+  const commitFilter = (vals) => {
+    const f = filterFormRef.current;
+    if (!f || !pageId) return;
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = pageId;
+    f.elements.elementId.value = element.id;
+    f.elements.filterJson.value = JSON.stringify(vals);
+    f.requestSubmit();
+  };
+
+  const applyPreset = (vals) => {
+    setFilterVals(vals);
+    commitFilter(vals);
+  };
+
+  const adjustLive = (key, value) => {
+    setFilterVals((prev) => ({ ...prev, [key]: value }));
+  };
+
   const current = element.frame_style || "polaroid";
+  const previewFilterCss = photoFilterCss(filterVals);
 
   return (
-    <StylePanelShell title="Rasm ramkasi" onClose={onClose}>
+    <StylePanelShell title="Rasmni tahrirlash" onClose={onClose}>
       <form ref={formRef} action={formAction} style={{ display: "none" }}>
         <input type="hidden" name="familySlug" />
         <input type="hidden" name="albumId" />
         <input type="hidden" name="elementId" />
         <input type="hidden" name="frameStyle" />
       </form>
-      <div style={PANEL_LABEL_STYLE}>Ramka</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {FRAME_LIST.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => submit(f.id)}
-            style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 7, cursor: "pointer",
-              border: `1px solid ${current === f.id ? TOKENS.gold : TOKENS.parchmentDeep}`,
-              background: current === f.id ? TOKENS.parchmentDeep : "transparent",
-            }}
-          >
-            <FramePreviewSwatch frameId={f.id} />
-            <span style={{ fontSize: 12, color: TOKENS.ink, fontWeight: current === f.id ? 600 : 400 }}>{f.name}</span>
-          </button>
-        ))}
+      <form ref={filterFormRef} action={filterFormAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="filterJson" />
+      </form>
+
+      <div style={{ display: "flex", gap: 4, marginBottom: 12, background: TOKENS.parchmentDeep, borderRadius: 8, padding: 3 }}>
+        <button
+          type="button"
+          onClick={() => setTab("frame")}
+          style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "6px 8px",
+            borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+            background: tab === "frame" ? TOKENS.parchment : "transparent",
+            color: tab === "frame" ? TOKENS.ink : TOKENS.ink60,
+          }}
+        >
+          <Frame size={13} /> Ramka
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("filter")}
+          style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "6px 8px",
+            borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+            background: tab === "filter" ? TOKENS.parchment : "transparent",
+            color: tab === "filter" ? TOKENS.ink : TOKENS.ink60,
+          }}
+        >
+          <SlidersHorizontal size={13} /> Filtr
+        </button>
       </div>
+
+      {tab === "frame" ? (
+        <>
+          <div style={PANEL_LABEL_STYLE}>Ramka</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {FRAME_LIST.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => submit(f.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 7, cursor: "pointer",
+                  border: `1px solid ${current === f.id ? TOKENS.gold : TOKENS.parchmentDeep}`,
+                  background: current === f.id ? TOKENS.parchmentDeep : "transparent",
+                }}
+              >
+                <FramePreviewSwatch frameId={f.id} />
+                <span style={{ fontSize: 12, color: TOKENS.ink, fontWeight: current === f.id ? 600 : 400 }}>{f.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {element.photo_url && (
+            <div style={{ width: "100%", aspectRatio: "4/3", borderRadius: 7, overflow: "hidden", marginBottom: 10, background: TOKENS.parchmentDeep }}>
+              <img
+                src={element.photo_url}
+                alt=""
+                style={{ width: "100%", height: "100%", objectFit: "cover", filter: previewFilterCss, transition: "filter 0.12s" }}
+              />
+            </div>
+          )}
+          <div style={PANEL_LABEL_STYLE}>Tayyor filtrlar</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 12 }}>
+            {PHOTO_FILTER_PRESETS.map((p) => {
+              const active = JSON.stringify({ ...DEFAULT_PHOTO_FILTER, ...filterVals }) === JSON.stringify({ ...DEFAULT_PHOTO_FILTER, ...p.values });
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyPreset(p.values)}
+                  style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "5px 3px 6px", borderRadius: 7, cursor: "pointer",
+                    border: `1px solid ${active ? TOKENS.gold : TOKENS.parchmentDeep}`,
+                    background: active ? TOKENS.parchmentDeep : "transparent",
+                  }}
+                >
+                  {element.photo_url ? (
+                    <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 5, overflow: "hidden" }}>
+                      <img src={element.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: photoFilterCss(p.values) }} />
+                    </div>
+                  ) : (
+                    <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 5, background: TOKENS.parchmentDeep }} />
+                  )}
+                  <span style={{ fontSize: 10.5, color: TOKENS.ink, fontWeight: active ? 600 : 400 }}>{p.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={PANEL_LABEL_STYLE}>Sozlash</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 4 }}>
+            {[
+              { key: "brightness", label: "Yorqinlik", min: 40, max: 160 },
+              { key: "contrast", label: "Kontrast", min: 40, max: 160 },
+              { key: "saturate", label: "To'yinganlik", min: 0, max: 200 },
+              { key: "grayscale", label: "Qora-oq", min: 0, max: 100 },
+            ].map((s) => (
+              <div key={s.key}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: TOKENS.ink60, marginBottom: 2 }}>
+                  <span>{s.label}</span>
+                  <span>{filterVals[s.key]}</span>
+                </div>
+                <input
+                  type="range"
+                  min={s.min}
+                  max={s.max}
+                  value={filterVals[s.key]}
+                  onChange={(e) => adjustLive(s.key, Number(e.target.value))}
+                  onMouseUp={() => commitFilter(filterVals)}
+                  onTouchEnd={() => commitFilter(filterVals)}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            ))}
+          </div>
+          {!isDefaultPhotoFilter(filterVals) && (
+            <button
+              type="button"
+              onClick={() => applyPreset({ ...DEFAULT_PHOTO_FILTER })}
+              style={{ marginTop: 6, fontSize: 11.5, color: TOKENS.ink60, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+            >
+              Filtrni tiklash
+            </button>
+          )}
+        </>
+      )}
     </StylePanelShell>
   );
 }
@@ -2536,6 +2676,7 @@ function AlbumEditor({
   groupElementsAction,
   ungroupElementsAction,
   updateElementCropAction,
+  updateElementFilterAction,
   photos,
   onToolbarChange,
 }) {
@@ -2553,6 +2694,8 @@ function AlbumEditor({
   const [exportError, setExportError] = useState(null);
   const pageNodeRef = useRef(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
+  const [selectedElementType, setSelectedElementType] = useState(null);
+  const pageCanvasRef = useRef(null);
   const [stylePopupId, setStylePopupId] = useState(null);
   const [draggedPageIndex, setDraggedPageIndex] = useState(null);
   const [sessionUploads, setSessionUploads] = useState([]);
@@ -2997,6 +3140,31 @@ function AlbumEditor({
           </div>
         )}
 
+        {!previewMode && canEdit && (
+          <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#F4F2ED", borderRadius: 8, padding: 3 }}>
+            {(() => {
+              const disabled = !selectedElementId;
+              const btnStyle = { display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 28, background: "transparent", border: "none", borderRadius: 6, color: disabled ? "#C9C4BA" : TOKENS.ink, cursor: disabled ? "default" : "pointer" };
+              return (
+                <>
+                  <button type="button" onClick={() => pageCanvasRef.current?.centerSelected()} disabled={disabled} title="Markazga joylashtirish" style={btnStyle}><AlignCenterHorizontal size={15} /></button>
+                  {selectedElementType === "photo" && (
+                    <>
+                      <button type="button" onClick={() => pageCanvasRef.current?.flipSelected("h")} disabled={disabled} title="Gorizontal aylantirish" style={btnStyle}><FlipHorizontal2 size={15} /></button>
+                      <button type="button" onClick={() => pageCanvasRef.current?.flipSelected("v")} disabled={disabled} title="Vertikal aylantirish" style={btnStyle}><FlipVertical2 size={15} /></button>
+                    </>
+                  )}
+                  <button type="button" onClick={() => pageCanvasRef.current?.duplicateSelected()} disabled={disabled} title="Nusxalash (Ctrl+D)" style={btnStyle}><Copy size={15} /></button>
+                  <button type="button" onClick={() => pageCanvasRef.current?.layerUpSelected()} disabled={disabled} title="Tepaga chiqarish" style={btnStyle}><ChevronUp size={17} /></button>
+                  <button type="button" onClick={() => pageCanvasRef.current?.layerDownSelected()} disabled={disabled} title="Pastga tushirish" style={btnStyle}><ChevronDown size={17} /></button>
+                  <div style={{ width: 1, height: 16, background: TOKENS.parchmentDeep, margin: "0 2px" }} />
+                  <button type="button" onClick={() => pageCanvasRef.current?.deleteSelected()} disabled={disabled} title="O'chirish" style={{ ...btnStyle, color: disabled ? "#C9C4BA" : TOKENS.danger }}><Trash2 size={15} /></button>
+                </>
+              );
+            })()}
+          </div>
+        )}
+
         <div style={{ display: "flex", alignItems: "center", gap: 2, background: "#F4F2ED", borderRadius: 8, padding: 3 }}>
           <button type="button" onClick={zoomOut} disabled={zoom <= ZOOM_MIN} title="Kichraytirish" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 5, color: zoom <= ZOOM_MIN ? "#C9C4BA" : TOKENS.ink60, cursor: zoom <= ZOOM_MIN ? "default" : "pointer", fontSize: 15, lineHeight: 1 }}>−</button>
           <button type="button" onClick={zoomFit} title="Ekranga moslash" style={{ fontSize: 11, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: "none", cursor: "pointer", padding: "0 8px", minWidth: 44, textAlign: "center" }}>{Math.round(zoom * 100)}%</button>
@@ -3412,7 +3580,7 @@ function AlbumEditor({
                     {styleElement.type === "text" ? (
                       <TextStylePanel element={styleElement} familySlug={familySlug} updateElementTextStyleAction={updateElementTextStyleAction} onClose={() => setStylePopupId(null)} />
                     ) : styleElement.type === "photo" ? (
-                      <PhotoStylePanel element={styleElement} familySlug={familySlug} albumId={album.id} updateElementFrameAction={updateElementFrameAction} onClose={() => setStylePopupId(null)} />
+                      <PhotoStylePanel element={styleElement} familySlug={familySlug} albumId={album.id} pageId={currentPage?.id} updateElementFrameAction={updateElementFrameAction} updateElementFilterAction={updateElementFilterAction} onClose={() => setStylePopupId(null)} />
                     ) : (
                       <StickerStylePanel element={styleElement} familySlug={familySlug} updateElementStickerColorAction={updateElementStickerColorAction} onClose={() => setStylePopupId(null)} />
                     )}
@@ -3440,6 +3608,7 @@ function AlbumEditor({
                   >
                     <div ref={pageNodeRef} style={{ flex: 1, position: "relative" }}>
                       <PageCanvas
+                        ref={pageCanvasRef}
                         page={currentPage}
                         layout={currentLayout}
                         familySlug={familySlug}
@@ -3460,7 +3629,7 @@ function AlbumEditor({
                         onCommitPosition={handleCommitPosition}
                         onDuplicated={handleDuplicated}
                         onZIndexChange={handleZIndexChange}
-                        onElementSelect={setSelectedElementId}
+                        onElementSelect={(id, type) => { setSelectedElementId(id); setSelectedElementType(type || null); }}
                         onStyleElement={setStylePopupId}
                         groupElementsAction={groupElementsAction}
                         ungroupElementsAction={ungroupElementsAction}
@@ -3637,6 +3806,7 @@ export function AlbumsView({
   groupElementsAction,
   ungroupElementsAction,
   updateElementCropAction,
+  updateElementFilterAction,
   photos,
   onToolbarChange,
 }) {
@@ -3679,6 +3849,7 @@ export function AlbumsView({
           groupElementsAction={groupElementsAction}
           ungroupElementsAction={ungroupElementsAction}
           updateElementCropAction={updateElementCropAction}
+          updateElementFilterAction={updateElementFilterAction}
           onToolbarChange={onToolbarChange}
         />
       ) : (

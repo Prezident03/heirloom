@@ -69,6 +69,7 @@ import {
   groupElementsAction,
   ungroupElementsAction,
   updateElementCropAction,
+  updateElementFilterAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -251,6 +252,7 @@ export default async function FamilyDashboardPage({
       groupElementsAction={groupElementsAction}
       ungroupElementsAction={ungroupElementsAction}
       updateElementCropAction={updateElementCropAction}
+      updateElementFilterAction={updateElementFilterAction}
     />
   );
 }

@@ -377,6 +377,7 @@ export default function HeirloomApp({
   groupElementsAction,
   ungroupElementsAction,
   updateElementCropAction,
+  updateElementFilterAction,
 }) {
   const [view, setView] = useState(
     initialView === "tree" ? VIEWS.TREE
@@ -500,6 +501,7 @@ export default function HeirloomApp({
                 groupElementsAction={groupElementsAction}
                 ungroupElementsAction={ungroupElementsAction}
                 updateElementCropAction={updateElementCropAction}
+                updateElementFilterAction={updateElementFilterAction}
                 onToolbarChange={handleAlbumToolbarChange}
               />
             )}
