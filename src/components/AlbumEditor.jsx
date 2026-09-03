@@ -13,7 +13,7 @@ import {
   Sparkles, Moon, Cloud, Gift, Cake, PartyPopper,
   Camera, Music, Crown, Umbrella,
   Snowflake, Smile, Feather, Type, Download,
-  Loader2, Undo2, Redo2, Share2, Link2, Group, Ungroup, Check, FlipHorizontal2, FlipVertical2,
+  Loader2, Undo2, Redo2, Share2, Link2, Group, Ungroup, Check, FlipHorizontal2, FlipVertical2, AlignCenterHorizontal,
   Maximize2, Minimize2, Layers,
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
@@ -174,6 +174,54 @@ const TEMPLATE_LIST = [
   ...CATALOG_TEMPLATE_LIST.filter((t) => !(t.id in TEMPLATES)),
 ];
 const TEMPLATE_CATEGORIES = [...new Set(TEMPLATE_LIST.map((t) => t.category))];
+
+// Serverdagi applyPageTemplate() bilan bir xil mantiq — shablon tanlanganda
+// ekranda DARHOL (server javobini kutmasdan) ko'rsatish uchun elementlar
+// ro'yxatini shu yerda, klient tomonda ham quramiz. Vaqtinchalik ID'lar
+// ishlatiladi — server javobi kelgach (yoki keyingi haqiqiy yangilanishda)
+// haqiqiy ID'lar bilan almashadi.
+function buildTemplateElements(tpl) {
+  const out = [];
+  let slotIndex = 0;
+  for (const slot of tpl.slots || []) {
+    if (slot.type === "photo") {
+      out.push({
+        id: `temp_${Date.now()}_${slotIndex}`,
+        type: "photo",
+        slot_index: slotIndex,
+        position_x: slot.x, position_y: slot.y, position_w: slot.w, position_h: slot.h,
+        rotation: slot.rotation ?? 0, z_index: slotIndex,
+        frame_style: slot.frame || "polaroid",
+        photo_url: null,
+      });
+    } else {
+      const ts = slot.textStyle;
+      out.push({
+        id: `temp_${Date.now()}_${slotIndex}`,
+        type: "text",
+        slot_index: slotIndex,
+        position_x: slot.x, position_y: slot.y, position_w: slot.w, position_h: slot.h,
+        rotation: 0, z_index: slotIndex,
+        text_content: "",
+        text_size: ts?.size ?? null, text_color: ts?.color ?? null, text_align: ts?.align ?? null, text_font: ts?.font ?? null,
+      });
+    }
+    slotIndex++;
+  }
+  for (const st of tpl.stickers || []) {
+    out.push({
+      id: `temp_${Date.now()}_${slotIndex}`,
+      type: "sticker",
+      slot_index: slotIndex,
+      sticker_id: st.stickerId,
+      sticker_color: st.color || STICKER_DEFAULT_COLORS[st.stickerId] || null,
+      position_x: st.x, position_y: st.y, position_w: st.w, position_h: st.h,
+      rotation: st.rotation ?? 0, z_index: slotIndex,
+    });
+    slotIndex++;
+  }
+  return out;
+}
 
 const FONT_FAMILIES = {
   handwriting: "'Caveat', cursive",
@@ -368,6 +416,9 @@ function TransformableElement({
   onLayerUp,
   onLayerDown,
   onStyle,
+  onCenter,
+  onFlipH,
+  onFlipV,
   canEdit,
   canvasRef,
 }) {
@@ -674,6 +725,9 @@ function TransformableElement({
             onLayerDown={() => onLayerDown(element.id)}
             onDelete={() => onDelete(element.id)}
             onStyle={() => onStyle(element.id)}
+            onCenter={() => onCenter(element.id)}
+            onFlipH={element.type === "photo" ? () => onFlipH(element.id) : null}
+            onFlipV={element.type === "photo" ? () => onFlipV(element.id) : null}
           />
         </>
       )}
@@ -681,7 +735,7 @@ function TransformableElement({
   );
 }
 
-function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete, onStyle }) {
+function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete, onStyle, onCenter, onFlipH, onFlipV }) {
   return (
     <div
       style={{
@@ -704,6 +758,19 @@ function ElementFloatingToolbar({ onDuplicate, onLayerUp, onLayerDown, onDelete,
     >
       <button type="button" className="fm-toolbar-btn" title="Uslub" onClick={onStyle}>
         <Palette size={14} />
+      </button>
+      {onFlipH && (
+        <button type="button" className="fm-toolbar-btn" title="Gorizontal aylantirish" onClick={onFlipH}>
+          <FlipHorizontal2 size={14} />
+        </button>
+      )}
+      {onFlipV && (
+        <button type="button" className="fm-toolbar-btn" title="Vertikal aylantirish" onClick={onFlipV}>
+          <FlipVertical2 size={14} />
+        </button>
+      )}
+      <button type="button" className="fm-toolbar-btn" title="Markazga joylashtirish" onClick={onCenter}>
+        <AlignCenterHorizontal size={14} />
       </button>
       <button type="button" className="fm-toolbar-btn" title="Nusxalash" onClick={onDuplicate}>
         <Copy size={14} />
@@ -1021,6 +1088,35 @@ function PageCanvas({
     submitPositionForm(elId, newPos);
   };
 
+  const handleCenter = (elId) => {
+    const el = elements.find((e) => e.id === elId);
+    if (!el) return;
+    const w = el.position_w ?? 40;
+    const h = el.position_h ?? 40;
+    handleUpdate(elId, { x: Math.max(0, (100 - w) / 2), y: Math.max(0, (100 - h) / 2) });
+  };
+
+  const flipRef = useRef(null);
+  const [, flipFormAction] = useActionState(updateElementCropAction, undefined);
+  const handleFlip = (elId, axis) => {
+    const el = elements.find((e) => e.id === elId);
+    if (!el) return;
+    const f = flipRef.current;
+    if (!f) return;
+    const nextFlipH = axis === "h" ? !el.flip_h : !!el.flip_h;
+    const nextFlipV = axis === "v" ? !el.flip_v : !!el.flip_v;
+    setLocalElements((prev) => prev.map((x) => (x.id === elId ? { ...x, flip_h: nextFlipH, flip_v: nextFlipV } : x)));
+    f.elements.familySlug.value = familySlug;
+    f.elements.pageId.value = page.id;
+    f.elements.elementId.value = elId;
+    f.elements.scale.value = String(el.crop_scale || 1);
+    f.elements.dx.value = String(el.crop_dx || 0);
+    f.elements.dy.value = String(el.crop_dy || 0);
+    f.elements.flipH.value = String(nextFlipH);
+    f.elements.flipV.value = String(nextFlipV);
+    setTimeout(() => f.requestSubmit(), 0);
+  };
+
   const handleDelete = (elId) => {
     const f = delRef.current;
     if (!f) return;
@@ -1222,6 +1318,16 @@ function PageCanvas({
         <input type="hidden" name="zIndex" />
         <input type="hidden" name="rotation" />
       </form>
+      <form ref={flipRef} action={flipFormAction} style={{ display: "none" }}>
+        <input type="hidden" name="familySlug" />
+        <input type="hidden" name="pageId" />
+        <input type="hidden" name="elementId" />
+        <input type="hidden" name="scale" />
+        <input type="hidden" name="dx" />
+        <input type="hidden" name="dy" />
+        <input type="hidden" name="flipH" />
+        <input type="hidden" name="flipV" />
+      </form>
       <form ref={delRef} action={delFormAction} style={{ display: "none" }}>
         <input type="hidden" name="familySlug" />
         <input type="hidden" name="pageId" />
@@ -1264,6 +1370,9 @@ function PageCanvas({
           onLayerUp={handleLayerUp}
           onLayerDown={handleLayerDown}
           onStyle={onStyleElement}
+          onCenter={handleCenter}
+          onFlipH={(id) => handleFlip(id, "h")}
+          onFlipV={(id) => handleFlip(id, "v")}
           canEdit={canEdit}
           canvasRef={canvasRef}
         >
@@ -3071,7 +3180,7 @@ function AlbumEditor({
                             <div style={{ fontSize: 10, fontWeight: 600, color: TOKENS.ink60, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{cat}</div>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                               {TEMPLATE_LIST.filter((t) => t.category === cat).map((t) => (
-                                <form key={t.id} action={templateFormAction} onSubmit={() => setActivePanel(null)}>
+                                <form key={t.id} action={templateFormAction} onSubmit={() => { setPageOverrides((prev) => ({ ...prev, [targetPage.id]: { ...prev[targetPage.id], background_id: t.backgroundId, elements: buildTemplateElements(t) } })); setActivePanel(null); }}>
                                   <input type="hidden" name="familySlug" value={familySlug} />
                                   <input type="hidden" name="albumId" value={album.id} />
                                   <input type="hidden" name="pageId" value={targetPage.id} />
