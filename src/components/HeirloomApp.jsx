@@ -14,6 +14,7 @@ import { MemoriesView, AddMemoryModal } from "./MemoriesView";
 import { StoriesView, AddStoryModal } from "./StoriesView";
 import { PlacesView, AddPlaceModal } from "./PlacesView";
 import { SettingsView } from "./SettingsView";
+import { ThemeToggle, LangSwitch } from "./ThemeLangControls";
 import { DashboardView } from "./DashboardView";
 import { VIEWS } from "./shared";
 import { AlbumsView, CreateAlbumModal, UploadPhotosModal } from "./AlbumEditor";
@@ -57,7 +58,7 @@ function GlobalStyle() {
         cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
         white-space: nowrap; position: relative;
       }
-      .fm-nav-item:hover { background: rgba(242,237,226,0.08); color: ${TOKENS.parchment}; }
+      .fm-nav-item:hover { background: rgba(242,237,226,0.08); color: ${TOKENS.navFg}; }
       .fm-nav-item.active { background: rgba(184,134,59,0.18); color: ${TOKENS.goldSoft}; }
       .fm-nav-item.soon { opacity: 0.45; cursor: default; }
       .fm-link { background: none; border: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: ${TOKENS.teal}; display: flex; align-items: center; }
@@ -120,7 +121,7 @@ function GlobalStyle() {
       .fm-mobile-bottomnav {
         display: none;
         position: fixed; left: 0; right: 0; bottom: 0;
-        background: ${TOKENS.ink};
+        background: ${TOKENS.navBg};
         padding: 7px 4px calc(6px + env(safe-area-inset-bottom));
         z-index: 30;
         justify-content: space-around;
@@ -154,21 +155,21 @@ function GlobalStyle() {
         .fm-album-flyout { position: fixed !important; left: 220px; top: 0; bottom: 0; }
       }
       .fm-sidebar-tool-back { display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-bottom: 8px; border-radius: 8px; color: rgba(242,237,226,0.6); font-size: 12px; font-weight: 600; cursor: pointer; }
-      .fm-sidebar-tool-back:hover { background: rgba(242,237,226,0.08); color: ${TOKENS.parchment}; }
+      .fm-sidebar-tool-back:hover { background: rgba(242,237,226,0.08); color: ${TOKENS.navFg}; }
     `}</style>
   );
 }
 
 function Sidebar({ current, onNavigate, onLogout, familySlug, onNavigateHome }) {
   return (
-    <aside className="fm-desktop-sidebar" style={{ width: 220, background: TOKENS.ink, padding: "26px 14px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+    <aside className="fm-desktop-sidebar" style={{ width: 220, background: TOKENS.navBg, padding: "26px 14px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
       <div
         onClick={onNavigateHome}
         title="Bosh sahifaga qaytish"
         style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 10px 28px", cursor: "pointer" }}
       >
         <div style={{ width: 26, height: 26, borderRadius: 6, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})` }} />
-        <span style={{ fontFamily: "Fraunces, serif", fontSize: 17, color: TOKENS.parchment, fontWeight: 600 }}>Heirloom</span>
+        <span style={{ fontFamily: "Fraunces, serif", fontSize: 17, color: TOKENS.navFg, fontWeight: 600 }}>Heirloom</span>
       </div>
 
         <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -198,6 +199,10 @@ function Sidebar({ current, onNavigate, onLogout, familySlug, onNavigateHome }) 
         <div className="fm-nav-item" onClick={onLogout}>
           <LogOut size={16} /> Chiqish
         </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 6px 0" }}>
+          <LangSwitch color="rgba(242,237,226,0.55)" activeColor={TOKENS.goldSoft} />
+          <ThemeToggle color="rgba(242,237,226,0.7)" size={16} />
+        </div>
       </div>
     </aside>
   );
@@ -211,6 +216,8 @@ function MobileTopBar({ familyName, familySlug, onLogout }) {
         <span style={{ fontFamily: "Fraunces, serif", fontSize: 15, fontWeight: 600, color: TOKENS.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{familyName}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+        <LangSwitch compact color={TOKENS.ink60} activeColor={TOKENS.gold} />
+        <ThemeToggle color={TOKENS.ink60} />
         <a href={`/${familySlug}/photos`} title="Rasmlar" style={{ background: "none", border: "none", color: TOKENS.ink60, cursor: "pointer", padding: 6, display: "flex" }}>
           <Images size={17} />
         </a>

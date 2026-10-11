@@ -46,7 +46,7 @@ export default function AuthForm({
           padding: 12px 14px;
           border-radius: 8px;
           border: 1px solid ${TOKENS.parchmentDeep};
-          background: #fff;
+          background: ${TOKENS.field};
           font-size: 14px;
           font-family: Inter, sans-serif;
           color: ${TOKENS.ink};

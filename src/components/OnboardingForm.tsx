@@ -47,7 +47,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           padding: 13px 14px;
           border-radius: 8px;
           border: 1px solid ${TOKENS.parchmentDeep};
-          background: #fff;
+          background: ${TOKENS.field};
           font-size: 14.5px;
           font-family: "Fraunces", serif;
           color: ${TOKENS.ink};

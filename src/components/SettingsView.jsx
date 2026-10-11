@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useActionState } from "react";
+import { AppearanceSettings } from "./ThemeLangControls";
 import { useRouter } from "next/navigation";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 
@@ -193,6 +194,10 @@ export function SettingsView({ familyName, familySince, familySlug, members, inv
         <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Boshqaruv</div>
         <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>Sozlamalar</h1>
       </div>
+
+      <SettingsCard title="Ko'rinish va til">
+        <AppearanceSettings tokens={TOKENS} />
+      </SettingsCard>
 
       <SettingsCard title="Oila ma'lumotlari">
         {isOwner ? (

@@ -86,7 +86,7 @@ export function MemoriesView({
         </div>
 
         {onThisDayMemories.length > 0 && (
-          <div style={{ background: `linear-gradient(135deg, ${TOKENS.gold}22, ${TOKENS.goldSoft}11)`, border: `1px solid ${TOKENS.goldSoft}`, borderRadius: 12, padding: 14 }}>
+          <div style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${TOKENS.gold} 13%, transparent), color-mix(in srgb, ${TOKENS.goldSoft} 7%, transparent))`, border: `1px solid ${TOKENS.goldSoft}`, borderRadius: 12, padding: 14 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: TOKENS.gold, marginBottom: 8 }}>✨ Bugun shu kunda</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {onThisDayMemories.map((m) => (

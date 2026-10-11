@@ -56,7 +56,7 @@ export function SharePopover({ album, familySlug, shareAlbumAction }) {
           Havolaga ega har kim albomni varaqlab ko&apos;ra oladi, lekin uni o&apos;zgartira olmaydi. Ro&apos;yxatdan o&apos;tish shart emas.
         </div>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(30,38,33,0.04)", cursor: busy ? "default" : "pointer", marginBottom: 12 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "color-mix(in srgb, var(--he-ink) 5%, transparent)", cursor: busy ? "default" : "pointer", marginBottom: 12 }}>
           <Link2 size={16} color={token ? C.gold : C.muted} />
           <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>Havola orqali ko&apos;rish</span>
           {busy ? <Loader2 size={16} className="he-spin" /> : (
@@ -72,7 +72,7 @@ export function SharePopover({ album, familySlug, shareAlbumAction }) {
                 {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? "Nusxalandi" : "Nusxa"}
               </button>
             </div>
-            <div style={{ fontSize: 12, color: C.muted, background: "rgba(30,38,33,0.04)", borderRadius: 8, padding: "8px 10px", marginBottom: 8, lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+            <div style={{ fontSize: 12, color: C.muted, background: "color-mix(in srgb, var(--he-ink) 5%, transparent)", borderRadius: 8, padding: "8px 10px", marginBottom: 8, lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
               {message}
             </div>
             <a
