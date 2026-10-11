@@ -6,7 +6,31 @@
 // (bazada esa foizda), ko'rsatishda butun sahifa CSS transform bilan
 // masshtablanadi — shuning uchun zoom elementning haqiqiy o'lchamini buzmaydi.
 export const PAGE_W = 1200;
-export const PAGE_H = 900;
+
+// Sahifa formati albom bo'yicha tanlanadi. Kenglik doim PAGE_W, balandlik
+// formatga qarab o'zgaradi. PAGE_H — "jonli" eksport: setPageFormat()
+// chaqirilgach, uni import qilgan barcha modullar yangi qiymatni ko'radi.
+export const PAGE_FORMATS = [
+  { id: "16:9", name: "Keng", ratio: 16 / 9 },
+  { id: "3:2", name: "Klassik foto", ratio: 3 / 2 },
+  { id: "4:3", name: "Standart", ratio: 4 / 3 },
+  { id: "1:1", name: "Kvadrat", ratio: 1 },
+];
+export const DEFAULT_FORMAT = "16:9";
+export const LEGACY_FORMAT = "4:3";
+
+export function formatRatio(id) {
+  return (PAGE_FORMATS.find((f) => f.id === id) || PAGE_FORMATS[2]).ratio;
+}
+
+// eslint-disable-next-line import/no-mutable-exports
+export let PAGE_H = Math.round(PAGE_W / formatRatio(LEGACY_FORMAT));
+
+/** Joriy albom formatini o'rnatadi (render paytida chaqirish xavfsiz — idempotent). */
+export function setPageFormat(id) {
+  PAGE_H = Math.round(PAGE_W / formatRatio(id));
+  return PAGE_H;
+}
 
 export const EDITOR_FONT_IMPORT =
   "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Caveat:wght@500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Dancing+Script:wght@500;700&family=Amatic+SC:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@400;600;700&family=Patrick+Hand&family=Lora:ital,wght@0,400;0,600;1,400&family=Special+Elite&family=Shadows+Into+Light&display=swap";

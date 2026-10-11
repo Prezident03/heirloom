@@ -4,12 +4,13 @@ import React, { useMemo } from "react";
 import { Pencil } from "lucide-react";
 import { albumToDoc } from "./model";
 import { EDITOR_CSS } from "./ui";
-import { EDITOR_FONT_IMPORT } from "./constants";
+import { EDITOR_FONT_IMPORT, setPageFormat, LEGACY_FORMAT } from "./constants";
 import { Preview } from "./Preview";
 
 /** Albom ochilganda birinchi ko'rinadigan katta ko'rish rejimi. Tahrirlash — alohida tugma orqali. */
 export default function AlbumViewer({ album, doc: liveDoc, canEdit, onEdit, onClose }) {
   const doc = useMemo(() => liveDoc || albumToDoc(album), [liveDoc, album]);
+  setPageFormat(doc.format || LEGACY_FORMAT);
   const subtitle = [album.date_label, album.location, `${doc.pages.length} sahifa`].filter(Boolean).join(" · ");
   const isEmpty = doc.pages.every((p) => p.elements.length === 0);
   return (

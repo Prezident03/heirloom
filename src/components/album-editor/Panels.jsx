@@ -5,7 +5,7 @@ import {
   LayoutTemplate, Images, Video, Type, Shapes, Sticker, Frame, PaintBucket, Upload, X, Loader2, Plus, ImageOff, CopyPlus, Trash2, AlertTriangle,
   Folder, ChevronLeft, Crown, Lock,
 } from "lucide-react";
-import { FONT_BY_ID, TEXT_PRESETS, FRAMES, BACKGROUND_GROUPS, SOLID_COLORS, backgroundCss } from "./constants";
+import { FONT_BY_ID, TEXT_PRESETS, FRAMES, BACKGROUND_GROUPS, SOLID_COLORS, backgroundCss, PAGE_H } from "./constants";
 import { TEMPLATES, TEMPLATE_CATEGORIES, buildTemplateElements } from "./templates";
 import { STICKER_GROUPS, StickerArt } from "./stickers";
 import { ScaledPage, PhotoFramePreview } from "./ElementView";
@@ -104,10 +104,11 @@ export function Drawer({ panel, setPanel, api, library, folders, uploads, page, 
 // ------------------------------------------------------------
 const templatePreviewCache = new Map();
 function templatePreview(tpl) {
-  if (!templatePreviewCache.has(tpl.id)) {
-    templatePreviewCache.set(tpl.id, { id: `tpl-${tpl.id}`, background: tpl.background, bgImage: null, elements: buildTemplateElements(tpl) });
+  const key = `${tpl.id}@${PAGE_H}`; // sahifa formati o'zgarsa, ko'rinish qayta quriladi
+  if (!templatePreviewCache.has(key)) {
+    templatePreviewCache.set(key, { id: `tpl-${tpl.id}`, background: tpl.background, bgImage: null, elements: buildTemplateElements(tpl) });
   }
-  return templatePreviewCache.get(tpl.id);
+  return templatePreviewCache.get(key);
 }
 
 function TemplatesPanel({ api }) {
@@ -133,7 +134,7 @@ function TemplatesPanel({ api }) {
 }
 
 function TemplateTile({ tpl, api }) {
-  const preview = useMemo(() => templatePreview(tpl), [tpl]);
+  const preview = templatePreview(tpl);
   return (
     <div style={{ position: "relative" }} className="he-tpl">
       <button

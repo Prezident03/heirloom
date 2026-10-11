@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Copy, Trash2, Minus, FilePlus2, LayoutTemplate, Maximize } from "lucide-react";
+import { Plus, Copy, Trash2, Minus, FilePlus2, LayoutTemplate, Maximize, RectangleHorizontal } from "lucide-react";
 import { ScaledPage } from "./ElementView";
 import { PopButton, C } from "./ui";
-import { ZOOM_LEVELS } from "./constants";
+import { ZOOM_LEVELS, PAGE_FORMATS } from "./constants";
 
 const PAGE_MIME = "application/x-heirloom-page";
 
-export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZoom, compact }) {
+export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZoom, compact, format }) {
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
   const thumbW = compact ? 58 : 88;
@@ -62,6 +62,23 @@ export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZo
           </PopButton>
         )}
       </div>
+      {canEdit && (
+        <PopButton className="he-btn soft" icon={<RectangleHorizontal size={15} />} label={<span>{format}</span>} title="Sahifa formati" width={230} placement="top" align="end">
+          {(close) => (
+            <>
+              <div style={{ fontSize: 11.5, color: C.muted, margin: "2px 6px 6px" }}>Butun albom uchun sahifa formati</div>
+              {PAGE_FORMATS.map((f) => (
+                <button key={f.id} type="button" className="he-menu-item" style={{ background: f.id === format ? "rgba(184,134,59,0.12)" : undefined }} onClick={() => { api.setFormat(f.id); close(); }}>
+                  <span style={{ width: 26, display: "inline-flex", justifyContent: "center" }}>
+                    <span style={{ display: "inline-block", width: f.ratio >= 1 ? 22 : 22 * f.ratio, height: f.ratio >= 1 ? 22 / f.ratio : 22, border: `1.5px solid ${f.id === format ? C.gold : C.ink}`, borderRadius: 2 }} />
+                  </span>
+                  {f.name} <span className="kbd">{f.id}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </PopButton>
+      )}
       <div className="he-zoom">
         <button type="button" className="he-btn icon" title="Kichraytirish (Ctrl −)" onClick={() => onZoom("out")}><Minus size={16} /></button>
         <PopButton className="he-zoom-val" label={`${zoomPct}%`} title="Masshtab" width={170} placement="top" align="end">

@@ -6,8 +6,8 @@ import {
   ArrowLeft, Undo2, Redo2, Check, Loader2, CloudOff, AlertTriangle, Eye, Download, Maximize2, Minimize2, Ellipsis,
   Keyboard, Trash2, FileImage, FileText, X,
 } from "lucide-react";
-import { PAGE_W, PAGE_H, EDITOR_FONT_IMPORT, TEXT_PRESETS, ZOOM_LEVELS, ZOOM_MIN, ZOOM_MAX, isDarkBackground } from "./constants";
-import { albumToDoc, blankPage, clonePage, cloneElements, coverFromDoc, pageToRow, uid, aabb, unionBounds, rotatePoint } from "./model";
+import { PAGE_W, PAGE_H, EDITOR_FONT_IMPORT, TEXT_PRESETS, ZOOM_LEVELS, ZOOM_MIN, ZOOM_MAX, isDarkBackground, setPageFormat, LEGACY_FORMAT, DEFAULT_FORMAT, PAGE_FORMATS } from "./constants";
+import { convertDocFormat, albumToDoc, blankPage, clonePage, cloneElements, coverFromDoc, pageToRow, uid, aabb, unionBounds, rotatePoint } from "./model";
 import { TEMPLATE_BY_ID, buildTemplateElements } from "./templates";
 import { stickerDef } from "./stickers";
 import { snapMove, resizeElement, scaleGroup, angleBetween, normalizeAngle, snapAngle } from "./geometry";
@@ -112,10 +112,17 @@ export default function Editor({
   const router = useRouter();
 
   // ========================== Hujjat va tarix ==========================
-  const initialDoc = useMemo(() => albumToDoc(album), []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Bazadagi holat va editor boshlang'ich holati. Bo'sh eski (4:3) albom darhol keng formatga o'tkaziladi.
+  const [serverDoc, initialDoc] = useMemo(() => {
+    const d = albumToDoc(album);
+    const empty = d.pages.every((p) => p.elements.length === 0);
+    return [d, d.format === LEGACY_FORMAT && empty ? { ...d, format: DEFAULT_FORMAT } : d];
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [doc, setDocState] = useState(initialDoc);
+  // Sahifa balandligi hujjat formatiga bog'liq — bolalar render bo'lishidan oldin o'rnatamiz.
+  setPageFormat(doc.format || LEGACY_FORMAT);
   const docRef = useRef(initialDoc);
-  const savedRef = useRef(initialDoc);
+  const savedRef = useRef(serverDoc);
   const pastRef = useRef([]);
   const futureRef = useRef([]);
   const liveBaseRef = useRef(null);
@@ -745,14 +752,16 @@ export default function Editor({
     const baseById = new Map(base.pages.map((p) => [p.id, p]));
     const dirty = target.pages.filter((p) => baseById.get(p.id) !== p);
     const orderChanged = base.pages.length !== target.pages.length || base.pages.some((p, i) => p.id !== target.pages[i]?.id);
-    if (!dirty.length && !orderChanged) return null;
+    setPageFormat(target.format || LEGACY_FORMAT);
+    const formatChanged = (base.format || LEGACY_FORMAT) !== (target.format || LEGACY_FORMAT);
+    if (!dirty.length && !orderChanged && !formatChanged) return null;
     const rows = dirty.map(pageToRow).map((r) => ({
       ...r,
       background_image_url: r.background_image_url?.startsWith("blob:") ? null : r.background_image_url,
       elements: r.elements.map((e) => (e.photo_url?.startsWith("blob:") ? { ...e, photo_url: null } : e)),
     }));
     const cover = coverFromDoc(target);
-    return { pageOrder: target.pages.map((p) => p.id), pages: rows, coverUrl: cover && !cover.startsWith("blob:") ? cover : null };
+    return { pageOrder: target.pages.map((p) => p.id), pages: rows, coverUrl: cover && !cover.startsWith("blob:") ? cover : null, pageFormat: target.format || LEGACY_FORMAT };
   };
 
   const runSave = useCallback(async () => {
@@ -804,6 +813,8 @@ export default function Editor({
     if (!canEdit) return undefined;
     // Hidratsiyadan keyin o'qiymiz (server render'da localStorage yo'q).
     const draftCheck = setTimeout(() => { const d = readDraft(album.id); if (d) setDraft(d); }, 0);
+    // Boshlang'ich holat bazadagidan farq qilsa (masalan, format avtomatik o'zgargan), saqlab qo'yamiz.
+    if (docRef.current !== savedRef.current) saveTimer.current = setTimeout(() => latest.current.runSave?.(), 1200);
     const onOnline = () => { if (docRef.current !== savedRef.current) latest.current.runSave(); };
     const onOffline = () => { if (docRef.current !== savedRef.current) setSaveState("offline"); };
     const onBeforeUnload = (e) => {
@@ -829,6 +840,7 @@ export default function Editor({
   const restoreDraft = () => {
     if (!draft) return;
     const clean = {
+      format: draft.doc.format || docRef.current.format,
       pages: draft.doc.pages.map((p) => ({
         ...p,
         bgImage: p.bgImage?.startsWith("blob:") ? null : p.bgImage,
@@ -1432,6 +1444,14 @@ export default function Editor({
     pickFile,
     insertMedia, addSticker, addText, addFrame, applyTemplate, addPage, duplicatePage, deletePage, movePage,
     setBackground, applyBackgroundToAll, uploadFiles, uploadBackground,
+    setFormat: (id) => {
+      if (!PAGE_FORMATS.some((f) => f.id === id) || id === (docRef.current.format || LEGACY_FORMAT)) return;
+      if (cropId) exitCrop(true);
+      setEditingId(null);
+      commit((d) => convertDocFormat({ ...d, format: d.format || LEGACY_FORMAT }, id));
+      setZoom("fit"); setPan({ x: 0, y: 0 });
+      showToast(`Sahifa formati: ${id}`, { label: "Bekor qilish", run: () => undo() });
+    },
   };
 
   // ========================== Render ==========================
@@ -1599,6 +1619,7 @@ export default function Editor({
         zoomPct={zoomPct}
         onZoom={onZoom}
         compact={compact || stage.h < 420}
+        format={doc.format || LEGACY_FORMAT}
       />
 
       <input
