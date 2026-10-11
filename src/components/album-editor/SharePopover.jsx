@@ -12,6 +12,8 @@ export function SharePopover({ album, familySlug, shareAlbumAction }) {
   const [error, setError] = useState("");
 
   const link = token && typeof window !== "undefined" ? `${window.location.origin}/share/${token}` : "";
+  // Do'stlarga yuboriladigan tayyor xabar: nom, chaqiriq va ostida havola.
+  const message = `"${album.title}" albomimizni tomosha qiling 👇\n${link}`;
 
   const toggle = async (enabled) => {
     setBusy(true);
@@ -29,10 +31,10 @@ export function SharePopover({ album, familySlug, shareAlbumAction }) {
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(message);
     } catch {
       const ta = document.createElement("textarea");
-      ta.value = link;
+      ta.value = message;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
@@ -43,7 +45,7 @@ export function SharePopover({ album, familySlug, shareAlbumAction }) {
   };
 
   const nativeShare = async () => {
-    try { await navigator.share({ title: album.title, text: `"${album.title}" albomimizni ko'ring`, url: link }); } catch { /* bekor qilindi */ }
+    try { await navigator.share({ title: album.title, text: `"${album.title}" albomimizni tomosha qiling 👇`, url: link }); } catch { /* bekor qilindi */ }
   };
 
   return (
@@ -70,6 +72,18 @@ export function SharePopover({ album, familySlug, shareAlbumAction }) {
                 {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? "Nusxalandi" : "Nusxa"}
               </button>
             </div>
+            <div style={{ fontSize: 12, color: C.muted, background: "rgba(30,38,33,0.04)", borderRadius: 8, padding: "8px 10px", marginBottom: 8, lineHeight: 1.45, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+              {message}
+            </div>
+            <a
+              className="he-btn soft"
+              style={{ width: "100%", textDecoration: "none", marginBottom: 6 }}
+              href={`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(`"${album.title}" albomimizni tomosha qiling 👇`)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Send size={15} /> Telegram orqali yuborish
+            </a>
             <div style={{ display: "flex", gap: 6 }}>
               {typeof navigator !== "undefined" && navigator.share && (
                 <button type="button" className="he-btn soft" style={{ flex: 1 }} onClick={nativeShare}><Send size={15} /> Yuborish</button>
