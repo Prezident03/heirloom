@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { Sun, Moon, Monitor } from "lucide-react";
 import { applyThemeMode } from "@/lib/uiTokens";
 import { LANGS, t } from "@/lib/i18n";
@@ -122,6 +123,20 @@ export function AppearanceSettings({ tokens }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+const PUBLIC_PATHS = [/^\/$/, /^\/login/, /^\/register/, /^\/invite\//, /^\/onboarding/];
+
+/** Kirishdan oldingi sahifalarda (bosh sahifa, kirish, ro'yxat) — burchakda til va rejim. */
+export function PublicControls() {
+  const pathname = usePathname() || "";
+  if (!PUBLIC_PATHS.some((r) => r.test(pathname))) return null;
+  return (
+    <div style={{ position: "fixed", top: 12, right: 12, zIndex: 50, display: "flex", alignItems: "center", gap: 4, background: "var(--hl-card)", border: "1px solid var(--hl-parchment-deep)", borderRadius: 10, padding: "3px 4px", boxShadow: "0 4px 14px rgba(0,0,0,0.08)" }}>
+      <LangSwitch color="var(--hl-ink60)" activeColor="var(--hl-gold)" />
+      <ThemeToggle color="var(--hl-ink60)" size={16} />
     </div>
   );
 }

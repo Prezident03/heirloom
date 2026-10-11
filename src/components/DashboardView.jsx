@@ -20,6 +20,7 @@ function FamilyHeroBanner({ familyName, familySince, genCount, memberCount, albu
         position: "relative",
         borderRadius: 18,
         overflow: "hidden",
+        width: "100%",
         minHeight: 224,
         aspectRatio: "4 / 1",
         marginBottom: 40,
@@ -119,7 +120,7 @@ function MiniWidgetShell({ title, action, onAction, children }) {
 function TimelineMiniWidget({ events, onNavigate }) {
   const items = (events || []).slice(-5).reverse();
   return (
-    <MiniWidgetShell title={t("Vaqt chizig'i")} action="Barchasi" onAction={() => onNavigate(VIEWS.TIMELINE)}>
+    <MiniWidgetShell title={t("Vaqt chizig'i")} action={t("Barchasi")} onAction={() => onNavigate(VIEWS.TIMELINE)}>
       {items.length === 0 ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 12.5, color: TOKENS.ink60 }}>
           {t("Hali voqealar yo'q")}
@@ -349,7 +350,7 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
           />
 
           <section style={{ marginBottom: 40 }}>
-            <SectionLabel eyebrow="Arxiv" title={t("So'nggi albomlar")} action="Barchasi" onAction={() => onNavigate(VIEWS.ALBUMS)} />
+            <SectionLabel eyebrow={t("Arxiv")} title={t("So'nggi albomlar")} action={t("Barchasi")} onAction={() => onNavigate(VIEWS.ALBUMS)} />
             {albums.length === 0 ? (
               <EmptyState
                 icon={<BookImage size={32} color={TOKENS.goldSoft} strokeWidth={1.4} />}

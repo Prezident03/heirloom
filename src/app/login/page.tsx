@@ -35,8 +35,8 @@ export default async function LoginPage({
     <AuthForm
       action={loginAction}
       title={t("Xush kelibsiz")}
-      subtitle={invite ? "Sizni oilaga qo'shilishga taklif qilishdi. Davom etish uchun kiring." : "Oilaviy xotiralaringizga qaytish uchun kiring."}
-      submitLabel="Kirish"
+      subtitle={invite ? t("Sizni oilaga qo'shilishga taklif qilishdi. Davom etish uchun kiring.") : t("Oilaviy xotiralaringizga qaytish uchun kiring.")}
+      submitLabel={t("Kirish")}
       hiddenFields={invite ? [{ name: "inviteCode", value: invite }] : []}
       fields={[
         { name: "email", label: "Email", type: "email", placeholder: "siz@example.com" },

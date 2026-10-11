@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { THEME_CSS, THEME_INIT_SCRIPT } from "@/lib/uiTokens";
 import { LANG_COOKIE, normalizeLang } from "@/lib/i18n";
 import { LangProvider } from "@/components/LangProvider";
+import { PublicControls } from "@/components/ThemeLangControls";
 
 export const metadata: Metadata = {
   title: "Heirloom — Your family. Your memories. Your story.",
@@ -20,7 +21,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="h-full">
-        <LangProvider initialLang={lang}>{children}</LangProvider>
+        <LangProvider initialLang={lang}>
+          {children}
+          <PublicControls />
+        </LangProvider>
       </body>
     </html>
   );

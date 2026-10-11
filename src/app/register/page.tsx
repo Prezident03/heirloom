@@ -28,8 +28,8 @@ export default async function RegisterPage({
     <AuthForm
       action={registerAction}
       title={invite ? t("Oilaga qo'shiling") : t("Oilangiz tarixini boshlang")}
-      subtitle={invite ? "Sizni taklif qilishdi — davom etish uchun hisob yarating." : "Heirloom'da hisob yarating — bir necha daqiqada."}
-      submitLabel="Ro'yxatdan o'tish"
+      subtitle={invite ? t("Sizni taklif qilishdi — davom etish uchun hisob yarating.") : t("Heirloom'da hisob yarating — bir necha daqiqada.")}
+      submitLabel={t("Ro'yxatdan o'tish")}
       hiddenFields={invite ? [{ name: "inviteCode", value: invite }] : []}
       fields={[
         { name: "name", label: "Ismingiz", type: "text", placeholder: "Abdurasul Zokirov" },

@@ -96,7 +96,7 @@ export default function AuthForm({
           {fields.map((f) => (
             <div key={f.name}>
               <label style={{ fontSize: 12, fontWeight: 600, color: TOKENS.ink60, marginBottom: 6, display: "block" }}>{t(f.label)}</label>
-              <input className="fm-input" type={f.type} name={f.name} placeholder={f.placeholder} required />
+              <input className="fm-input" type={f.type} name={f.name} placeholder={t(f.placeholder)} required />
             </div>
           ))}
 
