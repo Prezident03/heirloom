@@ -26,11 +26,8 @@ export function FamilyTreeView({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [photoError, setPhotoError] = useState(null);
 
-  // Tree Canvas'ning zoom/pan holati — bu yerda "lifted" qilingan, chunki
-  // <TreeVisualization> D3 asosida ishlaydi va controlled zoom/pan qabul
-  // qiladi (o'zi mouse wheel / drag / pinch-zoomni ichkarida boshqaradi).
+  // Zoom foizi faqat ko'rsatish uchun; daraxt ko'rinishini TreeVisualization o'zi boshqaradi.
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
   const treeRef = useRef(null);
 
   const [query, setQuery] = useState("");
@@ -45,9 +42,11 @@ export function FamilyTreeView({
       .slice(0, 6);
   }, [people, query]);
 
-  const goToPerson = (personId) => {
+  const goToPerson = (personId, { focus = false } = {}) => {
+    if (!personId) { setSelected(null); return; }
     const person = people.find((p) => p.id === personId);
     if (!person) return;
+    if (focus) treeRef.current?.focus(personId);
     setSelected({
       id: person.id,
       name: personLabel(person),
@@ -88,7 +87,7 @@ export function FamilyTreeView({
 
   return (
     <div className="fm-fade" style={{ display: "flex", height: "100%", flexWrap: "wrap" }}>
-      <div style={{ flex: 1, padding: "24px 20px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: "1 1 420px", minWidth: 0, padding: "24px 20px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Avlodlar</div>
@@ -124,10 +123,10 @@ export function FamilyTreeView({
             <div style={{ width: 1, alignSelf: "stretch", background: TOKENS.parchmentDeep, margin: "0 2px" }} />
             <button
               onClick={() => treeRef.current?.center()}
-              title="Markazga qaytarish"
+              title="Butun daraxtni ekranga moslash"
               style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 9px", height: 26, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink60, fontSize: 11.5, fontWeight: 600 }}
             >
-              <Crosshair size={13} /> Markazga
+              <Crosshair size={13} /> Moslash
             </button>
           </div>
           <div style={{ position: "relative", flex: "0 1 220px", minWidth: 160 }}>
@@ -147,7 +146,7 @@ export function FamilyTreeView({
                 {searchMatches.map((m) => (
                   <div
                     key={m.id}
-                    onMouseDown={() => goToPerson(m.id)}
+                    onMouseDown={() => goToPerson(m.id, { focus: true })}
                     style={{ padding: "9px 12px", fontSize: 12.5, cursor: "pointer", color: TOKENS.ink }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = TOKENS.parchment)}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
@@ -160,7 +159,7 @@ export function FamilyTreeView({
           </div>
         </div>
 
-        <div style={{ flex: 1, minHeight: 420, position: "relative" }}>
+        <div style={{ flex: 1, minHeight: 420, position: "relative", minWidth: 0 }}>
           <TreeVisualization
             ref={treeRef}
             people={people}
@@ -168,12 +167,7 @@ export function FamilyTreeView({
             onSelectPerson={goToPerson}
             mePersonId={mePersonId}
             selectedId={selected?.id || null}
-            width={1200}
-            height={600}
-            zoom={zoom}
-            pan={pan}
             onZoom={setZoom}
-            onPan={setPan}
           />
         </div>
       </div>
@@ -190,7 +184,7 @@ export function FamilyTreeView({
           uploadPersonPhotoAction={uploadPersonPhotoAction}
           photoError={photoError}
           setPhotoError={setPhotoError}
-          onSelectRelated={goToPerson}
+          onSelectRelated={(id) => goToPerson(id, { focus: true })}
           onClose={() => { setSelected(null); setConfirmDelete(false); }}
           onEdit={() => setShowEditModal(true)}
           onLink={() => setShowLinkModal(true)}
