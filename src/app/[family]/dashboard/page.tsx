@@ -29,6 +29,8 @@ import {
   renameAlbumAction,
   saveAlbumAction,
   registerMediaAction,
+  setFamilyCoverAction,
+  setAlbumCoverAction,
   createPlaceAction,
   updatePlaceAction,
   deletePlaceAction,
@@ -191,6 +193,9 @@ export default async function FamilyDashboardPage({
       renameAlbumAction={renameAlbumAction}
       saveAlbumAction={saveAlbumAction}
       registerMediaAction={registerMediaAction}
+      setFamilyCoverAction={setFamilyCoverAction}
+      setAlbumCoverAction={setAlbumCoverAction}
+      familyCoverUrl={(family!.cover_url ?? null) as any}
       createPlaceAction={createPlaceAction}
       updatePlaceAction={updatePlaceAction}
       deletePlaceAction={deletePlaceAction}

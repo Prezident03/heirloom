@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
 import { personLabel, personYears } from "@/lib/relationshipLabels";
+import { CoverMenu } from "./CoverPicker";
 
 export const VIEWS = {
   DASHBOARD: "dashboard",
@@ -135,12 +136,29 @@ export function coverGradientFor(id) {
   return `linear-gradient(135deg, ${a}, ${b})`;
 }
 
-export function AlbumCard({ album: a, onClick, compact }) {
+/** Muqova tanlash uchun rasm manzillari: avval `first` (masalan, albomning o'z rasmlari), keyin qolganlari. */
+export function collectPhotoUrls({ albums = [], photos = [], media = [], first = [] }) {
+  const seen = new Set();
+  const out = [];
+  const push = (u) => { if (u && !seen.has(u) && /^https:\/\//.test(u)) { seen.add(u); out.push(u); } };
+  first.forEach(push);
+  albums.forEach((a) => (a.pages || []).forEach((p) => (p.elements || []).forEach((e) => { if (e.type === "photo") push(e.photo_url); })));
+  photos.forEach((p) => push(p.photo_url));
+  media.forEach((m) => { if (m.kind !== "video") push(m.url); });
+  return out;
+}
+
+export function albumPhotoUrls(a) {
+  return (a.pages || []).flatMap((p) => (p.elements || []).filter((e) => e.type === "photo" && e.photo_url).map((e) => e.photo_url));
+}
+
+export function AlbumCard({ album: a, onClick, compact, coverControl }) {
   const photoCount = a.pages.reduce((sum, p) => sum + p.elements.filter((e) => e.type === "photo" && e.photo_url).length, 0);
   return (
     <div onClick={onClick} className="fm-album-card" style={{ background: TOKENS.card, borderRadius: compact ? 10 : 12, padding: 14, boxShadow: compact ? "0 2px 8px rgba(30,38,33,0.06)" : undefined, border: `1px solid ${TOKENS.parchmentDeep}` }}>
       <div
         style={{
+          position: "relative",
           width: "100%", aspectRatio: "4/3", borderRadius: 7, marginBottom: 12,
           background: a.cover_url ? undefined : coverGradientFor(a.id || a.title),
           backgroundImage: a.cover_url ? `url(${a.cover_url})` : undefined,
@@ -152,6 +170,16 @@ export function AlbumCard({ album: a, onClick, compact }) {
           <div style={{ fontFamily: "Fraunces, serif", fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.2 }}>
             {a.title}
           </div>
+        )}
+        {coverControl && (
+          <CoverMenu
+            kind="album"
+            albumId={a.id}
+            isCustom={!!a.cover_custom}
+            familySlug={coverControl.familySlug}
+            action={coverControl.action}
+            library={collectPhotoUrls({ ...coverControl.sources, first: albumPhotoUrls(a) })}
+          />
         )}
       </div>
       <div style={{ fontFamily: "Fraunces, serif", fontSize: compact ? 16 : 16.5, fontWeight: 500 }}>{a.title}</div>

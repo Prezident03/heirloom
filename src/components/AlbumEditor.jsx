@@ -164,7 +164,7 @@ export function UploadPhotosModal({ familySlug, albums, bulkUploadPhotosAction, 
   );
 }
 
-function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug, onCreated }) {
+function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug, onCreated, coverControl }) {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -186,7 +186,7 @@ function AlbumGrid({ albums, onOpen, canEdit, createAlbumAction, familySlug, onC
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
           {albums.map((a) => (
-            <AlbumCard key={a.id} album={a} onClick={() => onOpen(a)} />
+            <AlbumCard key={a.id} album={a} onClick={() => onOpen(a)} coverControl={coverControl} />
           ))}
         </div>
       )}
@@ -209,6 +209,7 @@ export function AlbumsView({
   renameAlbumAction,
   saveAlbumAction,
   registerMediaAction,
+  setAlbumCoverAction,
   newAlbumId,
 }) {
   const openAlbum = albums.find((a) => a.id === openAlbumId) || null;
@@ -247,6 +248,7 @@ export function AlbumsView({
         createAlbumAction={createAlbumAction}
         familySlug={familySlug}
         onCreated={(id) => setOpenAlbumId(id, { isNew: true })}
+        coverControl={canEdit && setAlbumCoverAction ? { familySlug, action: setAlbumCoverAction, sources: { albums, photos, media } } : null}
       />
     </div>
   );

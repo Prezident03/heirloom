@@ -291,6 +291,9 @@ export default function HeirloomApp({
   renameAlbumAction,
   saveAlbumAction,
   registerMediaAction,
+  setFamilyCoverAction,
+  setAlbumCoverAction,
+  familyCoverUrl = null,
   bulkUploadPhotosAction,
   createPlaceAction,
   updatePlaceAction,
@@ -377,6 +380,13 @@ export default function HeirloomApp({
                 timelineEvents={timelineEvents}
                 memories={memories}
                 stats={stats}
+                familySlug={familySlug}
+                canEdit={canEdit}
+                photos={photos}
+                media={media}
+                familyCoverUrl={familyCoverUrl}
+                setFamilyCoverAction={setFamilyCoverAction}
+                setAlbumCoverAction={setAlbumCoverAction}
               />
             )}
             {view === VIEWS.TREE && (
@@ -410,6 +420,7 @@ export default function HeirloomApp({
                 renameAlbumAction={renameAlbumAction}
                 saveAlbumAction={saveAlbumAction}
                 registerMediaAction={registerMediaAction}
+                setAlbumCoverAction={setAlbumCoverAction}
               />
             )}
             {view === VIEWS.PEOPLE && (

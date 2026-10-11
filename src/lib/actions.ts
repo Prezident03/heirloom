@@ -16,6 +16,7 @@ import {
   createInvite,
   revokeInvite,
   acceptInvite,
+  setFamilyCover,
 } from "@/lib/family";
 import {
   createPerson,
@@ -33,6 +34,8 @@ import {
   getAlbumById,
   getPagesForAlbum,
   saveAlbumState,
+  setCustomAlbumCover,
+  resetAlbumCover,
   type SaveAlbumInput,
 } from "@/lib/albums";
 import { addMedia } from "@/lib/media";
@@ -1038,4 +1041,62 @@ export async function deletePlaceAction(_prevState: ActionState, formData: FormD
   } catch (e) {
     return { error: "Joy o'chirishda xato: " + String(e) };
   }
+}
+
+// ============================================================
+// Muqovalar: bosh sahifa banneri va albom muqovasi
+// ============================================================
+
+/** Klientda kesilgan JPEG'ni Blob'ga yuklaydi yoki mavjud Blob manzilini qabul qiladi. */
+async function resolveCoverImage(formData: FormData, prefix: string): Promise<{ url?: string; error?: string }> {
+  const file = formData.get("photo") as File | null;
+  if (file && file.size > 0) {
+    if (!file.type.startsWith("image/")) return { error: "Faqat rasm fayllari qabul qilinadi." };
+    if (file.size > 4 * 1024 * 1024) return { error: "Rasm hajmi juda katta." };
+    try {
+      const blob = await put(`${prefix}-${Date.now()}.jpg`, file, { access: "public", addRandomSuffix: true, contentType: file.type });
+      return { url: blob.url };
+    } catch {
+      return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
+    }
+  }
+  const url = String(formData.get("url") || "");
+  if (url && isBlobUrl(url)) return { url };
+  return { error: "Rasm tanlanmadi." };
+}
+
+export async function setFamilyCoverAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  if (String(formData.get("reset") || "") === "1") {
+    await setFamilyCover(check.family.id, null);
+  } else {
+    const res = await resolveCoverImage(formData, `families/${check.family.id}/cover`);
+    if (res.error || !res.url) return { error: res.error };
+    await setFamilyCover(check.family.id, res.url);
+  }
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
+}
+
+export async function setAlbumCoverAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const familySlug = String(formData.get("familySlug") || "").trim();
+  const check = await requireEditableFamily(familySlug);
+  if ("error" in check) return { error: check.error };
+
+  const albumId = String(formData.get("albumId") || "").trim();
+  const album = albumId ? await getAlbumById(albumId, check.family.id) : null;
+  if (!album) return { error: "Albom topilmadi." };
+
+  if (String(formData.get("reset") || "") === "1") {
+    await resetAlbumCover(album.id, check.family.id);
+  } else {
+    const res = await resolveCoverImage(formData, `albums/${album.id}/cover`);
+    if (res.error || !res.url) return { error: res.error };
+    await setCustomAlbumCover(album.id, check.family.id, res.url);
+  }
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }

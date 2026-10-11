@@ -7,6 +7,7 @@ export type Family = {
   slug: string;
   owner_id: string;
   created_at: string;
+  cover_url?: string | null;
 };
 
 export type Membership = {
@@ -282,4 +283,9 @@ export async function getFamilyStats(familyId: string): Promise<FamilyStats> {
     placesCount: (placesRes as { c: number }[])[0]?.c ?? 0,
     generationsCount: estimateGenerations(people),
   };
+}
+
+export async function setFamilyCover(familyId: string, coverUrl: string | null): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE families SET cover_url = ${coverUrl} WHERE id = ${familyId}`;
 }

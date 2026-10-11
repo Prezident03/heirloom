@@ -11,13 +11,25 @@ import { TOKENS } from "@/lib/uiTokens";
 // natijada faqat doira ichidagi qism kvadrat JPEG sifatida chiqadi.
 // ============================================================
 
-const OUTPUT_SIZE = 800;
 const MAX_ZOOM = 6;
 export const MAX_SOURCE_BYTES = 60 * 1024 * 1024;
 
 function isHeic(file) {
   const name = (file.name || "").toLowerCase();
   return /image\/hei[cf]/.test(file.type) || name.endsWith(".heic") || name.endsWith(".heif");
+}
+
+/** Mavjud (internetdagi) rasmni canvas'ga chizish mumkin bo'lgan holda yuklaydi. */
+async function loadImageUrl(src) {
+  let blob;
+  try {
+    const res = await fetch(src, { mode: "cors" });
+    if (!res.ok) throw new Error(String(res.status));
+    blob = await res.blob();
+  } catch {
+    throw new Error("Bu rasmni kesish uchun ochib bo'lmadi.");
+  }
+  return loadImageFile(new File([blob], "image", { type: blob.type || "image/jpeg" }));
 }
 
 /** Faylni brauzer chiza oladigan rasmga aylantiradi (HEIC/HEIF ham). */
@@ -42,7 +54,14 @@ export async function loadImageFile(file) {
   }
 }
 
-export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
+/**
+ * Umumiy kesish oynasi.
+ *   shape: "circle" (profil rasmi) yoki "rect" (muqovalar)
+ *   aspect: kenglik/balandlik nisbati
+ *   outputWidth: natijaviy JPEG kengligi (px)
+ *   file yoki src: manba (fayl yoki mavjud rasm manzili)
+ */
+export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, shape = "circle", aspect = 1, outputWidth = 800, title = "Rasmni joylashtiring", onUseOriginal, externalError }) {
   const [src, setSrc] = useState(null); // { img, url }
   const [error, setError] = useState("");
   const [zoom, setZoom] = useState(1);
@@ -56,11 +75,11 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
   useEffect(() => {
     let cancelled = false;
     let url = null;
-    loadImageFile(file)
+    (file ? loadImageFile(file) : loadImageUrl(srcUrl))
       .then((res) => { url = res.url; if (!cancelled) setSrc(res); else URL.revokeObjectURL(res.url); })
       .catch((e) => { if (!cancelled) setError(e.message); });
     return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
-  }, [file]);
+  }, [file, srcUrl]);
 
   useEffect(() => {
     const measure = () => setStage(Math.max(220, Math.min(380, window.innerWidth - 48, window.innerHeight - 290)));
@@ -69,16 +88,19 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  const D = stage * 0.86; // doira diametri
+  // Kesish ramkasi (FW × FH) va uni o'rab turgan sahna (stage × stageH).
+  const FW = stage * (shape === "circle" ? 0.86 : 0.92);
+  const FH = FW / aspect;
+  const stageH = shape === "circle" ? stage : Math.min(stage, FH + stage * 0.16);
   const nw = src?.img.naturalWidth || 1, nh = src?.img.naturalHeight || 1;
   const rotated = rot % 180 !== 0;
   const rw = rotated ? nh : nw, rh = rotated ? nw : nh;
-  const base = D / Math.min(rw, rh); // doirani to'liq qoplash uchun minimal masshtab
+  const base = Math.max(FW / rw, FH / rh); // ramkani to'liq qoplash uchun minimal masshtab
   const total = base * zoom;
 
   const clamp = (o, z = zoom) => {
     const t = base * z;
-    const mx = Math.max(0, (rw * t - D) / 2), my = Math.max(0, (rh * t - D) / 2);
+    const mx = Math.max(0, (rw * t - FW) / 2), my = Math.max(0, (rh * t - FH) / 2);
     return { x: Math.max(-mx, Math.min(mx, o.x)), y: Math.max(-my, Math.min(my, o.y)) };
   };
 
@@ -158,15 +180,16 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
 
   const confirm = async () => {
     if (!src) return;
+    const OW = Math.round(outputWidth), OH = Math.round(outputWidth / aspect);
     const canvas = document.createElement("canvas");
-    canvas.width = OUTPUT_SIZE;
-    canvas.height = OUTPUT_SIZE;
+    canvas.width = OW;
+    canvas.height = OH;
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+    ctx.fillRect(0, 0, OW, OH);
     ctx.imageSmoothingQuality = "high";
-    const k = OUTPUT_SIZE / D;
-    ctx.translate(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2);
+    const k = OW / FW;
+    ctx.translate(OW / 2, OH / 2);
     ctx.scale(k, k);
     ctx.translate(offset.x, offset.y);
     ctx.rotate((rot * Math.PI) / 180);
@@ -175,7 +198,7 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
     ctx.drawImage(src.img, -nw / 2, -nh / 2);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
     if (!blob) { setError("Rasmni tayyorlab bo'lmadi."); return; }
-    onConfirm(new File([blob], "avatar.jpg", { type: "image/jpeg" }));
+    onConfirm(new File([blob], "image.jpg", { type: "image/jpeg" }));
   };
 
   const imgStyle = {
@@ -195,7 +218,7 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
     >
       <div style={{ background: "#1C211E", borderRadius: 18, padding: 18, width: stage + 36, maxWidth: "100%", color: "#F2EDE2", boxShadow: "0 30px 80px rgba(0,0,0,0.5)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ fontFamily: "Fraunces, serif", fontSize: 18 }}>Rasmni joylashtiring</div>
+          <div style={{ fontFamily: "Fraunces, serif", fontSize: 18 }}>{title}</div>
           <button type="button" onClick={onCancel} disabled={saving} style={{ ...iconBtn, width: 32, height: 32, background: "transparent" }} title="Yopish"><X size={18} /></button>
         </div>
 
@@ -206,21 +229,28 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           onDoubleClick={(e) => setZoomAround(zoom < 2 ? 2 : 1, localPoint(e, e.currentTarget))}
-          style={{ position: "relative", width: stage, height: stage, margin: "0 auto", overflow: "hidden", borderRadius: 12, background: "#0E1110", touchAction: "none", cursor: src ? "grab" : "default" }}
+          style={{ position: "relative", width: stage, height: stageH, margin: "0 auto", overflow: "hidden", borderRadius: 12, background: "#0E1110", touchAction: "none", cursor: src ? "grab" : "default" }}
         >
           {src && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={src.url} alt="" draggable={false} style={imgStyle} />
           )}
-          {/* Doiradan tashqarini qoraytiruvchi niqob */}
-          <div style={{ position: "absolute", left: "50%", top: "50%", width: D, height: D, marginLeft: -D / 2, marginTop: -D / 2, borderRadius: "50%", boxShadow: "0 0 0 9999px rgba(0,0,0,0.58)", border: "2px solid rgba(255,255,255,0.85)", pointerEvents: "none" }} />
+          {/* Ramkadan tashqarini qoraytiruvchi niqob */}
+          <div style={{ position: "absolute", left: "50%", top: "50%", width: FW, height: FH, marginLeft: -FW / 2, marginTop: -FH / 2, borderRadius: shape === "circle" ? "50%" : 8, boxShadow: "0 0 0 9999px rgba(0,0,0,0.58)", border: "2px solid rgba(255,255,255,0.85)", pointerEvents: "none" }} />
           {!src && !error && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
               <Loader2 size={18} style={{ animation: "fm-spin 0.9s linear infinite" }} /> Rasm ochilmoqda…
             </div>
           )}
           {error && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", color: "#F2B8AE", fontSize: 13, lineHeight: 1.5 }}>{error}</div>
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 24, textAlign: "center", color: "#F2B8AE", fontSize: 13, lineHeight: 1.5 }}>
+              {error}
+              {onUseOriginal && (
+                <button type="button" onClick={onUseOriginal} disabled={saving} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: "rgba(255,255,255,0.14)", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+                  Kesmasdan shu rasmni qo&apos;yish
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -256,6 +286,9 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
             {saving ? "Saqlanmoqda…" : "Saqlash"}
           </button>
         </div>
+        {externalError && (
+          <div style={{ fontSize: 12.5, color: "#F2B8AE", marginTop: 12, textAlign: "center" }}>{externalError}</div>
+        )}
         <div style={{ fontSize: 11.5, opacity: 0.55, marginTop: 12, textAlign: "center" }}>
           Surib joylashtiring · g&apos;ildirak yoki ikki barmoq bilan kattalashtiring
         </div>
@@ -263,4 +296,9 @@ export function AvatarCropper({ file, onCancel, onConfirm, saving }) {
     </div>,
     document.body
   );
+}
+
+/** Profil rasmi uchun doira shaklidagi kesish oynasi. */
+export function AvatarCropper(props) {
+  return <ImageCropper shape="circle" aspect={1} outputWidth={800} {...props} />;
 }
