@@ -2,22 +2,13 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { t } from "@/lib/i18n";
 
-export const C = {
-  ink: "#1E2621",
-  ink2: "#3B3A36",
-  muted: "rgba(30,38,33,0.58)",
-  faint: "rgba(30,38,33,0.38)",
-  line: "#E7E0D0",
-  bg: "#EFEADF",
-  stage: "#E6E0D3",
-  card: "#FFFDF8",
-  gold: "#B8863B",
-  goldSoft: "#D9BC85",
-  teal: "#2F4C48",
-  danger: "#A8453A",
-  select: "#B8863B",
-};
+// Muharrir ranglari CSS o'zgaruvchilari orqali — tungi rejimda o'zi o'zgaradi
+// (qiymatlar: src/lib/uiTokens.ts, EDITOR_LIGHT / EDITOR_DARK).
+export const C = Object.fromEntries(
+  ["ink", "ink2", "muted", "faint", "line", "bg", "stage", "card", "gold", "goldSoft", "teal", "danger", "select"].map((k) => [k, `var(--he-${k.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)})`]),
+);
 
 export const EDITOR_CSS = `
 .he-root { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; background: ${C.bg}; color: ${C.ink}; font-family: Inter, system-ui, sans-serif; font-size: 13px; -webkit-font-smoothing: antialiased; }
@@ -28,7 +19,7 @@ export const EDITOR_CSS = `
 .he-rail { width: 72px; flex-shrink: 0; background: ${C.card}; border-right: 1px solid ${C.line}; display: flex; flex-direction: column; align-items: stretch; padding: 8px 6px; gap: 2px; overflow-y: auto; z-index: 25; scrollbar-width: none; }
 .he-rail::-webkit-scrollbar { display: none; }
 .he-rail-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 9px 2px; border-radius: 10px; border: none; background: transparent; color: ${C.muted}; cursor: pointer; font-size: 10.5px; font-weight: 600; transition: background .12s, color .12s; }
-.he-rail-btn:hover { background: rgba(30,38,33,0.06); color: ${C.ink}; }
+.he-rail-btn:hover { background: color-mix(in srgb, var(--he-ink) 6%, transparent); color: ${C.ink}; }
 .he-rail-btn.active { background: rgba(184,134,59,0.14); color: ${C.gold}; }
 .he-drawer { position: relative; flex-shrink: 0; width: 320px; background: ${C.card}; border-right: 1px solid ${C.line}; box-shadow: 6px 0 20px rgba(30,26,15,0.06); z-index: 24; display: flex; flex-direction: column; animation: he-drawer-in .16s ease; }
 @keyframes he-drawer-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
@@ -46,19 +37,19 @@ export const EDITOR_CSS = `
 .he-thumb:hover { transform: translateY(-1px); }
 .he-thumb.active { outline-color: ${C.gold}; }
 .he-thumb.drop-before::before { content: ""; position: absolute; left: -7px; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: ${C.gold}; }
-.he-thumb-num { position: absolute; left: 5px; bottom: 4px; font-size: 10px; font-weight: 700; color: #fff; background: rgba(30,38,33,0.6); border-radius: 4px; padding: 1px 5px; pointer-events: none; }
+.he-thumb-num { position: absolute; left: 5px; bottom: 4px; font-size: 10px; font-weight: 700; color: #fff; background: color-mix(in srgb, var(--he-ink) 60%, transparent); border-radius: 4px; padding: 1px 5px; pointer-events: none; }
 .he-thumb-actions { position: absolute; right: 4px; top: 4px; display: none; gap: 3px; }
 .he-thumb:hover .he-thumb-actions, .he-thumb.active .he-thumb-actions { display: flex; }
-.he-thumb-act { width: 22px; height: 22px; border-radius: 6px; border: none; background: rgba(30,38,33,0.72); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.he-thumb-act { width: 22px; height: 22px; border-radius: 6px; border: none; background: color-mix(in srgb, var(--he-ink) 72%, transparent); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .he-thumb-act:hover { background: ${C.ink}; }
 .he-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 9px; border: none; background: transparent; color: ${C.ink}; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .12s, color .12s, opacity .12s; }
-.he-btn:hover { background: rgba(30,38,33,0.07); }
+.he-btn:hover { background: color-mix(in srgb, var(--he-ink) 7%, transparent); }
 .he-btn:disabled { opacity: .38; cursor: default; background: transparent; }
 .he-btn.icon { width: 34px; padding: 0; }
 .he-btn.primary { background: ${C.ink}; color: #F2EDE2; }
 .he-btn.primary:hover { background: #2C3630; }
-.he-btn.soft { background: rgba(30,38,33,0.06); }
-.he-btn.soft:hover { background: rgba(30,38,33,0.1); }
+.he-btn.soft { background: color-mix(in srgb, var(--he-ink) 6%, transparent); }
+.he-btn.soft:hover { background: color-mix(in srgb, var(--he-ink) 10%, transparent); }
 .he-btn.gold { background: ${C.gold}; color: #fff; }
 .he-btn.gold:hover { background: #A47530; }
 .he-btn.active { background: rgba(184,134,59,0.16); color: ${C.gold}; }
@@ -74,18 +65,18 @@ export const EDITOR_CSS = `
 .he-toolbar::-webkit-scrollbar { display: none; }
 @keyframes he-pop { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
 .he-tb { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 32px; min-width: 32px; padding: 0 8px; border-radius: 8px; border: none; background: transparent; color: ${C.ink}; font-size: 12.5px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
-.he-tb:hover { background: rgba(30,38,33,0.07); }
+.he-tb:hover { background: color-mix(in srgb, var(--he-ink) 7%, transparent); }
 .he-tb.active { background: rgba(184,134,59,0.16); color: ${C.gold}; }
 .he-tb.danger:hover { background: rgba(168,69,58,0.12); color: ${C.danger}; }
 .he-tb:disabled { opacity: .35; cursor: default; background: transparent; }
 .he-tb-sep { width: 1px; height: 20px; background: ${C.line}; margin: 0 3px; flex-shrink: 0; }
 .he-pop { position: fixed; z-index: 120; background: ${C.card}; border: 1px solid ${C.line}; border-radius: 12px; box-shadow: 0 12px 32px rgba(30,26,15,0.2); padding: 10px; animation: he-pop .12s ease; max-height: min(520px, 80vh); overflow-y: auto; }
 .he-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border-radius: 8px; border: none; background: transparent; color: ${C.ink}; font-size: 13px; text-align: left; cursor: pointer; }
-.he-menu-item:hover { background: rgba(30,38,33,0.06); }
+.he-menu-item:hover { background: color-mix(in srgb, var(--he-ink) 6%, transparent); }
 .he-menu-item.danger { color: ${C.danger}; }
 .he-menu-item .kbd { margin-left: auto; color: ${C.faint}; font-size: 11.5px; }
 .he-menu-item:disabled { opacity: .4; cursor: default; background: transparent; }
-.he-swatch { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(30,38,33,0.15); cursor: pointer; padding: 0; flex-shrink: 0; }
+.he-swatch { width: 26px; height: 26px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--he-ink) 15%, transparent); cursor: pointer; padding: 0; flex-shrink: 0; }
 .he-swatch.active { box-shadow: 0 0 0 2px ${C.card}, 0 0 0 4px ${C.gold}; }
 .he-grid { display: grid; gap: 8px; }
 .he-tile { position: relative; border-radius: 10px; border: 1px solid ${C.line}; background: #fff; cursor: pointer; overflow: hidden; transition: transform .12s, box-shadow .12s, border-color .12s; padding: 0; }
@@ -97,14 +88,14 @@ export const EDITOR_CSS = `
 .he-range { width: 100%; accent-color: ${C.gold}; }
 .he-input { width: 100%; height: 34px; border-radius: 8px; border: 1px solid ${C.line}; background: #fff; padding: 0 10px; font-size: 13px; color: ${C.ink}; outline: none; font-family: inherit; }
 .he-input:focus { border-color: ${C.gold}; }
-.he-drop { border: 1.5px dashed rgba(30,38,33,0.25); border-radius: 12px; padding: 22px 14px; text-align: center; color: ${C.muted}; cursor: pointer; transition: background .12s, border-color .12s; background: rgba(255,255,255,0.6); }
+.he-drop { border: 1.5px dashed color-mix(in srgb, var(--he-ink) 25%, transparent); border-radius: 12px; padding: 22px 14px; text-align: center; color: ${C.muted}; cursor: pointer; transition: background .12s, border-color .12s; background: rgba(255,255,255,0.6); }
 .he-drop:hover, .he-drop.over { border-color: ${C.gold}; background: rgba(184,134,59,0.08); color: ${C.ink}; }
 .he-toast { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 60; background: ${C.ink}; color: #F2EDE2; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 12px; animation: he-pop .16s ease; max-width: calc(100% - 32px); }
 .he-toast button { background: none; border: none; color: ${C.goldSoft}; font-weight: 700; cursor: pointer; font-size: 13px; padding: 0; }
 .he-banner { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 50; background: ${C.card}; border: 1px solid ${C.goldSoft}; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 24px rgba(30,26,15,0.16); font-size: 13px; max-width: calc(100% - 32px); }
 .he-zoom { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .he-zoom-val { min-width: 54px; height: 30px; border: none; background: transparent; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; color: ${C.ink}; }
-.he-zoom-val:hover { background: rgba(30,38,33,0.07); }
+.he-zoom-val:hover { background: color-mix(in srgb, var(--he-ink) 7%, transparent); }
 .he-handle { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; background: #fff; border: 1.5px solid ${C.select}; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.25); pointer-events: auto; touch-action: none; transition: transform .1s; }
 .he-handle:hover { transform: scale(1.25); }
 .he-handle.bar-h { width: 22px; height: 8px; margin: -4px 0 0 -11px; border-radius: 4px; }
@@ -120,10 +111,10 @@ export const EDITOR_CSS = `
 .he-spin { animation: he-spin .9s linear infinite; }
 @keyframes he-spin { to { transform: rotate(360deg); } }
 .he-layer-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 12.5px; border: 1px solid transparent; }
-.he-layer-row:hover { background: rgba(30,38,33,0.05); }
+.he-layer-row:hover { background: color-mix(in srgb, var(--he-ink) 5%, transparent); }
 .he-layer-row.sel { background: rgba(184,134,59,0.12); border-color: rgba(184,134,59,0.3); }
 .he-layer-row.over { border-top: 2px solid ${C.gold}; }
-.he-kbd { display: inline-block; min-width: 22px; padding: 2px 6px; border-radius: 5px; background: rgba(30,38,33,0.07); border: 1px solid ${C.line}; font-size: 11.5px; font-weight: 600; text-align: center; }
+.he-kbd { display: inline-block; min-width: 22px; padding: 2px 6px; border-radius: 5px; background: color-mix(in srgb, var(--he-ink) 7%, transparent); border: 1px solid ${C.line}; font-size: 11.5px; font-weight: 600; text-align: center; }
 @media (max-width: 768px) {
   .he-topbar { height: 52px; padding: 0 6px; gap: 2px; }
   .he-title-input { width: 130px; font-size: 15px; }
@@ -239,7 +230,7 @@ export function Swatches({ colors, value, onChange, allowCustom = true }) {
         />
       ))}
       {allowCustom && (
-        <label className="he-swatch" title="Boshqa rang" style={{ background: "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)", position: "relative", overflow: "hidden" }}>
+        <label className="he-swatch" title={t("Boshqa rang")} style={{ background: "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)", position: "relative", overflow: "hidden" }}>
           <input
             type="color"
             value={/^#[0-9a-f]{6}$/i.test(value || "") ? value : "#b8863b"}

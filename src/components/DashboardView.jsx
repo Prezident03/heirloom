@@ -3,6 +3,7 @@ import { BookImage, Camera, Search, TreePine, UserPlus } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
 import { VIEWS, SectionLabel, CreateMenu, StatItem, EmptyState, AlbumCard, buildFamilyGenerations, collectPhotoUrls } from "./shared";
 import { CoverMenu } from "./CoverPicker";
+import { t } from "@/lib/i18n";
 
 /**
  * Family Space'ning "shaxsiyati" — daraxt statistikasi asosida, hech qanday
@@ -19,6 +20,7 @@ function FamilyHeroBanner({ familyName, familySince, genCount, memberCount, albu
         position: "relative",
         borderRadius: 18,
         overflow: "hidden",
+        width: "100%",
         minHeight: 224,
         aspectRatio: "4 / 1",
         marginBottom: 40,
@@ -40,17 +42,17 @@ function FamilyHeroBanner({ familyName, familySince, genCount, memberCount, albu
       <div style={{ position: "relative", width: "100%", padding: "26px 30px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 11, letterSpacing: "0.16em", color: TOKENS.goldSoft, fontWeight: 700, textTransform: "uppercase" }}>
-            {familyName}{familySince ? ` · ${familySince} yildan beri` : ""}
+            {familyName}{familySince ? t(" · {0} yildan beri", { 0: familySince }) : ""}
           </div>
           <div style={{ fontFamily: "Fraunces, serif", fontSize: 23, color: TOKENS.parchment, marginTop: 4 }}>
-            Oilangizning raqamli uyi
+            {t("Oilangizning raqamli uyi")}
           </div>
         </div>
         <div style={{ display: "flex", gap: 30 }}>
-          <StatItem value={genCount} label="avlod" />
-          <StatItem value={memberCount} label="a'zo" />
-          <StatItem value={albumCount} label="albom" />
-          <StatItem value={photoCount} label="rasm" />
+          <StatItem value={genCount} label={t("avlod")} />
+          <StatItem value={memberCount} label={t("a'zo")} />
+          <StatItem value={albumCount} label={t("albom")} />
+          <StatItem value={photoCount} label={t("rasm")} />
         </div>
       </div>
     </div>
@@ -64,16 +66,16 @@ function DashboardWelcome({ familyName, onAddPerson, onCreateAlbum }) {
       <div style={{ width: 60, height: 60, borderRadius: 16, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})`, margin: "0 auto 22px", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <TreePine size={26} color="#fff" />
       </div>
-      <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 28, fontWeight: 500, margin: "0 0 10px" }}>{familyName}ga xush kelibsiz</h1>
+      <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 28, fontWeight: 500, margin: "0 0 10px" }}>{familyName}{t("ga xush kelibsiz")}</h1>
       <p style={{ fontSize: 14, color: TOKENS.ink60, lineHeight: 1.7, margin: "0 0 30px" }}>
-        Bu — sizning oilangiz uchun bo'sh sahifa. Tayyor namuna yo'q, chunki hikoya faqat sizga tegishli. Odatda avval o'zingizni qo'shasiz, keyin oila a'zolaringizni va birinchi albomingizni yaratasiz.
+        {t("Bu — sizning oilangiz uchun bo'sh sahifa. Tayyor namuna yo'q, chunki hikoya faqat sizga tegishli. Odatda avval o'zingizni qo'shasiz, keyin oila a'zolaringizni va birinchi albomingizni yaratasiz.")}
       </p>
       <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
         <button onClick={onAddPerson} style={{ display: "flex", alignItems: "center", gap: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "12px 22px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
-          <UserPlus size={15} /> O'zingizni qo'shing
+          <UserPlus size={15} /> {t("O'zingizni qo'shing")}
         </button>
         <button onClick={onCreateAlbum} style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", color: TOKENS.ink, border: `1.5px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: "12px 22px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
-          <BookImage size={15} /> Albom yarating
+          <BookImage size={15} /> {t("Albom yarating")}
         </button>
       </div>
     </div>
@@ -118,10 +120,10 @@ function MiniWidgetShell({ title, action, onAction, children }) {
 function TimelineMiniWidget({ events, onNavigate }) {
   const items = (events || []).slice(-5).reverse();
   return (
-    <MiniWidgetShell title="Vaqt chizig'i" action="Barchasi" onAction={() => onNavigate(VIEWS.TIMELINE)}>
+    <MiniWidgetShell title={t("Vaqt chizig'i")} action={t("Barchasi")} onAction={() => onNavigate(VIEWS.TIMELINE)}>
       {items.length === 0 ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 12.5, color: TOKENS.ink60 }}>
-          Hali voqealar yo'q
+          {t("Hali voqealar yo'q")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
@@ -147,10 +149,10 @@ function FamilyTreeMiniWidget({ generations, genCount, memberCount, onNavigate }
   const gen1 = (generations[1]?.units || []).flatMap((u) => u.people).slice(0, 4);
 
   return (
-    <MiniWidgetShell title="Oila daraxti" action="Ochish" onAction={() => onNavigate(VIEWS.TREE)}>
+    <MiniWidgetShell title={t("Oila daraxti")} action={t("Ochish")} onAction={() => onNavigate(VIEWS.TREE)}>
       {memberCount === 0 ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 12.5, color: TOKENS.ink60 }}>
-          Hali a'zolar yo'q
+          {t("Hali a'zolar yo'q")}
         </div>
       ) : (
         <div onClick={() => onNavigate(VIEWS.TREE)} style={{ cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9 }}>
@@ -165,7 +167,7 @@ function FamilyTreeMiniWidget({ generations, genCount, memberCount, onNavigate }
               {gen1.map((p) => <MiniAvatar key={p.id} photoUrl={p.photoUrl} name={p.name} size={30} />)}
             </div>
           )}
-          <div style={{ fontSize: 11.5, color: TOKENS.ink60, marginTop: 4 }}>{genCount} avlod · {memberCount} a'zo</div>
+          <div style={{ fontSize: 11.5, color: TOKENS.ink60, marginTop: 4 }}>{genCount} {t("avlod ·")} {memberCount} {t("a'zo")}</div>
         </div>
       )}
     </MiniWidgetShell>
@@ -181,13 +183,13 @@ function TodayMemoryWidget({ item, isOnThisDay, onNavigate, onAddMemory }) {
   }, [item]);
 
   return (
-    <MiniWidgetShell title="Bugungi xotira">
+    <MiniWidgetShell title={t("Bugungi xotira")}>
       {!item ? (
         <div
           onClick={onAddMemory}
           style={{ cursor: onAddMemory ? "pointer" : "default", flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontSize: 12.5, color: TOKENS.ink60 }}
         >
-          Hali xotiralar yo'q
+          {t("Hali xotiralar yo'q")}
         </div>
       ) : (
         <div onClick={() => onNavigate(VIEWS.MEMORIES)} style={{ cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -203,7 +205,7 @@ function TodayMemoryWidget({ item, isOnThisDay, onNavigate, onAddMemory }) {
           <div>
             {isOnThisDay && yearsAgo > 0 && (
               <div style={{ fontSize: 10.5, fontWeight: 700, color: TOKENS.gold, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
-                {yearsAgo} yil oldin
+                {yearsAgo} {t("yil oldin")}
               </div>
             )}
             <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</div>
@@ -218,9 +220,9 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
   const [query, setQuery] = useState("");
   const [greeting] = useState(() => {
     const h = new Date().getHours();
-    if (h < 12) return "Xayrli tong";
-    if (h < 18) return "Xayrli kun";
-    return "Xayrli kech";
+    if (h < 12) return t("Xayrli tong");
+    if (h < 18) return t("Xayrli kun");
+    return t("Xayrli kech");
   });
 
   // useMemo shartsiz, har renderda bir xil tartibda chaqirilishi SHART
@@ -276,12 +278,12 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
       if (p.birth_date && String(p.birth_date).includes(suffix)) {
         const year = new Date(p.birth_date).getFullYear();
         const age = today.getFullYear() - year;
-        items.push({ kind: "birthday", id: "b-" + p.id, title: `${p.first_name}${p.last_name ? " " + p.last_name : ""} tug'ilgan kuni`, subtitle: `${age} yil bo'ldi`, date: p.birth_date, photo_url: p.profile_photo_url, extra: "" });
+        items.push({ kind: "birthday", id: "b-" + p.id, title: t("{0} tug'ilgan kuni", { 0: `${p.first_name}${p.last_name ? " " + p.last_name : ""}` }), subtitle: t("{0} yil bo'ldi", { 0: age }), date: p.birth_date, photo_url: p.profile_photo_url, extra: "" });
       }
       if (p.death_date && String(p.death_date).includes(suffix)) {
         const year = new Date(p.death_date).getFullYear();
         const years = today.getFullYear() - year;
-        items.push({ kind: "death", id: "d-" + p.id, title: `${p.first_name}${p.last_name ? " " + p.last_name : ""}`, subtitle: `${years} yil avval vafot etgan`, date: p.death_date, photo_url: p.profile_photo_url, extra: "" });
+        items.push({ kind: "death", id: "d-" + p.id, title: `${p.first_name}${p.last_name ? " " + p.last_name : ""}`, subtitle: t("{0} yil avval vafot etgan", { 0: years }), date: p.death_date, photo_url: p.profile_photo_url, extra: "" });
       }
     });
     return items;
@@ -303,12 +305,12 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
       <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 34, fontWeight: 500, margin: "0 0 6px", letterSpacing: "-0.01em" }}>{greeting}, {userName} 👋</h1>
-          <p style={{ fontFamily: "Fraunces, serif", fontStyle: "italic", fontSize: 15.5, color: TOKENS.ink60, margin: 0 }}>"Har bir oila o'z hikoyasiga ega."</p>
+          <p style={{ fontFamily: "Fraunces, serif", fontStyle: "italic", fontSize: 15.5, color: TOKENS.ink60, margin: 0 }}>{t("\"Har bir oila o'z hikoyasiga ega.\"")}</p>
         </div>
         <div style={{ display: "flex", gap: 12, flex: "1 1 320px", maxWidth: 520 }}>
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: "0 16px", height: 44 }}>
             <Search size={16} color={TOKENS.ink40} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Odamlar, albomlar qidirish..." style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, width: "100%", color: TOKENS.ink, fontFamily: "Inter, sans-serif" }} />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Odamlar, albomlar qidirish...")} style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, width: "100%", color: TOKENS.ink, fontFamily: "Inter, sans-serif" }} />
           </div>
           {(onCreateAlbum || onAddPerson || onUploadPhotos || onAddEvent || onAddMemory || onAddStory || onAddPlace) && <CreateMenu onCreateAlbum={onCreateAlbum} onAddPerson={onAddPerson} onUploadPhotos={onUploadPhotos} onAddEvent={onAddEvent} onAddMemory={onAddMemory} onAddStory={onAddStory} onAddPlace={onAddPlace} />}
         </div>
@@ -319,7 +321,7 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
           <DashboardWelcome familyName={familyName} onAddPerson={onAddPerson} onCreateAlbum={onCreateAlbum} />
         ) : (
           <div style={{ textAlign: "center", padding: "80px 20px", color: TOKENS.ink60, fontSize: 13.5 }}>
-            Bu oila hali bo'sh.
+            {t("Bu oila hali bo'sh.")}
           </div>
         )
       ) : (
@@ -348,13 +350,13 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
           />
 
           <section style={{ marginBottom: 40 }}>
-            <SectionLabel eyebrow="Arxiv" title="So'nggi albomlar" action="Barchasi" onAction={() => onNavigate(VIEWS.ALBUMS)} />
+            <SectionLabel eyebrow={t("Arxiv")} title={t("So'nggi albomlar")} action={t("Barchasi")} onAction={() => onNavigate(VIEWS.ALBUMS)} />
             {albums.length === 0 ? (
               <EmptyState
                 icon={<BookImage size={32} color={TOKENS.goldSoft} strokeWidth={1.4} />}
-                title="Hali albomlar yaratilmagan"
-                description="Oilaviy xotiralarni albomlar orqali tartiblang."
-                actionLabel={onCreateAlbum ? "+ Birinchi albomni yaratish" : undefined}
+                title={t("Hali albomlar yaratilmagan")}
+                description={t("Oilaviy xotiralarni albomlar orqali tartiblang.")}
+                actionLabel={onCreateAlbum ? t("+ Birinchi albomni yaratish") : undefined}
                 onAction={onCreateAlbum}
               />
             ) : (

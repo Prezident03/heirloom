@@ -5,6 +5,7 @@ import {
   Leaf, Flower2, Heart, Star, Sun, Sparkles, Moon, Cloud, Gift, Cake, PartyPopper,
   Camera, Music, Crown, Umbrella, Snowflake, Smile, Feather, Plane, MapPin, Coffee, Anchor,
 } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 // ============================================================
 // Scrapbook elementlari katalogi
@@ -296,7 +297,7 @@ export const STICKER_GROUPS = [
           <rect x="9" y="9" width="64" height="66" fill={color} />
           <path d="M18,62 L32,40 L42,52 L52,34 L66,62 Z" fill={shade(color, 45)} />
           <circle cx="58" cy="24" r="6" fill="#E0B04A" />
-          <text x="41" y="91" textAnchor="middle" fontFamily="'Special Elite', monospace" fontSize="9" fill="#3B3A36">HEIRLOOM</text>
+          <text x="41" y="91" textAnchor="middle" fontFamily="'Special Elite', monospace" fontSize="9" fill="#3B3A36">{t("HEIRLOOM")}</text>
         </>, "0 0 82 100", true),
       },
       {

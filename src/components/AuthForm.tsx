@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 import type { ActionState } from "@/lib/actions";
+import { t } from "@/lib/i18n";
 
 type Field = { name: string; label: string; type: string; placeholder: string };
 
@@ -46,7 +47,7 @@ export default function AuthForm({
           padding: 12px 14px;
           border-radius: 8px;
           border: 1px solid ${TOKENS.parchmentDeep};
-          background: #fff;
+          background: ${TOKENS.field};
           font-size: 14px;
           font-family: Inter, sans-serif;
           color: ${TOKENS.ink};
@@ -94,19 +95,19 @@ export default function AuthForm({
           ))}
           {fields.map((f) => (
             <div key={f.name}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: TOKENS.ink60, marginBottom: 6, display: "block" }}>{f.label}</label>
-              <input className="fm-input" type={f.type} name={f.name} placeholder={f.placeholder} required />
+              <label style={{ fontSize: 12, fontWeight: 600, color: TOKENS.ink60, marginBottom: 6, display: "block" }}>{t(f.label)}</label>
+              <input className="fm-input" type={f.type} name={f.name} placeholder={t(f.placeholder)} required />
             </div>
           ))}
 
           {state?.error && (
             <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-              {state.error}
+              {t(state.error)}
             </div>
           )}
 
           <button type="submit" className="fm-submit" disabled={pending}>
-            {pending ? "Iltimos kuting..." : submitLabel}
+            {pending ? t("Iltimos kuting...") : submitLabel}
           </button>
         </form>
 

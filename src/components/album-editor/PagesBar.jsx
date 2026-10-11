@@ -5,6 +5,7 @@ import { Plus, Copy, Trash2, Minus, FilePlus2, LayoutTemplate, Maximize, Rectang
 import { ScaledPage } from "./ElementView";
 import { PopButton, C } from "./ui";
 import { ZOOM_LEVELS, PAGE_FORMATS } from "./constants";
+import { t } from "@/lib/i18n";
 
 const PAGE_MIME = "application/x-heirloom-page";
 
@@ -15,7 +16,7 @@ export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZo
 
   return (
     <div className="he-bottombar" onPointerDown={(e) => e.stopPropagation()}>
-      <div className="he-pages" role="list" aria-label="Sahifalar">
+      <div className="he-pages" role="list" aria-label={t("Sahifalar")}>
         {pages.map((p, i) => (
           <div
             key={p.id}
@@ -32,14 +33,14 @@ export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZo
             }}
             onDragEnd={() => { setDragId(null); setOverId(null); }}
             onClick={() => setPageId(p.id)}
-            title={`Sahifa ${i + 1}`}
+            title={t("Sahifa {0}", { 0: i + 1 })}
           >
             <ScaledPage page={p} width={thumbW} style={{ borderRadius: 6 }} />
             <span className="he-thumb-num">{i + 1}</span>
             {canEdit && (
               <div className="he-thumb-actions">
-                <button type="button" className="he-thumb-act" title="Sahifani nusxalash" onClick={(e) => { e.stopPropagation(); api.duplicatePage(p.id); }}><Copy size={12} /></button>
-                <button type="button" className="he-thumb-act" title="Sahifani o'chirish" disabled={pages.length < 2} onClick={(e) => { e.stopPropagation(); api.deletePage(p.id); }} style={{ opacity: pages.length < 2 ? 0.4 : 1 }}><Trash2 size={12} /></button>
+                <button type="button" className="he-thumb-act" title={t("Sahifani nusxalash")} onClick={(e) => { e.stopPropagation(); api.duplicatePage(p.id); }}><Copy size={12} /></button>
+                <button type="button" className="he-thumb-act" title={t("Sahifani o'chirish")} disabled={pages.length < 2} onClick={(e) => { e.stopPropagation(); api.deletePage(p.id); }} style={{ opacity: pages.length < 2 ? 0.4 : 1 }}><Trash2 size={12} /></button>
               </div>
             )}
           </div>
@@ -48,31 +49,31 @@ export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZo
           <PopButton
             className="he-btn soft"
             icon={<Plus size={18} />}
-            title="Sahifa qo'shish"
+            title={t("Sahifa qo'shish")}
             width={230}
             placement="top"
           >
             {(close) => (
               <>
-                <button type="button" className="he-menu-item" onClick={() => { api.addPage({}); close(); }}><FilePlus2 size={15} /> Bo&apos;sh sahifa</button>
-                <button type="button" className="he-menu-item" onClick={() => { api.addPage({ openTemplates: true }); close(); }}><LayoutTemplate size={15} /> Shablondan tanlash</button>
-                <button type="button" className="he-menu-item" onClick={() => { api.duplicatePage(pageId); close(); }}><Copy size={15} /> Joriy sahifa nusxasi</button>
+                <button type="button" className="he-menu-item" onClick={() => { api.addPage({}); close(); }}><FilePlus2 size={15} /> {t("Bo'sh sahifa")}</button>
+                <button type="button" className="he-menu-item" onClick={() => { api.addPage({ openTemplates: true }); close(); }}><LayoutTemplate size={15} /> {t("Shablondan tanlash")}</button>
+                <button type="button" className="he-menu-item" onClick={() => { api.duplicatePage(pageId); close(); }}><Copy size={15} /> {t("Joriy sahifa nusxasi")}</button>
               </>
             )}
           </PopButton>
         )}
       </div>
       {canEdit && (
-        <PopButton className="he-btn soft" icon={<RectangleHorizontal size={15} />} label={<span>{format}</span>} title="Sahifa formati" width={230} placement="top" align="end">
+        <PopButton className="he-btn soft" icon={<RectangleHorizontal size={15} />} label={<span>{format}</span>} title={t("Sahifa formati")} width={230} placement="top" align="end">
           {(close) => (
             <>
-              <div style={{ fontSize: 11.5, color: C.muted, margin: "2px 6px 6px" }}>Butun albom uchun sahifa formati</div>
+              <div style={{ fontSize: 11.5, color: C.muted, margin: "2px 6px 6px" }}>{t("Butun albom uchun sahifa formati")}</div>
               {PAGE_FORMATS.map((f) => (
                 <button key={f.id} type="button" className="he-menu-item" style={{ background: f.id === format ? "rgba(184,134,59,0.12)" : undefined }} onClick={() => { api.setFormat(f.id); close(); }}>
                   <span style={{ width: 26, display: "inline-flex", justifyContent: "center" }}>
                     <span style={{ display: "inline-block", width: f.ratio >= 1 ? 22 : 22 * f.ratio, height: f.ratio >= 1 ? 22 / f.ratio : 22, border: `1.5px solid ${f.id === format ? C.gold : C.ink}`, borderRadius: 2 }} />
                   </span>
-                  {f.name} <span className="kbd">{f.id}</span>
+                  {t(f.name)} <span className="kbd">{f.id}</span>
                 </button>
               ))}
             </>
@@ -80,11 +81,11 @@ export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZo
         </PopButton>
       )}
       <div className="he-zoom">
-        <button type="button" className="he-btn icon" title="Kichraytirish (Ctrl −)" onClick={() => onZoom("out")}><Minus size={16} /></button>
-        <PopButton className="he-zoom-val" label={`${zoomPct}%`} title="Masshtab" width={170} placement="top" align="end">
+        <button type="button" className="he-btn icon" title={t("Kichraytirish (Ctrl −)")} onClick={() => onZoom("out")}><Minus size={16} /></button>
+        <PopButton className="he-zoom-val" label={`${zoomPct}%`} title={t("Masshtab")} width={170} placement="top" align="end">
           {(close) => (
             <>
-              <button type="button" className="he-menu-item" onClick={() => { onZoom("fit"); close(); }}><Maximize size={14} /> Ekranga moslash <span className="kbd">Ctrl+0</span></button>
+              <button type="button" className="he-menu-item" onClick={() => { onZoom("fit"); close(); }}><Maximize size={14} /> {t("Ekranga moslash")} <span className="kbd">{t("Ctrl+0")}</span></button>
               <div style={{ height: 1, background: C.line, margin: "4px 0" }} />
               {[...ZOOM_LEVELS].filter((z) => z >= 0.25).reverse().map((z) => (
                 <button key={z} type="button" className="he-menu-item" onClick={() => { onZoom(z); close(); }}>{Math.round(z * 100)}%</button>
@@ -92,8 +93,8 @@ export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZo
             </>
           )}
         </PopButton>
-        <button type="button" className="he-btn icon" title="Kattalashtirish (Ctrl +)" onClick={() => onZoom("in")}><Plus size={16} /></button>
-        <button type="button" className="he-btn icon he-hide-sm" title="Ekranga moslash" onClick={() => onZoom("fit")}><Maximize size={15} /></button>
+        <button type="button" className="he-btn icon" title={t("Kattalashtirish (Ctrl +)")} onClick={() => onZoom("in")}><Plus size={16} /></button>
+        <button type="button" className="he-btn icon he-hide-sm" title={t("Ekranga moslash")} onClick={() => onZoom("fit")}><Maximize size={15} /></button>
       </div>
     </div>
   );

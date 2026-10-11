@@ -6,6 +6,7 @@ import {
 import { TOKENS } from "@/lib/uiTokens";
 import { personLabel, personYears } from "@/lib/relationshipLabels";
 import { CoverMenu } from "./CoverPicker";
+import { t } from "@/lib/i18n";
 
 export const VIEWS = {
   DASHBOARD: "dashboard",
@@ -92,7 +93,7 @@ export function CreateMenu({ onCreateAlbum, onAddPerson, onUploadPhotos, onAddEv
         onClick={() => setOpen((v) => !v)}
         style={{ display: "flex", alignItems: "center", gap: 8, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "0 18px", height: 44, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
       >
-        <Plus size={15} /> Yangi <ChevronDown size={13} style={{ opacity: 0.7, marginLeft: -2 }} />
+        <Plus size={15} /> {t("Yangi")} <ChevronDown size={13} style={{ opacity: 0.7, marginLeft: -2 }} />
       </button>
       {open && (
         <div className="fm-panel-enter" style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, minWidth: 210, background: TOKENS.card, borderRadius: 12, border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 18px 40px rgba(30,38,33,0.18)", padding: 6, zIndex: 40 }}>
@@ -104,7 +105,7 @@ export function CreateMenu({ onCreateAlbum, onAddPerson, onUploadPhotos, onAddEv
               onMouseEnter={(e) => (e.currentTarget.style.background = TOKENS.parchment)}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <it.icon size={15} color={TOKENS.gold} /> {it.label}
+              <it.icon size={15} color={TOKENS.gold} /> {t(it.label)}
             </button>
           ))}
         </div>
@@ -184,7 +185,7 @@ export function AlbumCard({ album: a, onClick, compact, coverControl }) {
       </div>
       <div style={{ fontFamily: "Fraunces, serif", fontSize: compact ? 16 : 16.5, fontWeight: 500 }}>{a.title}</div>
       <div style={{ fontSize: 12, color: TOKENS.ink60, marginTop: 3 }}>
-        {[a.date_label, a.location, `${a.pages.length} sahifa`, `${photoCount} rasm`].filter(Boolean).join(" · ")}
+        {[a.date_label, a.location, t("{0} sahifa", { 0: a.pages.length }), t("{0} rasm", { 0: photoCount })].filter(Boolean).join(" · ")}
       </div>
     </div>
   );

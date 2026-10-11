@@ -5,12 +5,14 @@ import { redirect } from "next/navigation";
 import AuthForm from "@/components/AuthForm";
 import { registerAction } from "@/lib/actions";
 import { getSession } from "@/lib/session";
+import { getT } from "@/lib/i18n/server";
 
 export default async function RegisterPage({
   searchParams,
 }: {
   searchParams: Promise<{ invite?: string }>;
 }) {
+  const t = await getT();
   const { invite } = await searchParams;
   let session = null;
   try {
@@ -25,9 +27,9 @@ export default async function RegisterPage({
   return (
     <AuthForm
       action={registerAction}
-      title={invite ? "Oilaga qo'shiling" : "Oilangiz tarixini boshlang"}
-      subtitle={invite ? "Sizni taklif qilishdi — davom etish uchun hisob yarating." : "Heirloom'da hisob yarating — bir necha daqiqada."}
-      submitLabel="Ro'yxatdan o'tish"
+      title={invite ? t("Oilaga qo'shiling") : t("Oilangiz tarixini boshlang")}
+      subtitle={invite ? t("Sizni taklif qilishdi — davom etish uchun hisob yarating.") : t("Heirloom'da hisob yarating — bir necha daqiqada.")}
+      submitLabel={t("Ro'yxatdan o'tish")}
       hiddenFields={invite ? [{ name: "inviteCode", value: invite }] : []}
       fields={[
         { name: "name", label: "Ismingiz", type: "text", placeholder: "Abdurasul Zokirov" },
@@ -36,9 +38,9 @@ export default async function RegisterPage({
       ]}
       footer={
         <>
-          Akkountingiz bormi?{" "}
+          {t("Akkountingiz bormi?")}{" "}
           <Link className="fm-auth-link" href={invite ? `/login?invite=${invite}` : "/login"}>
-            Kirish
+            {t("Kirish")}
           </Link>
         </>
       }

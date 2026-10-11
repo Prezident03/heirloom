@@ -15,6 +15,7 @@ import { stickerDef, StickerArt } from "./stickers";
 import { PopButton, Swatches, Slider, C } from "./ui";
 import { screenBounds } from "./Overlay";
 import { PhotoFramePreview } from "./ElementView";
+import { t } from "@/lib/i18n";
 
 const SAMPLE_IMG =
   "data:image/svg+xml;utf8," + encodeURIComponent(
@@ -36,9 +37,9 @@ const Sep = () => <div className="he-tb-sep" />;
 function OpacityPop({ els, api }) {
   const v = els[0]?.opacity ?? 1;
   return (
-    <PopButton icon={<Droplet size={16} />} title="Shaffoflik" width={230}>
+    <PopButton icon={<Droplet size={16} />} title={t("Shaffoflik")} width={230}>
       <Slider
-        label="Shaffoflik"
+        label={t("Shaffoflik")}
         value={Math.round(v * 100)}
         min={5}
         max={100}
@@ -56,8 +57,8 @@ export function LayersList({ api, elements, selIds }) {
   const rows = [...elements].reverse();
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, margin: "2px 4px 8px", textTransform: "uppercase", letterSpacing: ".05em" }}>Qatlamlar</div>
-      {rows.length === 0 && <div style={{ padding: 10, color: C.muted, fontSize: 12.5 }}>Sahifa bo&apos;sh</div>}
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.muted, margin: "2px 4px 8px", textTransform: "uppercase", letterSpacing: ".05em" }}>{t("Qatlamlar")}</div>
+      {rows.length === 0 && <div style={{ padding: 10, color: C.muted, fontSize: 12.5 }}>{t("Sahifa bo'sh")}</div>}
       {rows.map((el, i) => (
         <div
           key={el.id}
@@ -77,12 +78,12 @@ export function LayersList({ api, elements, selIds }) {
           <GripVertical size={13} color={C.faint} style={{ cursor: "grab", flexShrink: 0 }} />
           <LayerThumb el={el} />
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{elementLabel(el)}</span>
-          {el.groupId && <span title="Guruhda" style={{ fontSize: 10, color: C.gold, fontWeight: 700 }}>G</span>}
+          {el.groupId && <span title={t("Guruhda")} style={{ fontSize: 10, color: C.gold, fontWeight: 700 }}>{t("G")}</span>}
           <button
             type="button"
             className="he-tb"
             style={{ height: 24, minWidth: 24, padding: 0 }}
-            title={el.locked ? "Qulfdan chiqarish" : "Qulflash"}
+            title={el.locked ? t("Qulfdan chiqarish") : t("Qulflash")}
             onClick={(e) => { e.stopPropagation(); api.update([el.id], { locked: !el.locked }); }}
           >
             {el.locked ? <Lock size={13} /> : <LockOpen size={13} color={C.faint} />}
@@ -104,12 +105,12 @@ function LayerThumb({ el }) {
 
 function LayerPop({ api, page, selIds }) {
   return (
-    <PopButton icon={<Layers size={16} />} title="Qatlam tartibi" width={270}>
+    <PopButton icon={<Layers size={16} />} title={t("Qatlam tartibi")} width={270}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 10 }}>
-        <button type="button" className="he-menu-item" onClick={() => api.layer("forward")}><ChevronUp size={15} /> Oldinga</button>
-        <button type="button" className="he-menu-item" onClick={() => api.layer("backward")}><ChevronDown size={15} /> Orqaga</button>
-        <button type="button" className="he-menu-item" onClick={() => api.layer("front")}><ArrowUpToLine size={15} /> Eng oldiga</button>
-        <button type="button" className="he-menu-item" onClick={() => api.layer("back")}><ArrowDownToLine size={15} /> Eng orqaga</button>
+        <button type="button" className="he-menu-item" onClick={() => api.layer("forward")}><ChevronUp size={15} /> {t("Oldinga")}</button>
+        <button type="button" className="he-menu-item" onClick={() => api.layer("backward")}><ChevronDown size={15} /> {t("Orqaga")}</button>
+        <button type="button" className="he-menu-item" onClick={() => api.layer("front")}><ArrowUpToLine size={15} /> {t("Eng oldiga")}</button>
+        <button type="button" className="he-menu-item" onClick={() => api.layer("back")}><ArrowDownToLine size={15} /> {t("Eng orqaga")}</button>
       </div>
       <div style={{ borderTop: `1px solid ${C.line}`, paddingTop: 8 }}>
         <LayersList api={api} elements={page.elements} selIds={selIds} />
@@ -124,17 +125,17 @@ function AlignPop({ api, count }) {
     ["top", AlignStartHorizontal, "Tepaga"], ["vcenter", AlignCenterHorizontal, "O'rtaga"], ["bottom", AlignEndHorizontal, "Pastga"],
   ];
   return (
-    <PopButton icon={<AlignCenterVertical size={16} />} label="Tekislash" title="Tekislash" width={250}>
-      <div style={{ fontSize: 11.5, color: C.muted, margin: "0 4px 6px" }}>{count > 1 ? "Tanlanganlarga nisbatan" : "Sahifaga nisbatan"}</div>
+    <PopButton icon={<AlignCenterVertical size={16} />} label={t("Tekislash")} title={t("Tekislash")} width={250}>
+      <div style={{ fontSize: 11.5, color: C.muted, margin: "0 4px 6px" }}>{count > 1 ? t("Tanlanganlarga nisbatan") : t("Sahifaga nisbatan")}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
         {items.map(([id, Icon, label]) => (
-          <button key={id} type="button" className="he-menu-item" onClick={() => api.align(id)}><Icon size={15} /> {label}</button>
+          <button key={id} type="button" className="he-menu-item" onClick={() => api.align(id)}><Icon size={15} /> {t(label)}</button>
         ))}
       </div>
       {count > 2 && (
         <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 6, paddingTop: 6 }}>
-          <button type="button" className="he-menu-item" onClick={() => api.distribute("x")}><AlignHorizontalDistributeCenter size={15} /> Gorizontal teng taqsimlash</button>
-          <button type="button" className="he-menu-item" onClick={() => api.distribute("y")}><AlignVerticalDistributeCenter size={15} /> Vertikal teng taqsimlash</button>
+          <button type="button" className="he-menu-item" onClick={() => api.distribute("x")}><AlignHorizontalDistributeCenter size={15} /> {t("Gorizontal teng taqsimlash")}</button>
+          <button type="button" className="he-menu-item" onClick={() => api.distribute("y")}><AlignVerticalDistributeCenter size={15} /> {t("Vertikal teng taqsimlash")}</button>
         </div>
       )}
     </PopButton>
@@ -147,25 +148,25 @@ function CommonTail({ api, els, page, selIds }) {
     <>
       <Sep />
       <LayerPop api={api} page={page} selIds={selIds} />
-      <Btn icon={allLocked ? Lock : LockOpen} title={allLocked ? "Qulfdan chiqarish" : "Qulflash"} active={allLocked} onClick={api.toggleLock} />
-      <Btn icon={Copy} title="Nusxalash (Ctrl+D)" onClick={api.duplicate} />
-      <Btn icon={Trash2} title="O'chirish (Delete)" danger onClick={api.remove} disabled={allLocked} />
-      <PopButton icon={<Ellipsis size={16} />} title="Ko'proq" width={230} align="end">
+      <Btn icon={allLocked ? Lock : LockOpen} title={allLocked ? t("Qulfdan chiqarish") : t("Qulflash")} active={allLocked} onClick={api.toggleLock} />
+      <Btn icon={Copy} title={t("Nusxalash (Ctrl+D)")} onClick={api.duplicate} />
+      <Btn icon={Trash2} title={t("O'chirish (Delete)")} danger onClick={api.remove} disabled={allLocked} />
+      <PopButton icon={<Ellipsis size={16} />} title={t("Ko'proq")} width={230} align="end">
         {(close) => (
           <>
-            <button type="button" className="he-menu-item" onClick={() => { api.copy(); close(); }}>Nusxa olish <span className="kbd">Ctrl+C</span></button>
-            <button type="button" className="he-menu-item" onClick={() => { api.cut(); close(); }}>Kesib olish <span className="kbd">Ctrl+X</span></button>
-            <button type="button" className="he-menu-item" onClick={() => { api.paste(); close(); }}>Joylashtirish <span className="kbd">Ctrl+V</span></button>
+            <button type="button" className="he-menu-item" onClick={() => { api.copy(); close(); }}>{t("Nusxa olish")} <span className="kbd">{t("Ctrl+C")}</span></button>
+            <button type="button" className="he-menu-item" onClick={() => { api.cut(); close(); }}>{t("Kesib olish")} <span className="kbd">{t("Ctrl+X")}</span></button>
+            <button type="button" className="he-menu-item" onClick={() => { api.paste(); close(); }}>{t("Joylashtirish")} <span className="kbd">{t("Ctrl+V")}</span></button>
             <div style={{ height: 1, background: C.line, margin: "4px 0" }} />
-            <button type="button" className="he-menu-item" onClick={() => { api.align("hcenter", true); api.align("vcenter", true); close(); }}>Sahifa markaziga</button>
+            <button type="button" className="he-menu-item" onClick={() => { api.align("hcenter", true); api.align("vcenter", true); close(); }}>{t("Sahifa markaziga")}</button>
             {els.length > 1 && !els.every((e) => e.groupId && e.groupId === els[0].groupId) && (
-              <button type="button" className="he-menu-item" onClick={() => { api.group(); close(); }}>Guruhlash <span className="kbd">Ctrl+G</span></button>
+              <button type="button" className="he-menu-item" onClick={() => { api.group(); close(); }}>{t("Guruhlash")} <span className="kbd">{t("Ctrl+G")}</span></button>
             )}
             {els.some((e) => e.groupId) && (
-              <button type="button" className="he-menu-item" onClick={() => { api.ungroup(); close(); }}>Guruhdan chiqarish <span className="kbd">Ctrl+⇧+G</span></button>
+              <button type="button" className="he-menu-item" onClick={() => { api.ungroup(); close(); }}>{t("Guruhdan chiqarish")} <span className="kbd">{t("Ctrl+⇧+G")}</span></button>
             )}
             <div style={{ height: 1, background: C.line, margin: "4px 0" }} />
-            <button type="button" className="he-menu-item danger" onClick={() => { api.remove(); close(); }}>O&apos;chirish <span className="kbd">Del</span></button>
+            <button type="button" className="he-menu-item danger" onClick={() => { api.remove(); close(); }}>{t("O'chirish")} <span className="kbd">{t("Del")}</span></button>
           </>
         )}
       </PopButton>
@@ -175,12 +176,12 @@ function CommonTail({ api, els, page, selIds }) {
 
 function FramePop({ el, api }) {
   return (
-    <PopButton icon={<Frame size={16} />} label="Ramka" title="Ramka" width={292}>
+    <PopButton icon={<Frame size={16} />} label={t("Ramka")} title={t("Ramka")} width={292}>
       <div className="he-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {FRAMES.map((f) => (
           <button key={f.id} type="button" className="he-tile" style={{ padding: 6, outline: el.frame === f.id ? `2px solid ${C.gold}` : undefined }} onClick={() => api.update([el.id], { frame: f.id })}>
             <FramePreview frame={f.id} />
-            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: C.ink }}>{f.name}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: C.ink }}>{t(f.name)}</div>
           </button>
         ))}
       </div>
@@ -196,7 +197,7 @@ function FilterPop({ el, api }) {
   const f = { ...DEFAULT_FILTER, ...(el.filter || {}) };
   const set = (patch, live) => api.update([el.id], { filter: { ...f, ...patch } }, live ? { live: true } : undefined);
   return (
-    <PopButton icon={<Wand2 size={16} />} label="Filtr" title="Filtr va sozlash" width={300}>
+    <PopButton icon={<Wand2 size={16} />} label={t("Filtr")} title={t("Filtr va sozlash")} width={300}>
       <div className="he-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", marginBottom: 12 }}>
         {FILTER_PRESETS.map((p) => {
           const active = Object.keys(DEFAULT_FILTER).every((k) => (p.values[k] ?? 0) === (f[k] ?? 0));
@@ -204,26 +205,26 @@ function FilterPop({ el, api }) {
             <button key={p.id} type="button" className="he-tile" style={{ outline: active ? `2px solid ${C.gold}` : undefined }} onClick={() => api.update([el.id], { filter: { ...p.values } })}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={el.src} alt="" crossOrigin="anonymous" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block", filter: filterCss(p.values) }} />
-              <div style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 0", color: C.ink }}>{p.name}</div>
+              <div style={{ fontSize: 10.5, fontWeight: 600, padding: "4px 0", color: C.ink }}>{t(p.name)}</div>
             </button>
           );
         })}
       </div>
-      <Slider label="Yorqinlik" value={f.brightness} min={40} max={160} onChange={(n) => set({ brightness: n }, true)} onCommit={api.endLive} />
-      <Slider label="Kontrast" value={f.contrast} min={40} max={160} onChange={(n) => set({ contrast: n }, true)} onCommit={api.endLive} />
-      <Slider label="To'yinganlik" value={f.saturate} min={0} max={200} onChange={(n) => set({ saturate: n }, true)} onCommit={api.endLive} />
-      <Slider label="Iliqlik (sepiya)" value={f.sepia} min={0} max={100} onChange={(n) => set({ sepia: n }, true)} onCommit={api.endLive} />
-      <Slider label="Rang tusi" value={f.hue} min={-180} max={180} suffix="°" onChange={(n) => set({ hue: n }, true)} onCommit={api.endLive} />
-      <button type="button" className="he-btn soft" style={{ width: "100%" }} onClick={() => api.update([el.id], { filter: null })}><Undo2 size={14} /> Asl holatiga</button>
+      <Slider label={t("Yorqinlik")} value={f.brightness} min={40} max={160} onChange={(n) => set({ brightness: n }, true)} onCommit={api.endLive} />
+      <Slider label={t("Kontrast")} value={f.contrast} min={40} max={160} onChange={(n) => set({ contrast: n }, true)} onCommit={api.endLive} />
+      <Slider label={t("To'yinganlik")} value={f.saturate} min={0} max={200} onChange={(n) => set({ saturate: n }, true)} onCommit={api.endLive} />
+      <Slider label={t("Iliqlik (sepiya)")} value={f.sepia} min={0} max={100} onChange={(n) => set({ sepia: n }, true)} onCommit={api.endLive} />
+      <Slider label={t("Rang tusi")} value={f.hue} min={-180} max={180} suffix="°" onChange={(n) => set({ hue: n }, true)} onCommit={api.endLive} />
+      <button type="button" className="he-btn soft" style={{ width: "100%" }} onClick={() => api.update([el.id], { filter: null })}><Undo2 size={14} /> {t("Asl holatiga")}</button>
     </PopButton>
   );
 }
 
 function FlipPop({ els, api }) {
   return (
-    <PopButton icon={<FlipHorizontal2 size={16} />} title="Ko'zgu aks" width={210}>
-      <button type="button" className="he-menu-item" onClick={() => api.update(els.map((e) => e.id), (e) => ({ flipH: !e.flipH }))}><FlipHorizontal2 size={15} /> Gorizontal</button>
-      <button type="button" className="he-menu-item" onClick={() => api.update(els.map((e) => e.id), (e) => ({ flipV: !e.flipV }))}><FlipVertical2 size={15} /> Vertikal</button>
+    <PopButton icon={<FlipHorizontal2 size={16} />} title={t("Ko'zgu aks")} width={210}>
+      <button type="button" className="he-menu-item" onClick={() => api.update(els.map((e) => e.id), (e) => ({ flipH: !e.flipH }))}><FlipHorizontal2 size={15} /> {t("Gorizontal")}</button>
+      <button type="button" className="he-menu-item" onClick={() => api.update(els.map((e) => e.id), (e) => ({ flipV: !e.flipV }))}><FlipVertical2 size={15} /> {t("Vertikal")}</button>
     </PopButton>
   );
 }
@@ -232,27 +233,27 @@ function PhotoTools({ el, api }) {
   if (!el.src) {
     return (
       <>
-        <Btn icon={ImagePlus} label="Rasm tanlash" onClick={() => api.openReplace(el.id)} />
-        <Btn icon={Upload} label="Yuklash" onClick={() => api.pickFile(el.id)} />
+        <Btn icon={ImagePlus} label={t("Rasm tanlash")} onClick={() => api.openReplace(el.id)} />
+        <Btn icon={Upload} label={t("Yuklash")} onClick={() => api.pickFile(el.id)} />
         <FramePop el={el} api={api} />
       </>
     );
   }
   return (
     <>
-      <Btn icon={Crop} label="Kesish" title="Kesish (ikki marta bosing)" onClick={() => api.enterCrop(el.id)} disabled={el.locked} />
-      <PopButton icon={<Replace size={16} />} label="Almashtirish" title="Rasmni almashtirish" width={220}>
+      <Btn icon={Crop} label={t("Kesish")} title={t("Kesish (ikki marta bosing)")} onClick={() => api.enterCrop(el.id)} disabled={el.locked} />
+      <PopButton icon={<Replace size={16} />} label={t("Almashtirish")} title={t("Rasmni almashtirish")} width={220}>
         {(close) => (
           <>
-            <button type="button" className="he-menu-item" onClick={() => { api.openReplace(el.id); close(); }}><ImageIcon size={15} /> Kutubxonadan tanlash</button>
-            <button type="button" className="he-menu-item" onClick={() => { api.pickFile(el.id); close(); }}><Upload size={15} /> Kompyuterdan yuklash</button>
+            <button type="button" className="he-menu-item" onClick={() => { api.openReplace(el.id); close(); }}><ImageIcon size={15} /> {t("Kutubxonadan tanlash")}</button>
+            <button type="button" className="he-menu-item" onClick={() => { api.pickFile(el.id); close(); }}><Upload size={15} /> {t("Kompyuterdan yuklash")}</button>
           </>
         )}
       </PopButton>
       <FramePop el={el} api={api} />
       {el.type === "photo" && <FilterPop el={el} api={api} />}
       {el.type === "video" && (
-        <Btn icon={el.muted === false ? Volume2 : VolumeX} title={el.muted === false ? "Ovozni o'chirish" : "Ovozni yoqish (ko'rish rejimida)"} onClick={() => api.update([el.id], { muted: el.muted === false })} />
+        <Btn icon={el.muted === false ? Volume2 : VolumeX} title={el.muted === false ? t("Ovozni o'chirish") : t("Ovozni yoqish (ko'rish rejimida)")} onClick={() => api.update([el.id], { muted: el.muted === false })} />
       )}
       <FlipPop els={[el]} api={api} />
       <OpacityPop els={[el]} api={api} />
@@ -275,7 +276,7 @@ function TextTools({ els, api }) {
       <PopButton
         className="he-tb"
         label={<span style={{ fontFamily: font.css, fontSize: 14, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", display: "inline-block", verticalAlign: "middle" }}>{font.name}</span>}
-        title="Shrift"
+        title={t("Shrift")}
         width={240}
       >
         {(close) => FONTS.map((f) => (
@@ -285,28 +286,28 @@ function TextTools({ els, api }) {
         ))}
       </PopButton>
       <div style={{ display: "flex", alignItems: "center", border: `1px solid ${C.line}`, borderRadius: 8, height: 32, margin: "0 2px", flexShrink: 0 }}>
-        <button type="button" className="he-tb" style={{ minWidth: 26, height: 30, padding: 0 }} title="Kichraytirish" onClick={() => setSize(Math.round(el.fontSize) - (el.fontSize > 40 ? 4 : 2))}><Minus size={14} /></button>
+        <button type="button" className="he-tb" style={{ minWidth: 26, height: 30, padding: 0 }} title={t("Kichraytirish")} onClick={() => setSize(Math.round(el.fontSize) - (el.fontSize > 40 ? 4 : 2))}><Minus size={14} /></button>
         <input
           key={Math.round(el.fontSize)}
           defaultValue={Math.round(el.fontSize)}
           onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") e.currentTarget.blur(); }}
           onBlur={(e) => { const n = Number(e.currentTarget.value); if (Number.isFinite(n) && n > 0) setSize(n); }}
           style={{ width: 38, border: "none", textAlign: "center", fontSize: 13, fontWeight: 600, background: "transparent", outline: "none", color: C.ink }}
-          aria-label="Shrift o'lchami"
+          aria-label={t("Shrift o'lchami")}
         />
-        <button type="button" className="he-tb" style={{ minWidth: 26, height: 30, padding: 0 }} title="Kattalashtirish" onClick={() => setSize(Math.round(el.fontSize) + (el.fontSize >= 40 ? 4 : 2))}><Plus size={14} /></button>
+        <button type="button" className="he-tb" style={{ minWidth: 26, height: 30, padding: 0 }} title={t("Kattalashtirish")} onClick={() => setSize(Math.round(el.fontSize) + (el.fontSize >= 40 ? 4 : 2))}><Plus size={14} /></button>
       </div>
-      <PopButton icon={<Baseline size={16} color={el.color} strokeWidth={2.4} />} title="Matn rangi" width={250}>
+      <PopButton icon={<Baseline size={16} color={el.color} strokeWidth={2.4} />} title={t("Matn rangi")} width={250}>
         <Swatches colors={PALETTE} value={el.color} onChange={(c) => api.update(ids, { color: c }, { coalesce: "textcolor" })} />
       </PopButton>
-      <Btn icon={Bold} title="Qalin" active={el.bold} onClick={() => api.update(ids, { bold: !el.bold })} />
-      <Btn icon={Italic} title="Kursiv" active={el.italic} onClick={() => api.update(ids, { italic: !el.italic })} />
-      <Btn icon={Underline} title="Tagiga chizilgan" active={el.underline} onClick={() => api.update(ids, { underline: !el.underline })} />
-      <Btn icon={CaseUpper} title="Bosh harflar" active={el.uppercase} onClick={() => api.update(ids, { uppercase: !el.uppercase })} />
-      <Btn icon={AlignIcon} title="Tekislash" onClick={() => api.update(ids, { align: nextAlign })} />
-      <PopButton icon={<LetterText size={16} />} title="Oraliqlar" width={240}>
-        <Slider label="Harflar oralig'i" value={el.letterSpacing || 0} min={-5} max={40} step={0.5} onChange={(n) => api.update(ids, { letterSpacing: n }, { live: true })} onCommit={api.endLive} />
-        <Slider label="Qator balandligi" value={el.lineHeight || 1.3} min={0.8} max={2.6} step={0.05} onChange={(n) => api.update(ids, { lineHeight: n }, { live: true })} onCommit={api.endLive} />
+      <Btn icon={Bold} title={t("Qalin")} active={el.bold} onClick={() => api.update(ids, { bold: !el.bold })} />
+      <Btn icon={Italic} title={t("Kursiv")} active={el.italic} onClick={() => api.update(ids, { italic: !el.italic })} />
+      <Btn icon={Underline} title={t("Tagiga chizilgan")} active={el.underline} onClick={() => api.update(ids, { underline: !el.underline })} />
+      <Btn icon={CaseUpper} title={t("Bosh harflar")} active={el.uppercase} onClick={() => api.update(ids, { uppercase: !el.uppercase })} />
+      <Btn icon={AlignIcon} title={t("Tekislash")} onClick={() => api.update(ids, { align: nextAlign })} />
+      <PopButton icon={<LetterText size={16} />} title={t("Oraliqlar")} width={240}>
+        <Slider label={t("Harflar oralig'i")} value={el.letterSpacing || 0} min={-5} max={40} step={0.5} onChange={(n) => api.update(ids, { letterSpacing: n }, { live: true })} onCommit={api.endLive} />
+        <Slider label={t("Qator balandligi")} value={el.lineHeight || 1.3} min={0.8} max={2.6} step={0.05} onChange={(n) => api.update(ids, { lineHeight: n }, { live: true })} onCommit={api.endLive} />
       </PopButton>
       <OpacityPop els={els} api={api} />
     </>
@@ -318,7 +319,7 @@ function StickerTools({ els, api }) {
   const def = stickerDef(el.stickerId);
   return (
     <>
-      <PopButton icon={<span style={{ width: 18, height: 18, borderRadius: "50%", background: el.color || def.color, border: "1px solid rgba(0,0,0,0.15)", display: "inline-block" }} />} title="Rang" width={250}>
+      <PopButton icon={<span style={{ width: 18, height: 18, borderRadius: "50%", background: el.color || def.color, border: "1px solid rgba(0,0,0,0.15)", display: "inline-block" }} />} title={t("Rang")} width={250}>
         <Swatches colors={[def.color, ...PALETTE.filter((c) => c !== def.color)]} value={el.color} onChange={(c) => api.update(els.map((e) => e.id), { color: c }, { coalesce: "stickercolor" })} />
       </PopButton>
       <FlipPop els={els} api={api} />
@@ -330,7 +331,7 @@ function StickerTools({ els, api }) {
 function CropTools({ el, api }) {
   return (
     <>
-      <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, padding: "0 6px" }}>Kattalik</span>
+      <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, padding: "0 6px" }}>{t("Kattalik")}</span>
       <input
         type="range"
         className="he-range"
@@ -341,13 +342,13 @@ function CropTools({ el, api }) {
         onChange={(e) => api.cropUpdate({ s: Number(e.target.value) / 100 })}
       />
       <Sep />
-      <Btn icon={RotateCw} title="90° burish" onClick={() => api.cropUpdate({}, { imgRot: ((el.imgRot || 0) + 90) % 360 })} />
-      <Btn icon={FlipHorizontal2} title="Gorizontal aks" onClick={() => api.cropUpdate({}, { flipH: !el.flipH })} />
-      <Btn icon={FlipVertical2} title="Vertikal aks" onClick={() => api.cropUpdate({}, { flipV: !el.flipV })} />
-      <Btn icon={Undo2} title="Qayta tiklash" onClick={() => api.cropUpdate({ s: 1, cx: 0.5, cy: 0.5 }, { imgRot: 0, flipH: false, flipV: false })} />
+      <Btn icon={RotateCw} title={t("90° burish")} onClick={() => api.cropUpdate({}, { imgRot: ((el.imgRot || 0) + 90) % 360 })} />
+      <Btn icon={FlipHorizontal2} title={t("Gorizontal aks")} onClick={() => api.cropUpdate({}, { flipH: !el.flipH })} />
+      <Btn icon={FlipVertical2} title={t("Vertikal aks")} onClick={() => api.cropUpdate({}, { flipV: !el.flipV })} />
+      <Btn icon={Undo2} title={t("Qayta tiklash")} onClick={() => api.cropUpdate({ s: 1, cx: 0.5, cy: 0.5 }, { imgRot: 0, flipH: false, flipV: false })} />
       <Sep />
-      <Btn icon={X} label="Bekor" onClick={() => api.exitCrop(false)} />
-      <button type="button" className="he-tb" style={{ background: C.ink, color: "#F2EDE2" }} onClick={() => api.exitCrop(true)}><Check size={16} /> Tayyor</button>
+      <Btn icon={X} label={t("Bekor")} onClick={() => api.exitCrop(false)} />
+      <button type="button" className="he-tb" style={{ background: C.ink, color: "#F2EDE2" }} onClick={() => api.exitCrop(true)}><Check size={16} /> {t("Tayyor")}</button>
     </>
   );
 }
@@ -381,8 +382,8 @@ export function ContextToolbar({ api, els, page, view, stage, cropEl, hidden }) 
   const multiHead = els.length > 1 ? (
     <>
       {sameGroup
-        ? <Btn icon={Ungroup} label="Ajratish" title="Guruhdan chiqarish (Ctrl+Shift+G)" onClick={api.ungroup} />
-        : <Btn icon={Group} label="Guruhlash" title="Guruhlash (Ctrl+G)" onClick={api.group} />}
+        ? <Btn icon={Ungroup} label={t("Ajratish")} title={t("Guruhdan chiqarish (Ctrl+Shift+G)")} onClick={api.ungroup} />
+        : <Btn icon={Group} label={t("Guruhlash")} title={t("Guruhlash (Ctrl+G)")} onClick={api.group} />}
       <AlignPop api={api} count={els.length} />
     </>
   ) : null;

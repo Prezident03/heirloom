@@ -4,6 +4,7 @@ import { X, Calendar, MapPinned, ChevronLeft, TreePine, Plus, Camera, Search, Us
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { personLabel, personYears, relationLabelBetween } from "@/lib/relationshipLabels";
 import { AvatarCropper, MAX_SOURCE_BYTES } from "./AvatarCropper";
+import { t } from "@/lib/i18n";
 
 /* ---------------- Profile photo upload (small inline form + camera button) ---------------- */
 
@@ -17,7 +18,7 @@ export function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoActio
     const f = e.target.files?.[0];
     e.target.value = "";
     if (!f) return;
-    if (f.size > MAX_SOURCE_BYTES) { onError?.("Rasm hajmi 60MB dan oshmasligi kerak."); return; }
+    if (f.size > MAX_SOURCE_BYTES) { onError?.(t("Rasm hajmi 60MB dan oshmasligi kerak.")); return; }
     onError?.(null);
     setFile(f);
   };
@@ -34,7 +35,7 @@ export function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoActio
       setFile(null);
       startTransition(() => router.refresh());
     } catch {
-      onError?.("Rasm yuklashda xato yuz berdi.");
+      onError?.(t("Rasm yuklashda xato yuz berdi."));
     } finally {
       setSaving(false);
     }
@@ -53,7 +54,7 @@ export function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoActio
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={saving}
-        title="Profil rasmini yuklash"
+        title={t("Profil rasmini yuklash")}
         style={{
           position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: "50%",
           background: TOKENS.ink, border: `2px solid ${TOKENS.card}`, color: TOKENS.parchment,
@@ -83,19 +84,19 @@ export function DeletePersonConfirm({ familySlug, personId, deletePersonAction, 
   return (
     <div style={{ marginTop: 10, padding: 12, background: "rgba(168,69,58,0.08)", borderRadius: 8 }}>
       <div style={{ fontSize: 12, color: TOKENS.danger, marginBottom: 10 }}>
-        Rostdan ham o'chirasizmi? Bog'lanishlari ham o'chadi. Bu amalni ortga qaytarib bo'lmaydi.
+        {t("Rostdan ham o'chirasizmi? Bog'lanishlari ham o'chadi. Bu amalni ortga qaytarib bo'lmaydi.")}
       </div>
       {state?.error && (
-        <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 8 }}>{state.error}</div>
+        <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 8 }}>{t(state.error)}</div>
       )}
       <form action={formAction} style={{ display: "flex", gap: 8 }}>
         <input type="hidden" name="familySlug" value={familySlug} />
         <input type="hidden" name="personId" value={personId} />
         <button type="submit" disabled={pending} style={{ flex: 1, background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-          {pending ? "O'chirilmoqda..." : "Ha, o'chirish"}
+          {pending ? t("O'chirilmoqda...") : t("Ha, o'chirish")}
         </button>
         <button type="button" onClick={onCancel} disabled={pending} style={{ flex: 1, background: "transparent", color: TOKENS.ink60, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-          Bekor qilish
+          {t("Bekor qilish")}
         </button>
       </form>
     </div>
@@ -148,7 +149,7 @@ export function PersonDetailPanel({
   ];
 
   return (
-    <div className="fm-panel-enter" style={{ width: "min(320px, 100%)", flex: "1 1 320px", flexShrink: 0, background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto", maxHeight: "100%" }}>
+    <div className="fm-panel-enter" style={{ width: "min(380px, 100%)", flex: "0 0 min(380px, 100%)", background: TOKENS.card, borderLeft: `1px solid ${TOKENS.parchmentDeep}`, padding: "24px 22px", overflow: "auto", maxHeight: "100%" }}>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4 }}><X size={18} /></button>
       </div>
@@ -187,9 +188,9 @@ export function PersonDetailPanel({
         <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500 }}>{selected.name}</div>
         {selected.years && <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><Calendar size={12} /> {selected.years}</div>}
         {selected.id === mePersonId ? (
-          <div style={{ fontSize: 11, fontWeight: 600, color: TOKENS.gold, marginTop: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Bu — sizsiz</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: TOKENS.gold, marginTop: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("Bu — sizsiz")}</div>
         ) : relationToMe ? (
-          <div style={{ fontSize: 11.5, color: TOKENS.teal, marginTop: 6, fontWeight: 600 }}>Sizga: {relationToMe}</div>
+          <div style={{ fontSize: 11.5, color: TOKENS.teal, marginTop: 6, fontWeight: 600 }}>{t("Sizga:")} {relationToMe}</div>
         ) : null}
       </div>
 
@@ -212,7 +213,7 @@ export function PersonDetailPanel({
               borderBottom: activeTab === tab.id ? "none" : `2px solid transparent`,
             }}
           >
-            {tab.label}
+            {t(tab.label)}
           </button>
         ))}
       </div>
@@ -220,41 +221,41 @@ export function PersonDetailPanel({
       {activeTab === "about" && (
         <div>
           <div style={{ fontSize: 12.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 14 }}>
-            {selected.biography || "Bu odam haqida hali biografiya qo'shilmagan."}
+            {selected.biography || t("Bu odam haqida hali biografiya qo'shilmagan.")}
           </div>
           {selected.raw?.birth_place && (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: TOKENS.ink60, marginBottom: 8 }}>
               <MapPinned size={14} style={{ marginTop: 2, flexShrink: 0 }} />
-              <div>Tug'ilgan joy: {selected.raw.birth_place}</div>
+              <div>{t("Tug'ilgan joy:")} {selected.raw.birth_place}</div>
             </div>
           )}
           {selected.raw?.gender && (
             <div style={{ fontSize: 12, color: TOKENS.ink60, marginBottom: 14 }}>
-              Jinsi: {selected.raw.gender === "male" ? "Erkak" : selected.raw.gender === "female" ? "Ayol" : "Boshqa"}
+              {t("Jinsi:")} {selected.raw.gender === "male" ? t("Erkak") : selected.raw.gender === "female" ? t("Ayol") : t("Boshqa")}
             </div>
           )}
 
-          <RelatedPersonGroup icon={Users} label="Ota-onasi" people={relatedParents} onSelectRelated={onSelectRelated} />
-          <RelatedPersonGroup icon={Heart} label="Turmush o'rtog'i" people={relatedSpouse ? [relatedSpouse] : []} onSelectRelated={onSelectRelated} />
-          <RelatedPersonGroup icon={Baby} label="Farzandlari" people={relatedChildren} onSelectRelated={onSelectRelated} />
+          <RelatedPersonGroup icon={Users} label={t("Ota-onasi")} people={relatedParents} onSelectRelated={onSelectRelated} />
+          <RelatedPersonGroup icon={Heart} label={t("Turmush o'rtog'i")} people={relatedSpouse ? [relatedSpouse] : []} onSelectRelated={onSelectRelated} />
+          <RelatedPersonGroup icon={Baby} label={t("Farzandlari")} people={relatedChildren} onSelectRelated={onSelectRelated} />
         </div>
       )}
 
       {activeTab === "memories" && (
         <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
-          Bu odam bilan bog'langan xotiralar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+          {t("Bu odam bilan bog'langan xotiralar hali ko'rsatilmadi. Keyingi update'da bo'ladi.")}
         </div>
       )}
 
       {activeTab === "albums" && (
         <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
-          Bu odam ishtirok etgan albomlar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+          {t("Bu odam ishtirok etgan albomlar hali ko'rsatilmadi. Keyingi update'da bo'ladi.")}
         </div>
       )}
 
       {activeTab === "events" && (
         <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
-          Bu odam bilan bog'langan voqealar hali ko'rsatilmadi. Keyingi update'da bo'ladi.
+          {t("Bu odam bilan bog'langan voqealar hali ko'rsatilmadi. Keyingi update'da bo'ladi.")}
         </div>
       )}
 
@@ -262,16 +263,16 @@ export function PersonDetailPanel({
         <>
           <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
             <button onClick={onEdit} style={{ flex: 1, background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              Tahrirlash
+              {t("Tahrirlash")}
             </button>
             <button onClick={onLink} style={{ flex: 1, background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              Bog'lash
+              {t("Bog'lash")}
             </button>
           </div>
 
           {!confirmDelete ? (
             <button onClick={() => setConfirmDelete(true)} style={{ marginTop: 10, width: "100%", background: "transparent", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              O'chirish
+              {t("O'chirish")}
             </button>
           ) : (
             <DeletePersonConfirm
@@ -294,16 +295,16 @@ export function EmptyFamilyTree({ familyName, canEdit, onAddPerson }) {
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
           <TreePine size={26} color={TOKENS.gold} strokeWidth={1.4} />
         </div>
-        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 24, fontWeight: 500, margin: "0 0 8px" }}>{familyName} — oila daraxti hali bo'sh</h1>
+        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 24, fontWeight: 500, margin: "0 0 8px" }}>{familyName} {t("— oila daraxti hali bo'sh")}</h1>
         <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6, margin: "0 0 24px" }}>
-          Hech qanday tayyor namuna yo'q — hikoyangizni o'zingizdan boshlang. Birinchi odam sifatida odatda o'zingizni qo'shasiz, keyin ota-onangiz, farzandlaringiz yoki turmush o'rtog'ingizni bog'laysiz.
+          {t("Hech qanday tayyor namuna yo'q — hikoyangizni o'zingizdan boshlang. Birinchi odam sifatida odatda o'zingizni qo'shasiz, keyin ota-onangiz, farzandlaringiz yoki turmush o'rtog'ingizni bog'laysiz.")}
         </p>
         {canEdit ? (
           <button onClick={onAddPerson} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "11px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            <Plus size={14} /> Birinchi odamni qo'shish
+            <Plus size={14} /> {t("Birinchi odamni qo'shish")}
           </button>
         ) : (
-          <div style={{ fontSize: 12.5, color: TOKENS.ink40 }}>Odam qo'shish uchun ruxsatingiz yo'q.</div>
+          <div style={{ fontSize: 12.5, color: TOKENS.ink40 }}>{t("Odam qo'shish uchun ruxsatingiz yo'q.")}</div>
         )}
       </div>
     </div>
@@ -454,13 +455,13 @@ export function AddPersonModal({ familySlug, people, relationships = [], addPers
                 type="button"
                 onClick={() => setStep("pick")}
                 style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40, padding: 4, display: "flex" }}
-                title="Orqaga"
+                title={t("Orqaga")}
               >
                 <ChevronLeft size={18} />
               </button>
             )}
             <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>
-              {step === "pick" ? "Kimni qo'shmoqchisiz?" : chosen ? `Yangi odam — ${chosen.label}` : "Yangi odam qo'shish"}
+              {step === "pick" ? t("Kimni qo'shmoqchisiz?") : chosen ? t("Yangi odam — {0}", { 0: chosen.label }) : t("Yangi odam qo'shish")}
             </h2>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
@@ -476,7 +477,7 @@ export function AddPersonModal({ familySlug, people, relationships = [], addPers
                 className="fm-relation-option"
                 style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 500, color: TOKENS.ink, textAlign: "left" }}
               >
-                <span style={{ fontSize: 19, lineHeight: 1 }}>{opt.emoji}</span> {opt.label}
+                <span style={{ fontSize: 19, lineHeight: 1 }}>{opt.emoji}</span> {t(opt.label)}
               </button>
             ))}
           </div>
@@ -488,9 +489,9 @@ export function AddPersonModal({ familySlug, people, relationships = [], addPers
 
             {isGrandparent ? (
               <>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{chosen.question}</div>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{t(chosen.question)}</div>
                 <select value={grandchildId} onChange={(e) => { setGrandchildId(e.target.value); setThroughParentId(""); }} required style={inputStyle}>
-                  <option value="" disabled>Odamni tanlang</option>
+                  <option value="" disabled>{t("Odamni tanlang")}</option>
                   {people.map((p) => (
                     <option key={p.id} value={p.id}>{personLabel(p)}</option>
                   ))}
@@ -498,23 +499,23 @@ export function AddPersonModal({ familySlug, people, relationships = [], addPers
 
                 {grandchildId && grandchildParents.length === 0 && (
                   <div style={{ fontSize: 12, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6, lineHeight: 1.5 }}>
-                    Bu odamning hali ota-onasi daraxtga qo'shilmagan. Avval otasini yoki onasini qo'shing, keyin bobo/buvini shu orqali qo'sha olasiz.
+                    {t("Bu odamning hali ota-onasi daraxtga qo'shilmagan. Avval otasini yoki onasini qo'shing, keyin bobo/buvini shu orqali qo'sha olasiz.")}
                   </div>
                 )}
 
                 {grandchildId && grandchildParents.length === 1 && (
                   <div style={{ fontSize: 12, color: TOKENS.ink60 }}>
-                    {personLabel(grandchildParents[0])} orqali qo'shiladi.
+                    {personLabel(grandchildParents[0])} {t("orqali qo'shiladi.")}
                   </div>
                 )}
 
                 {grandchildId && grandchildParents.length >= 2 && (
                   <>
-                    <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>Qaysi tomondan?</div>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{t("Qaysi tomondan?")}</div>
                     <select value={throughParentId} onChange={(e) => setThroughParentId(e.target.value)} required style={inputStyle}>
-                      <option value="" disabled>Ota-onani tanlang</option>
+                      <option value="" disabled>{t("Ota-onani tanlang")}</option>
                       {grandchildParents.map((p) => (
-                        <option key={p.id} value={p.id}>{personLabel(p)} tomonidan</option>
+                        <option key={p.id} value={p.id}>{personLabel(p)} {t("tomonidan")}</option>
                       ))}
                     </select>
                   </>
@@ -523,9 +524,9 @@ export function AddPersonModal({ familySlug, people, relationships = [], addPers
             ) : (
               chosen && chosen.relationType !== "none" && (
                 <>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{chosen.question}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60 }}>{t(chosen.question)}</div>
                   <select name="relatedPersonId" defaultValue="" required style={inputStyle}>
-                    <option value="" disabled>Odamni tanlang</option>
+                    <option value="" disabled>{t("Odamni tanlang")}</option>
                     {people.map((p) => (
                       <option key={p.id} value={p.id}>{personLabel(p)}</option>
                     ))}
@@ -535,27 +536,27 @@ export function AddPersonModal({ familySlug, people, relationships = [], addPers
             )}
 
             <div style={{ display: "flex", gap: 10 }}>
-              <input name="firstName" placeholder="Ism" required className="fm-modal-input" style={inputStyle} />
-              <input name="lastName" placeholder="Familiya" className="fm-modal-input" style={inputStyle} />
+              <input name="firstName" placeholder={t("Ism")} required className="fm-modal-input" style={inputStyle} />
+              <input name="lastName" placeholder={t("Familiya")} className="fm-modal-input" style={inputStyle} />
             </div>
 
             <select name="gender" defaultValue={chosen?.gender || ""} style={inputStyle}>
-              <option value="">Jinsi (ixtiyoriy)</option>
-              <option value="female">Ayol</option>
-              <option value="male">Erkak</option>
-              <option value="other">Boshqa</option>
+              <option value="">{t("Jinsi (ixtiyoriy)")}</option>
+              <option value="female">{t("Ayol")}</option>
+              <option value="male">{t("Erkak")}</option>
+              <option value="other">{t("Boshqa")}</option>
             </select>
 
             <div style={{ display: "flex", gap: 10 }}>
-              <input name="birthDate" placeholder="Tug'ilgan yil (masalan, 1980)" style={inputStyle} />
-              <input name="deathDate" placeholder="Vafot yili (agar bo'lsa)" style={inputStyle} />
+              <input name="birthDate" placeholder={t("Tug'ilgan yil (masalan, 1980)")} style={inputStyle} />
+              <input name="deathDate" placeholder={t("Vafot yili (agar bo'lsa)")} style={inputStyle} />
             </div>
 
-            <textarea name="biography" placeholder="Qisqacha hikoya yoki biografiya (ixtiyoriy)" rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+            <textarea name="biography" placeholder={t("Qisqacha hikoya yoki biografiya (ixtiyoriy)")} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
 
             {state?.error && (
               <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-                {state.error}
+                {t(state.error)}
               </div>
             )}
 
@@ -564,7 +565,7 @@ export function AddPersonModal({ familySlug, people, relationships = [], addPers
               disabled={pending || (isGrandparent && !effectiveThroughParentId)}
               style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending || (isGrandparent && !effectiveThroughParentId) ? 0.6 : 1 }}
             >
-              {pending ? "Saqlanmoqda..." : "Qo'shish"}
+              {pending ? t("Saqlanmoqda...") : t("Qo'shish")}
             </button>
           </form>
         )}
@@ -593,7 +594,7 @@ export function EditPersonModal({ familySlug, person, editPersonAction, onClose 
         style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflow: "auto", background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Ma'lumotlarni tahrirlash</h2>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>{t("Ma'lumotlarni tahrirlash")}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
         </div>
 
@@ -602,32 +603,32 @@ export function EditPersonModal({ familySlug, person, editPersonAction, onClose 
           <input type="hidden" name="personId" value={person.id} />
 
           <div style={{ display: "flex", gap: 10 }}>
-            <input name="firstName" placeholder="Ism" defaultValue={raw.first_name || ""} required className="fm-modal-input" style={inputStyle} />
-            <input name="lastName" placeholder="Familiya" defaultValue={raw.last_name || ""} className="fm-modal-input" style={inputStyle} />
+            <input name="firstName" placeholder={t("Ism")} defaultValue={raw.first_name || ""} required className="fm-modal-input" style={inputStyle} />
+            <input name="lastName" placeholder={t("Familiya")} defaultValue={raw.last_name || ""} className="fm-modal-input" style={inputStyle} />
           </div>
 
           <select name="gender" defaultValue={raw.gender || ""} style={inputStyle}>
-            <option value="">Jinsi (ixtiyoriy)</option>
-            <option value="female">Ayol</option>
-            <option value="male">Erkak</option>
-            <option value="other">Boshqa</option>
+            <option value="">{t("Jinsi (ixtiyoriy)")}</option>
+            <option value="female">{t("Ayol")}</option>
+            <option value="male">{t("Erkak")}</option>
+            <option value="other">{t("Boshqa")}</option>
           </select>
 
           <div style={{ display: "flex", gap: 10 }}>
-            <input name="birthDate" placeholder="Tug'ilgan yil" defaultValue={raw.birth_date || ""} style={inputStyle} />
-            <input name="deathDate" placeholder="Vafot yili (agar bo'lsa)" defaultValue={raw.death_date || ""} style={inputStyle} />
+            <input name="birthDate" placeholder={t("Tug'ilgan yil")} defaultValue={raw.birth_date || ""} style={inputStyle} />
+            <input name="deathDate" placeholder={t("Vafot yili (agar bo'lsa)")} defaultValue={raw.death_date || ""} style={inputStyle} />
           </div>
 
-          <textarea name="biography" placeholder="Qisqacha hikoya yoki biografiya" defaultValue={raw.biography || ""} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+          <textarea name="biography" placeholder={t("Qisqacha hikoya yoki biografiya")} defaultValue={raw.biography || ""} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
 
           {state?.error && (
             <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-              {state.error}
+              {t(state.error)}
             </div>
           )}
 
           <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-            {pending ? "Saqlanmoqda..." : "Saqlash"}
+            {pending ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </form>
       </div>
@@ -652,42 +653,42 @@ export function LinkPersonModal({ familySlug, person, people, linkPersonAction, 
         style={{ width: "100%", maxWidth: 420, background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 500, margin: 0 }}>Bog'lash</h2>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 19, fontWeight: 500, margin: 0 }}>{t("Bog'lash")}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
         </div>
         <p style={{ fontSize: 12.5, color: TOKENS.ink60, margin: "0 0 18px" }}>
-          <strong>{person.name}</strong>ni boshqa mavjud odamga bog'lang.
+          <strong>{person.name}</strong>{t("ni boshqa mavjud odamga bog'lang.")}
         </p>
 
         {otherPeople.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: TOKENS.ink40 }}>Bog'lash uchun boshqa odam yo'q. Avval yana birortasini qo'shing.</div>
+          <div style={{ fontSize: 12.5, color: TOKENS.ink40 }}>{t("Bog'lash uchun boshqa odam yo'q. Avval yana birortasini qo'shing.")}</div>
         ) : (
           <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input type="hidden" name="familySlug" value={familySlug} />
             <input type="hidden" name="personId" value={person.id} />
 
             <select name="otherPersonId" defaultValue="" required style={inputStyle}>
-              <option value="" disabled>Odamni tanlang</option>
+              <option value="" disabled>{t("Odamni tanlang")}</option>
               {otherPeople.map((p) => (
                 <option key={p.id} value={p.id}>{personLabel(p)}</option>
               ))}
             </select>
 
             <select name="relationType" defaultValue="" required style={inputStyle}>
-              <option value="" disabled>Bog'lanish turi</option>
-              <option value="other_is_parent">Tanlangan odam — {person.name}ning ota-onasi</option>
-              <option value="other_is_child">Tanlangan odam — {person.name}ning farzandi</option>
-              <option value="spouse">Tanlangan odam — {person.name}ning turmush o'rtog'i</option>
+              <option value="" disabled>{t("Bog'lanish turi")}</option>
+              <option value="other_is_parent">{t("Tanlangan odam —")} {person.name}{t("ning ota-onasi")}</option>
+              <option value="other_is_child">{t("Tanlangan odam —")} {person.name}{t("ning farzandi")}</option>
+              <option value="spouse">{t("Tanlangan odam —")} {person.name}{t("ning turmush o'rtog'i")}</option>
             </select>
 
             {state?.error && (
               <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-                {state.error}
+                {t(state.error)}
               </div>
             )}
 
             <button type="submit" disabled={pending} style={{ marginTop: 4, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-              {pending ? "Bog'lanmoqda..." : "Bog'lash"}
+              {pending ? t("Bog'lanmoqda...") : t("Bog'lash")}
             </button>
           </form>
         )}
@@ -793,9 +794,9 @@ export function PeopleView({
       <div style={{ flex: 1, padding: "28px clamp(16px, 5vw, 48px) 60px", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 24, gap: 16, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Oila a'zolari</div>
-            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>Odamlar</h1>
-            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>{items.length} a'zo</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>{t("Oila a'zolari")}</div>
+            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>{t("Odamlar")}</h1>
+            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>{items.length} {t("a'zo")}</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 10, padding: "0 12px", height: 40 }}>
@@ -803,20 +804,20 @@ export function PeopleView({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ism bo'yicha qidirish..."
+                placeholder={t("Ism bo'yicha qidirish...")}
                 style={{ border: "none", outline: "none", background: "transparent", fontSize: 13, width: 170, color: TOKENS.ink, fontFamily: "Inter, sans-serif" }}
               />
             </div>
             {canEdit && (
               <button onClick={() => setShowAddModal(true)} style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "0 18px", height: 40, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-                <Plus size={14} /> Odam qo'shish
+                <Plus size={14} /> {t("Odam qo'shish")}
               </button>
             )}
           </div>
         </div>
 
         {filtered.length === 0 ? (
-          <div style={{ padding: "60px 0", textAlign: "center", color: TOKENS.ink40, fontSize: 13 }}>Hech kim topilmadi.</div>
+          <div style={{ padding: "60px 0", textAlign: "center", color: TOKENS.ink40, fontSize: 13 }}>{t("Hech kim topilmadi.")}</div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "24px", padding: "0 12px" }}>
             {filtered.map((p) => (

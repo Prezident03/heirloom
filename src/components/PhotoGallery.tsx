@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Search, MapPinned, Calendar, X } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
+import { t } from "@/lib/i18n";
 
 interface Photo {
   id: string;
@@ -42,7 +43,7 @@ export function PhotoGallery({ photos, locations }: PhotoGalleryProps) {
   if (photos.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "80px 20px", color: TOKENS.ink60, fontSize: 13.5 }}>
-        <p>Hali rasm yo'q</p>
+        <p>{t("Hali rasm yo'q")}</p>
       </div>
     );
   }
@@ -52,7 +53,7 @@ export function PhotoGallery({ photos, locations }: PhotoGalleryProps) {
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: "0 0 24px", letterSpacing: "-0.01em" }}>
-          Rasmlar
+          {t("Rasmlar")}
         </h1>
 
         {/* Search & Filter */}
@@ -63,7 +64,7 @@ export function PhotoGallery({ photos, locations }: PhotoGalleryProps) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rasm, albom yoki joy bo'yicha qidirish..."
+              placeholder={t("Rasm, albom yoki joy bo'yicha qidirish...")}
               style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, width: "100%", color: TOKENS.ink, fontFamily: "Inter, sans-serif" }}
             />
           </div>
@@ -75,7 +76,7 @@ export function PhotoGallery({ photos, locations }: PhotoGalleryProps) {
               onChange={(e) => setSelectedLocation(e.target.value || null)}
               style={{ padding: "10px 14px", borderRadius: 10, border: `1px solid ${TOKENS.parchmentDeep}`, background: TOKENS.card, fontSize: 14, color: TOKENS.ink, cursor: "pointer", minWidth: 150 }}
             >
-              <option value="">Barcha joylar ({locations.length})</option>
+              <option value="">{t("Barcha joylar (")}{locations.length})</option>
               {locations.map(loc => (
                 <option key={loc} value={loc}>{loc}</option>
               ))}
@@ -85,14 +86,14 @@ export function PhotoGallery({ photos, locations }: PhotoGalleryProps) {
 
         {/* Stats */}
         <div style={{ fontSize: 12.5, color: TOKENS.ink60 }}>
-          {filtered.length} ta rasm {selectedLocation && `"${selectedLocation}" dan`}
+          {filtered.length} {t("ta rasm")} {selectedLocation && t("\"{0}\" dan", { 0: selectedLocation })}
         </div>
       </div>
 
       {/* Photo Grid */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "40px 20px", color: TOKENS.ink60, fontSize: 13.5 }}>
-          Rasm topilmadi
+          {t("Rasm topilmadi")}
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
@@ -200,7 +201,7 @@ export function PhotoGallery({ photos, locations }: PhotoGalleryProps) {
                 </div>
               )}
               <div style={{ fontSize: 12, color: TOKENS.ink40, borderTop: `1px solid ${TOKENS.parchmentDeep}`, paddingTop: 12 }}>
-                📀 <strong>{selectedPhoto.album_title}</strong> albomida
+                📀 <strong>{selectedPhoto.album_title}</strong> {t("albomida")}
               </div>
             </div>
           </div>
