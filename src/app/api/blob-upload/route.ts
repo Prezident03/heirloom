@@ -39,8 +39,13 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
 
         return {
-          allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"],
-          maximumSizeInBytes: 15 * 1024 * 1024, // 15MB — haqiqiy fayl bizning funksiyamizdan o'tmagani uchun bemalol katta bo'lishi mumkin
+          allowedContentTypes: [
+            "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif",
+            "video/mp4", "video/webm", "video/quicktime",
+          ],
+          // Haqiqiy fayl bizning funksiyamizdan o'tmagani uchun bemalol katta bo'lishi mumkin.
+          // Rasmlar uchun 25MB chegarasi klient tomonda alohida tekshiriladi.
+          maximumSizeInBytes: 200 * 1024 * 1024,
           addRandomSuffix: true,
         };
       },

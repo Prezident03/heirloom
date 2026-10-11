@@ -32,3 +32,7 @@ yarn-error.log*
 
 # Vercel
 .vercel
+
+# Build artefacts
+*.tsbuildinfo
+dev.log

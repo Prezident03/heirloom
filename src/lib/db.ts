@@ -1,4 +1,4 @@
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction, type NeonQueryFunctionInTransaction, type NeonQueryPromise } from "@neondatabase/serverless";
 
 let _sql: NeonQueryFunction<false, false> | null = null;
 let _schemaReady: Promise<void> | null = null;
@@ -23,6 +23,15 @@ function getSql(): NeonQueryFunction<false, false> {
 
 export function sql(strings: TemplateStringsArray, ...values: unknown[]) {
   return getSql()(strings, ...values);
+}
+
+/**
+ * Bir nechta so'rovni bitta HTTP so'rovda, bitta Postgres tranzaksiyasi
+ * ichida bajaradi — biri xato bersa, hammasi bekor qilinadi.
+ */
+export function sqlTransaction(build: (tx: NeonQueryFunctionInTransaction<false, false>) => NeonQueryPromise<false, false>[]) {
+  const raw = getSql();
+  return raw.transaction((tx) => build(tx));
 }
 
 export async function ensureSchema(): Promise<void> {
@@ -169,7 +178,22 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE album_pages ADD COLUMN IF NOT EXISTS background_image_url TEXT`, "add background_image_url");
     // Eski CHECK constraint faqat 'photo'/'text'ga ruxsat berardi — 'sticker' turini qo'shish uchun kengaytiramiz.
     await safe(() => sql`ALTER TABLE page_elements DROP CONSTRAINT IF EXISTS page_elements_type_check`, "drop old type check");
-    await safe(() => sql`ALTER TABLE page_elements ADD CONSTRAINT page_elements_type_check CHECK (type IN ('photo','text','sticker'))`, "add sticker type check");
+    await safe(() => sql`ALTER TABLE page_elements ADD CONSTRAINT page_elements_type_check CHECK (type IN ('photo','text','sticker','video'))`, "add element type check");
+    // Editorning qo'shimcha xususiyatlari (lock, opacity, crop, matn uslubi va h.k.) JSON ko'rinishida.
+    await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS extra TEXT`, "add extra");
+    await safe(() => sql`
+      CREATE TABLE IF NOT EXISTS family_media (
+        id TEXT PRIMARY KEY,
+        family_id TEXT NOT NULL REFERENCES families(id),
+        url TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('photo','video')),
+        width INTEGER,
+        height INTEGER,
+        created_by TEXT NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL
+      )
+    `, "create family_media");
+    await safe(() => sql`CREATE INDEX IF NOT EXISTS idx_family_media_family ON family_media(family_id, created_at)`, "family_media index");
     await safe(() => sql`CREATE INDEX IF NOT EXISTS idx_page_elements_positioning
                ON page_elements(page_id, z_index, position_x)`, "create positioning index");
 

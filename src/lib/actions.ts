@@ -26,51 +26,16 @@ import {
 } from "@/lib/people";
 import {
   createAlbum,
-  createAlbumPage,
-  changePageLayout,
-  updateElementPhoto,
-  updateElementText,
-  updatePageMeta,
-  deletePage,
+  createPhotoPage,
   deleteAlbum,
   updateAlbumTitle,
   setAlbumCover,
   getAlbumById,
   getPagesForAlbum,
-  getElementsForPages,
-  deleteElement,
-  reorderPageElements,
-  moveElementUp,
-  moveElementDown,
-  updateElementPosition,
-  updateElementCaption,
-  updateElementLocation,
-  changeZIndex,
-  duplicateElement,
-  updatePageBackground,
-  updatePageBackgroundImage,
-  updateElementFrame,
-  updateElementTextStyle,
-  addStickerElement,
-  updateElementStickerColor,
-  addTextElement,
-  groupElements,
-  ungroupElements,
-  updateElementCrop,
-  updateElementFilter,
-  addPhotoElement,
-  applyPageTemplate,
-  reorderAlbumPages,
-  duplicateAlbumPage,
-  STICKERS,
-  type LayoutId,
-  type BackgroundId,
-  type FrameStyle,
-  type StickerId,
-  type TextAlign,
-  type TextFont,
-  type TemplateId,
+  saveAlbumState,
+  type SaveAlbumInput,
 } from "@/lib/albums";
+import { addMedia } from "@/lib/media";
 import {
   createTimelineEvent,
   updateTimelineEvent,
@@ -587,159 +552,66 @@ export async function renameAlbumAction(_prevState: ActionState, formData: FormD
   const title = String(formData.get("title") || "").trim();
   if (!title) return { error: "Albom nomini kiriting." };
 
-  await updateAlbumTitle(albumId, title);
-  revalidatePath(`/${familySlug}/dashboard?view=albums&album=${albumId}`);
-  refresh();
-  return { ok: true };
-}
+  if (title.length > 200) return { error: "Albom nomi juda uzun." };
 
-export async function addAlbumPageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  await createAlbumPage(albumId, "l1");
+  await updateAlbumTitle(albumId, check.family.id, title);
   revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
   return { ok: true };
 }
 
-export async function deleteAlbumPageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  await deletePage(pageId);
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function changePageLayoutAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const layoutId = String(formData.get("layoutId") || "l1") as LayoutId;
-  await changePageLayout(pageId, layoutId);
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function applyPageTemplateAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const templateId = String(formData.get("templateId") || "") as TemplateId;
-  if (!pageId) return { error: "Page ID kerak." };
-  if (!templateId) return { error: "Shablon ID kerak." };
-
-  await applyPageTemplate(pageId, templateId);
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function updatePageMetaAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  await updatePageMeta(pageId, String(formData.get("dateLabel") || ""), String(formData.get("location") || ""));
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function updateElementTextAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const elementId = String(formData.get("elementId") || "").trim();
-  await updateElementText(elementId, String(formData.get("text") || ""));
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function uploadElementPhotoAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const elementId = String(formData.get("elementId") || "").trim();
-  const setCover = formData.get("setCover") === "1";
-
-  const file = formData.get("photo") as File | null;
-  if (!file || file.size === 0) return { error: "Rasm tanlanmadi." };
-  if (!file.type.startsWith("image/")) return { error: "Faqat rasm fayllari qabul qilinadi." };
-  if (file.size > 8 * 1024 * 1024) return { error: "Rasm hajmi 8MB dan oshmasligi kerak." };
-
-  try {
-    const blob = await put(`albums/${albumId}/${elementId}-${Date.now()}`, file, {
-      access: "public",
-      addRandomSuffix: true,
-    });
-    await updateElementPhoto(elementId, blob.url);
-
-    if (setCover) {
-      await setAlbumCover(albumId, blob.url);
-    } else {
-      const album = await getAlbumById(albumId, check.family.id);
-      if (album && !album.cover_url) {
-        await setAlbumCover(albumId, blob.url);
-      }
-    }
-  } catch {
-    return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
-  }
-
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function saveElementPhotoUrlAction(
+/**
+ * Album Editor holatini saqlaydi. Editor barcha o'zgarishlarni klientda
+ * ushlab turadi va debounce bilan faqat o'zgargan sahifalarni yuboradi.
+ * `refresh()` chaqirilmaydi — editor o'z holatini o'zi boshqaradi, sahifani
+ * qayta yuklash foydalanuvchining ishini "sakratib" yuborardi.
+ */
+export async function saveAlbumAction(
   familySlug: string,
   albumId: string,
-  elementId: string,
-  photoUrl: string,
-  setCover: boolean
-): Promise<{ error?: string; ok?: boolean }> {
-  const check = await requireEditableFamily(familySlug);
+  payload: SaveAlbumInput
+): Promise<{ ok?: boolean; error?: string }> {
+  const check = await requireEditableFamily(String(familySlug || ""));
   if ("error" in check) return { error: check.error };
-  if (!elementId || !photoUrl) return { error: "Ma'lumot yetarli emas." };
+  if (!albumId) return { error: "Albom ID kerak." };
 
   try {
-    await updateElementPhoto(elementId, photoUrl);
-
-    if (setCover) {
-      await setAlbumCover(albumId, photoUrl);
-    } else {
-      const album = await getAlbumById(albumId, check.family.id);
-      if (album && !album.cover_url) {
-        await setAlbumCover(albumId, photoUrl);
-      }
-    }
-    revalidatePath(`/${familySlug}/dashboard`);
-    refresh();
+    await saveAlbumState(String(albumId), check.family.id, payload);
+    revalidatePath(`/${check.family.slug}/dashboard`);
     return { ok: true };
   } catch (e) {
-    return { error: "Saqlashda xato: " + String(e) };
+    return { error: e instanceof Error ? e.message : "Saqlashda xato yuz berdi." };
+  }
+}
+
+function isBlobUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === "https:" && u.hostname.endsWith(".blob.vercel-storage.com");
+  } catch {
+    return false;
+  }
+}
+
+/** Brauzerdan to'g'ridan-to'g'ri Blob'ga yuklangan faylni oila kutubxonasiga qo'shadi. */
+export async function registerMediaAction(
+  familySlug: string,
+  input: { url: string; kind: "photo" | "video"; width?: number; height?: number }
+): Promise<{ ok?: boolean; error?: string; item?: { id: string; url: string; kind: string; width: number | null; height: number | null } }> {
+  const check = await requireEditableFamily(String(familySlug || ""));
+  if ("error" in check) return { error: check.error };
+  const url = String(input?.url || "");
+  if (!isBlobUrl(url)) return { error: "Fayl manzili noto'g'ri." };
+  const kind = input?.kind === "video" ? "video" : "photo";
+  try {
+    const item = await addMedia(check.family.id, check.session.id, {
+      url,
+      kind,
+      width: Number.isFinite(input?.width) ? Number(input.width) : null,
+      height: Number.isFinite(input?.height) ? Number(input.height) : null,
+    });
+    return { ok: true, item: { id: item.id, url: item.url, kind: item.kind, width: item.width, height: item.height } };
+  } catch {
+    return { error: "Faylni kutubxonaga qo'shib bo'lmadi." };
   }
 }
 
@@ -830,41 +702,44 @@ export async function bulkUploadPhotosAction(_prevState: ActionState, formData: 
 
   let albumId = String(formData.get("albumId") || "").trim();
   const newAlbumTitle = String(formData.get("newAlbumTitle") || "").trim();
-  let reuseFirstPageId: string | null = null;
+  let reuseEmptyFirstPage = false;
 
   if (!albumId) {
     if (!newAlbumTitle) return { error: "Albom tanlang yoki yangi albom nomini kiriting." };
     const newAlbum = await createAlbum(check.family.id, check.session.id, { title: newAlbumTitle });
     albumId = newAlbum.id;
-    const pages = await getPagesForAlbum(albumId);
-    reuseFirstPageId = pages[0]?.id ?? null;
+    reuseEmptyFirstPage = true;
   }
 
   const album = await getAlbumById(albumId, check.family.id);
   if (!album) return { error: "Albom topilmadi." };
 
-  let isFirstUpload = true;
+  // Yangi albom yaratilganda uning bo'sh birinchi sahifasini rasmli sahifa bilan almashtiramiz.
+  const emptyFirstPages = reuseEmptyFirstPage ? await getPagesForAlbum(albumId) : [];
+
+  let coverUrl = album.cover_url;
   for (const file of files) {
-    const pageId = reuseFirstPageId && isFirstUpload ? reuseFirstPageId : (await createAlbumPage(albumId, "l1")).id;
-    isFirstUpload = false;
-
-    const elements = await getElementsForPages([pageId]);
-    const photoEl = elements.find((e) => e.type === "photo");
-    if (!photoEl) continue;
-
     try {
-      const blob = await put(`albums/${albumId}/${photoEl.id}-${Date.now()}`, file, {
+      const blob = await put(`albums/${albumId}/${Date.now()}-${file.name}`, file, {
         access: "public",
         addRandomSuffix: true,
       });
-      await updateElementPhoto(photoEl.id, blob.url);
-
-      const currentAlbum = await getAlbumById(albumId, check.family.id);
-      if (currentAlbum && !currentAlbum.cover_url) {
+      await createPhotoPage(albumId, blob.url);
+      await addMedia(check.family.id, check.session.id, { url: blob.url, kind: "photo" });
+      if (!coverUrl) {
+        coverUrl = blob.url;
         await setAlbumCover(albumId, blob.url);
       }
     } catch {
       return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
+    }
+  }
+
+  if (emptyFirstPages.length > 0) {
+    const pages = await getPagesForAlbum(albumId);
+    const keep = pages.filter((p) => !emptyFirstPages.some((e) => e.id === p.id));
+    if (keep.length > 0) {
+      await saveAlbumState(albumId, check.family.id, { pageOrder: keep.map((p) => p.id), pages: [] });
     }
   }
 
@@ -979,411 +854,6 @@ export async function deleteMemoryAction(_prevState: ActionState, formData: Form
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Xotira o'chirishda xato: " + String(e) };
-  }
-}
-
-export async function deleteElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const albumId = String(formData.get("albumId") || "").trim();
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-
-  try {
-    await deleteElement(elementId, pageId);
-    revalidatePath(`/${familySlug}/dashboard`);
-    refresh();
-    return { ok: true };
-  } catch {
-    return { error: "Element o'chirishda xato yuz berdi." };
-  }
-}
-
-export async function reorderElementsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const pageId = String(formData.get("pageId") || "").trim();
-  const albumId = String(formData.get("albumId") || "").trim();
-  const elementIdsRaw = String(formData.get("elementIds") || "");
-
-  if (!pageId || !elementIdsRaw) return { error: "Page ID va element IDlari kerak." };
-
-  try {
-    const elementIds = elementIdsRaw.split(",").filter(Boolean);
-    await reorderPageElements(pageId, elementIds);
-    return { ok: true };
-  } catch {
-    return { error: "Elementlarni qayta tartiblashda xato yuz berdi." };
-  }
-}
-
-export async function moveElementUpAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-
-  try {
-    await moveElementUp(elementId, pageId);
-    return { ok: true };
-  } catch {
-    return { error: "Element ko'chirishda xato yuz berdi." };
-  }
-}
-
-export async function moveElementDownAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-
-  try {
-    await moveElementDown(elementId, pageId);
-    return { ok: true };
-  } catch {
-    return { error: "Element ko'chirishda xato yuz berdi." };
-  }
-}
-
-export async function updateElementPositionAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const x = Number(formData.get("positionX"));
-  const y = Number(formData.get("positionY"));
-  const w = Number(formData.get("positionW"));
-  const h = Number(formData.get("positionH"));
-  const zRaw = formData.get("zIndex");
-  const rRaw = formData.get("rotation");
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-  if ([x, y, w, h].some((v) => Number.isNaN(v))) return { error: "Joylashuv koordinatalari noto'g'ri." };
-
-  try {
-    await updateElementPosition(elementId, pageId, {
-      x, y, w, h,
-      zIndex: zRaw != null && zRaw !== "" ? Number(zRaw) : undefined,
-      rotation: rRaw != null && rRaw !== "" ? Number(rRaw) : undefined,
-    });
-    revalidatePath(`/${familySlug}/dashboard`);
-    refresh();
-    return { ok: true };
-  } catch {
-    return { error: "Element joylashuvini saqlashda xato." };
-  }
-}
-
-export async function groupElementsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const pageId = String(formData.get("pageId") || "").trim();
-  const groupId = String(formData.get("groupId") || "").trim();
-  const raw = String(formData.get("elementIds") || "");
-  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
-
-  if (!pageId || !groupId || ids.length === 0) return { error: "Guruhlash uchun noto'g'ri ma'lumot." };
-  try {
-    await groupElements(pageId, ids, groupId);
-    return { ok: true };
-  } catch {
-    return { error: "Elementlarni guruhlashda xato." };
-  }
-}
-
-export async function ungroupElementsAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const pageId = String(formData.get("pageId") || "").trim();
-  const raw = String(formData.get("elementIds") || "");
-  const ids = raw.split(",").map((s) => s.trim()).filter(Boolean);
-
-  if (!pageId || ids.length === 0) return { error: "Guruhdan chiqarish uchun noto'g'ri ma'lumot." };
-  try {
-    await ungroupElements(pageId, ids);
-    return { ok: true };
-  } catch {
-    return { error: "Elementlarni guruhdan chiqarishda xato." };
-  }
-}
-
-export async function updateElementCropAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const scale = Number(formData.get("scale"));
-  const dx = Number(formData.get("dx"));
-  const dy = Number(formData.get("dy"));
-  const flipH = formData.get("flipH") === "true";
-  const flipV = formData.get("flipV") === "true";
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-  if ([scale, dx, dy].some((v) => Number.isNaN(v))) return { error: "Crop parametrlari noto'g'ri." };
-
-  try {
-    await updateElementCrop(elementId, pageId, { scale, dx, dy, flipH, flipV });
-    return { ok: true };
-  } catch {
-    return { error: "Cropni saqlashda xato." };
-  }
-}
-
-export async function updateElementFilterAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const filterJson = String(formData.get("filterJson") || "").trim();
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-  if (filterJson.length > 500) return { error: "Filtr ma'lumoti noto'g'ri." };
-
-  try {
-    await updateElementFilter(elementId, pageId, filterJson);
-    return { ok: true };
-  } catch {
-    return { error: "Filtrni saqlashda xato." };
-  }
-}
-
-export async function updateElementCaptionAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const caption = String(formData.get("caption") || "");
-
-  if (!elementId) return { error: "Element ID kerak." };
-
-  try {
-    await updateElementCaption(elementId, caption);
-    return { ok: true };
-  } catch {
-    return { error: "Caption saqlashda xato." };
-  }
-}
-
-export async function updateElementPlaceAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const location = String(formData.get("location") || "");
-
-  if (!elementId) return { error: "Element ID kerak." };
-
-  try {
-    await updateElementLocation(elementId, location);
-    return { ok: true };
-  } catch {
-    return { error: "Joy (location) saqlashda xato." };
-  }
-}
-
-export async function changeZIndexAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const direction = formData.get("direction") === "down" ? "down" : "up";
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-
-  try {
-    await changeZIndex(elementId, pageId, direction);
-    return { ok: true };
-  } catch {
-    return { error: "Z-index o'zgartirishda xato." };
-  }
-}
-
-export async function duplicateElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const albumId = String(formData.get("albumId") || "").trim();
-
-  if (!elementId || !pageId) return { error: "Element yoki page ID kerak." };
-
-  try {
-    const newId = await duplicateElement(elementId, pageId);
-    return { ok: true, elementId: newId ?? undefined, albumId: albumId || undefined };
-  } catch {
-    return { error: "Elementni nusxalashda xato." };
-  }
-}
-
-export async function changePageBackgroundAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const backgroundId = String(formData.get("backgroundId") || "paper") as BackgroundId;
-  if (!pageId) return { error: "Page ID kerak." };
-
-  await updatePageBackground(pageId, backgroundId);
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function updateElementFrameAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const elementId = String(formData.get("elementId") || "").trim();
-  const frameStyle = String(formData.get("frameStyle") || "polaroid") as FrameStyle;
-  if (!elementId) return { error: "Element ID kerak." };
-
-  await updateElementFrame(elementId, frameStyle);
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function updateElementTextStyleAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  if (!elementId) return { error: "Element ID kerak." };
-
-  const size = Math.max(10, Math.min(72, Number(formData.get("textSize")) || 22));
-  const color = String(formData.get("textColor") || "#1E2621").trim();
-  const align = String(formData.get("textAlign") || "left") as TextAlign;
-  const font = String(formData.get("textFont") || "handwriting") as TextFont;
-
-  await updateElementTextStyle(elementId, { size, color, align, font });
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function addStickerElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  const stickerId = String(formData.get("stickerId") || "leaf") as StickerId;
-  if (!pageId) return { error: "Page ID kerak." };
-
-  const kind = STICKERS[stickerId]?.kind;
-  const pos = kind === "tape" ? { x: 32, y: 40, w: 28, h: 8 } : { x: 38, y: 38, w: 16, h: 16 };
-
-  await addStickerElement(pageId, stickerId, pos);
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function updateElementStickerColorAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const elementId = String(formData.get("elementId") || "").trim();
-  const color = String(formData.get("color") || "").trim();
-  if (!elementId) return { error: "Element ID kerak." };
-  if (!color) return { error: "Rang kerak." };
-
-  await updateElementStickerColor(elementId, color);
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function addTextElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  if (!pageId) return { error: "Page ID kerak." };
-
-  await addTextElement(pageId, { x: 30, y: 40, w: 40, h: 20 });
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function addPhotoElementAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  if (!pageId) return { error: "Page ID kerak." };
-
-  await addPhotoElement(pageId, { x: 30, y: 30, w: 32, h: 32 });
-  revalidatePath(`/${familySlug}/dashboard`);
-  refresh();
-  return { ok: true };
-}
-
-export async function addPhotoWithUrlAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const pageId = String(formData.get("pageId") || "").trim();
-  const photoUrl = String(formData.get("photoUrl") || "").trim();
-  const x = Number(formData.get("positionX"));
-  const y = Number(formData.get("positionY"));
-  const w = Number(formData.get("positionW") || "40");
-  const h = Number(formData.get("positionH") || "30");
-
-  if (!pageId || !photoUrl) return { error: "Page ID yoki rasm URL kerak." };
-  if ([x, y, w, h].some((v) => Number.isNaN(v))) return { error: "Koordinatalar noto'g'ri." };
-
-  try {
-    const elementId = await addPhotoElement(pageId, { x, y, w, h });
-    await updateElementPhoto(elementId, photoUrl);
-    revalidatePath(`/${familySlug}/dashboard`);
-    refresh();
-    return { ok: true };
-  } catch {
-    return { error: "Rasm qo'shishda xato yuz berdi." };
   }
 }
 
@@ -1564,74 +1034,5 @@ export async function deletePlaceAction(_prevState: ActionState, formData: FormD
     return { ok: true, familySlug: check.family.slug };
   } catch (e) {
     return { error: "Joy o'chirishda xato: " + String(e) };
-  }
-}
-
-// ============================================================
-// 🆕 Sahifalarni boshqarish action'lar
-// ============================================================
-
-export async function reorderAlbumPagesAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageIdsRaw = String(formData.get("pageIds") || "");
-  
-  if (!albumId || !pageIdsRaw) return { error: "Albom ID yoki sahifa IDlari kerak." };
-  
-  try {
-    const pageIds = pageIdsRaw.split(",").filter(Boolean);
-    await reorderAlbumPages(albumId, pageIds);
-    revalidatePath(`/${familySlug}/dashboard`);
-    refresh();
-    return { ok: true };
-  } catch {
-    return { error: "Sahifalarni tartiblashda xato." };
-  }
-}
-
-export async function duplicateAlbumPageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const albumId = String(formData.get("albumId") || "").trim();
-  const pageId = String(formData.get("pageId") || "").trim();
-  
-  if (!albumId || !pageId) return { error: "Albom ID yoki sahifa ID kerak." };
-  
-  try {
-    await duplicateAlbumPage(pageId, albumId);
-    revalidatePath(`/${familySlug}/dashboard`);
-    refresh();
-    return { ok: true };
-  } catch {
-    return { error: "Sahifani nusxalashda xato." };
-  }
-}
-
-// ============================================================
-// 🆕 Background image action
-// ============================================================
-
-export async function updatePageBackgroundImageAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const familySlug = String(formData.get("familySlug") || "").trim();
-  const check = await requireEditableFamily(familySlug);
-  if ("error" in check) return { error: check.error };
-
-  const pageId = String(formData.get("pageId") || "").trim();
-  const imageUrl = String(formData.get("imageUrl") || "").trim();
-  
-  if (!pageId) return { error: "Page ID kerak." };
-  
-  try {
-    await updatePageBackgroundImage(pageId, imageUrl || null);
-    revalidatePath(`/${familySlug}/dashboard`);
-    refresh();
-    return { ok: true };
-  } catch {
-    return { error: "Fon rasmini saqlashda xato." };
   }
 }
