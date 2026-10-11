@@ -10,6 +10,7 @@ import { getTimelineEventsForFamily } from "@/lib/timeline";
 import { getMemoriesForFamily, getOnThisDayMemories } from "@/lib/memories";
 import { getStoriesForFamily } from "@/lib/stories";
 import { getPlacesForFamily } from "@/lib/places";
+import { getMediaForFamily } from "@/lib/media";
 import HeirloomApp from "@/components/HeirloomApp";
 import {
   logoutAction,
@@ -25,15 +26,9 @@ import {
   uploadPersonPhotoAction,
   createAlbumAction,
   deleteAlbumAction,
-  addAlbumPageAction,
-  deleteAlbumPageAction,
-  changePageLayoutAction,
-  applyPageTemplateAction,
-  updatePageMetaAction,
-  updateElementTextAction,
-  saveElementPhotoUrlAction,
-  deleteElementAction,
-  reorderElementsAction,
+  renameAlbumAction,
+  saveAlbumAction,
+  registerMediaAction,
   createPlaceAction,
   updatePlaceAction,
   deletePlaceAction,
@@ -50,26 +45,6 @@ import {
   updateStoryAction,
   updateStoryPhotoAction,
   deleteStoryAction,
-  updateElementPositionAction,
-  updateElementCaptionAction,
-  updateElementPlaceAction,
-  changeZIndexAction,
-  duplicateElementAction,
-  moveElementUpAction,
-  moveElementDownAction,
-  changePageBackgroundAction,
-  updateElementFrameAction,
-  updateElementTextStyleAction,
-  updateElementStickerColorAction,
-  addStickerElementAction,
-  addTextElementAction,
-  addPhotoElementAction,
-  reorderAlbumPagesAction,
-  duplicateAlbumPageAction,
-  groupElementsAction,
-  ungroupElementsAction,
-  updateElementCropAction,
-  updateElementFilterAction,
 } from "@/lib/actions";
 
 export default async function FamilyDashboardPage({
@@ -105,6 +80,7 @@ export default async function FamilyDashboardPage({
   let stories: any[] = [];
   let places: any[] = [];
   let photos: any[] = [];
+  let media: any[] = [];
   let albumsWithPages: any[] = [];
   let stats: any = { peopleCount: 0, albumsCount: 0, pagesCount: 0, photosCount: 0, memoriesCount: 0, storiesCount: 0, eventsCount: 0, placesCount: 0, generationsCount: 0 };
 
@@ -129,7 +105,10 @@ export default async function FamilyDashboardPage({
       getFamilyStats(family!.id),
     ]);
 
-    onThisDayMemories = await getOnThisDayMemories(family!.id);
+    [onThisDayMemories, media] = await Promise.all([
+      getOnThisDayMemories(family!.id),
+      getMediaForFamily(family!.id).catch(() => []),
+    ]);
 
     albumsWithPages = await Promise.all(
       albums.map(async (album) => {
@@ -178,6 +157,7 @@ export default async function FamilyDashboardPage({
       stories={stories as any}
       places={places as any}
       photos={photos as any}
+      media={media as any}
       stats={stats as any}
       activeAlbumId={activeAlbumId ?? (null as any)}
       canEdit={membership!.role !== "viewer"}
@@ -208,29 +188,9 @@ export default async function FamilyDashboardPage({
       uploadPersonPhotoAction={uploadPersonPhotoAction}
       createAlbumAction={createAlbumAction}
       deleteAlbumAction={deleteAlbumAction}
-      addAlbumPageAction={addAlbumPageAction}
-      deleteAlbumPageAction={deleteAlbumPageAction}
-      changePageLayoutAction={changePageLayoutAction}
-      applyPageTemplateAction={applyPageTemplateAction}
-      updatePageMetaAction={updatePageMetaAction}
-      updateElementTextAction={updateElementTextAction}
-      saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-      deleteElementAction={deleteElementAction}
-      reorderElementsAction={reorderElementsAction}
-      updateElementPositionAction={updateElementPositionAction}
-      updateElementCaptionAction={updateElementCaptionAction}
-      updateElementPlaceAction={updateElementPlaceAction}
-      changeZIndexAction={changeZIndexAction}
-      duplicateElementAction={duplicateElementAction}
-      moveElementUpAction={moveElementUpAction}
-      moveElementDownAction={moveElementDownAction}
-      changePageBackgroundAction={changePageBackgroundAction}
-      updateElementFrameAction={updateElementFrameAction}
-      updateElementTextStyleAction={updateElementTextStyleAction}
-      updateElementStickerColorAction={updateElementStickerColorAction}
-      addStickerElementAction={addStickerElementAction}
-      addTextElementAction={addTextElementAction}
-      addPhotoElementAction={addPhotoElementAction}
+      renameAlbumAction={renameAlbumAction}
+      saveAlbumAction={saveAlbumAction}
+      registerMediaAction={registerMediaAction}
       createPlaceAction={createPlaceAction}
       updatePlaceAction={updatePlaceAction}
       deletePlaceAction={deletePlaceAction}
@@ -247,12 +207,6 @@ export default async function FamilyDashboardPage({
       updateStoryAction={updateStoryAction}
       updateStoryPhotoAction={updateStoryPhotoAction}
       deleteStoryAction={deleteStoryAction}
-      reorderAlbumPagesAction={reorderAlbumPagesAction}
-      duplicateAlbumPageAction={duplicateAlbumPageAction}
-      groupElementsAction={groupElementsAction}
-      ungroupElementsAction={ungroupElementsAction}
-      updateElementCropAction={updateElementCropAction}
-      updateElementFilterAction={updateElementFilterAction}
     />
   );
 }

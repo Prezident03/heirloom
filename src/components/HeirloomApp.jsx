@@ -32,22 +32,6 @@ const NAV_CONFIG = [
   { id: VIEWS.PLACES, icon: MapPinned, label: "Joylar" },
 ];
 
-// Albom muharriri ochilganda Sidebar'da NAV_CONFIG o'rniga shu asboblar chiqadi
-const ALBUM_TOOL_ITEMS = [
-  { id: "template", icon: Sparkles, label: "Shablon" },
-  { id: "layout", icon: LayoutGrid, label: "Layout" },
-  { id: "sticker", icon: StickerIcon, label: "Stiker" },
-  { id: "bg", icon: Palette, label: "Fon" },
-  { id: "bgImage", icon: ImagePlus, label: "Fon rasmi" },
-  { id: "photos", icon: Images, label: "Rasmlar" },
-  { id: "elements", icon: Shapes, label: "Elementlar" },
-  { id: "layers", icon: Layers, label: "Qatlamlar" },
-];
-const ALBUM_QUICK_ITEMS = [
-  { id: "text", icon: Type, label: "Matn" },
-  { id: "photo", icon: ImagePlus, label: "Rasm" },
-];
-
 function GlobalStyle() {
   return (
     <style>{`
@@ -175,8 +159,7 @@ function GlobalStyle() {
   );
 }
 
-function Sidebar({ current, onNavigate, onLogout, familySlug, albumToolbar, onNavigateHome }) {
-  const inAlbumEditor = !!albumToolbar;
+function Sidebar({ current, onNavigate, onLogout, familySlug, onNavigateHome }) {
   return (
     <aside className="fm-desktop-sidebar" style={{ width: 220, background: TOKENS.ink, padding: "26px 14px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
       <div
@@ -188,34 +171,6 @@ function Sidebar({ current, onNavigate, onLogout, familySlug, albumToolbar, onNa
         <span style={{ fontFamily: "Fraunces, serif", fontSize: 17, color: TOKENS.parchment, fontWeight: 600 }}>Heirloom</span>
       </div>
 
-      {inAlbumEditor ? (
-        <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div className="fm-sidebar-tool-back" onClick={albumToolbar.onBackToAlbums}>
-            <ChevronLeft size={15} /> Albomlarga qaytish
-          </div>
-          {albumToolbar.canEdit && ALBUM_TOOL_ITEMS.map((item) => (
-            <div
-              key={item.id}
-              className={`fm-nav-item ${albumToolbar.activePanel === item.id ? "active" : ""}`}
-              onClick={() => albumToolbar.setActivePanel((p) => (p === item.id ? null : item.id))}
-            >
-              <item.icon size={16} strokeWidth={2} />
-              {item.label}
-            </div>
-          ))}
-          {albumToolbar.canEdit && <div style={{ height: 1, background: "rgba(242,237,226,0.1)", margin: "8px 10px" }} />}
-          {albumToolbar.canEdit && ALBUM_QUICK_ITEMS.map((item) => (
-            <div
-              key={item.id}
-              className="fm-nav-item"
-              onClick={() => (item.id === "text" ? albumToolbar.onQuickText() : albumToolbar.onQuickPhoto())}
-            >
-              <item.icon size={16} strokeWidth={2} />
-              {item.label}
-            </div>
-          ))}
-        </nav>
-      ) : (
         <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {NAV_CONFIG.map((item) => (
             <div
@@ -232,7 +187,6 @@ function Sidebar({ current, onNavigate, onLogout, familySlug, albumToolbar, onNa
             Rasmlar
           </a>
         </nav>
-      )}
 
       <div style={{ marginTop: "auto", paddingTop: 20, borderTop: "1px solid rgba(242,237,226,0.1)" }}>
         <div
@@ -313,6 +267,7 @@ export default function HeirloomApp({
   stories = [],
   places = [],
   photos = [],
+  media = [],
   stats = {},
   activeAlbumId = null,
   canEdit = true,
@@ -333,29 +288,9 @@ export default function HeirloomApp({
   uploadPersonPhotoAction,
   createAlbumAction,
   deleteAlbumAction,
-  addAlbumPageAction,
-  deleteAlbumPageAction,
-  changePageLayoutAction,
-  applyPageTemplateAction,
-  updatePageMetaAction,
-  updateElementTextAction,
-  saveElementPhotoUrlAction,
-  deleteElementAction,
-  reorderElementsAction,
-  updateElementPositionAction,
-  updateElementCaptionAction,
-  updateElementPlaceAction,
-  changeZIndexAction,
-  duplicateElementAction,
-  moveElementUpAction,
-  moveElementDownAction,
-  changePageBackgroundAction,
-  updateElementFrameAction,
-  updateElementTextStyleAction,
-  updateElementStickerColorAction,
-  addStickerElementAction,
-  addTextElementAction,
-  addPhotoElementAction,
+  renameAlbumAction,
+  saveAlbumAction,
+  registerMediaAction,
   bulkUploadPhotosAction,
   createPlaceAction,
   updatePlaceAction,
@@ -372,12 +307,6 @@ export default function HeirloomApp({
   updateStoryAction,
   updateStoryPhotoAction,
   deleteStoryAction,
-  reorderAlbumPagesAction,
-  duplicateAlbumPageAction,
-  groupElementsAction,
-  ungroupElementsAction,
-  updateElementCropAction,
-  updateElementFilterAction,
 }) {
   const [view, setView] = useState(
     initialView === "tree" ? VIEWS.TREE
@@ -397,14 +326,17 @@ export default function HeirloomApp({
   // qoladi, chunki activeAlbumId hamon eski albomni ko'rsatib turaveradi).
   const [openAlbumId, setOpenAlbumId] = useState(activeAlbumId ?? null);
   const [globalModal, setGlobalModal] = useState(null);
-  const [albumToolbar, setAlbumToolbar] = useState(null);
+  const [newAlbumId, setNewAlbumId] = useState(null);
+  const openAlbumWith = useCallback((id, opts) => {
+    setOpenAlbumId(id);
+    setNewAlbumId(opts?.isNew ? id : null);
+  }, []);
 
   const navigate = (target) => {
     if (target === VIEWS.ALBUMS) setOpenAlbumId(null);
     setView(target);
   };
 
-  const handleAlbumToolbarChange = useCallback((toolbar) => setAlbumToolbar(toolbar), []);
 
   const openAlbumFromDashboard = (album) => {
     setOpenAlbumId(album.id);
@@ -420,7 +352,6 @@ export default function HeirloomApp({
           onNavigate={navigate}
           onLogout={onLogout}
           familySlug={familySlug}
-          albumToolbar={view === VIEWS.ALBUMS ? albumToolbar : null}
           onNavigateHome={() => navigate(VIEWS.DASHBOARD)}
         />
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", height: "100%" }}>
@@ -469,40 +400,16 @@ export default function HeirloomApp({
                 photos={photos}
                 activeAlbumId={activeAlbumId}
                 openAlbumId={openAlbumId}
-                setOpenAlbumId={setOpenAlbumId}
+                setOpenAlbumId={openAlbumWith}
+                newAlbumId={newAlbumId}
+                media={media}
                 familySlug={familySlug}
                 canEdit={canEdit}
                 createAlbumAction={createAlbumAction}
                 deleteAlbumAction={deleteAlbumAction}
-                addAlbumPageAction={addAlbumPageAction}
-                deleteAlbumPageAction={deleteAlbumPageAction}
-                changePageLayoutAction={changePageLayoutAction}
-                applyPageTemplateAction={applyPageTemplateAction}
-                saveElementPhotoUrlAction={saveElementPhotoUrlAction}
-                updateElementTextAction={updateElementTextAction}
-                reorderElementsAction={reorderElementsAction}
-                deleteElementAction={deleteElementAction}
-                updateElementPositionAction={updateElementPositionAction}
-                updateElementCaptionAction={updateElementCaptionAction}
-                updateElementPlaceAction={updateElementPlaceAction}
-                changeZIndexAction={changeZIndexAction}
-                duplicateElementAction={duplicateElementAction}
-                moveElementUpAction={moveElementUpAction}
-                moveElementDownAction={moveElementDownAction}
-                changePageBackgroundAction={changePageBackgroundAction}
-                updateElementFrameAction={updateElementFrameAction}
-                updateElementTextStyleAction={updateElementTextStyleAction}
-                updateElementStickerColorAction={updateElementStickerColorAction}
-                addStickerElementAction={addStickerElementAction}
-                addTextElementAction={addTextElementAction}
-                addPhotoElementAction={addPhotoElementAction}
-                reorderAlbumPagesAction={reorderAlbumPagesAction}
-                duplicateAlbumPageAction={duplicateAlbumPageAction}
-                groupElementsAction={groupElementsAction}
-                ungroupElementsAction={ungroupElementsAction}
-                updateElementCropAction={updateElementCropAction}
-                updateElementFilterAction={updateElementFilterAction}
-                onToolbarChange={handleAlbumToolbarChange}
+                renameAlbumAction={renameAlbumAction}
+                saveAlbumAction={saveAlbumAction}
+                registerMediaAction={registerMediaAction}
               />
             )}
             {view === VIEWS.PEOPLE && (
@@ -602,6 +509,7 @@ export default function HeirloomApp({
         <CreateAlbumModal
           familySlug={familySlug}
           createAlbumAction={createAlbumAction}
+          onCreated={(id) => { openAlbumWith(id, { isNew: true }); setView(VIEWS.ALBUMS); }}
           onClose={() => setGlobalModal(null)}
         />
       )}

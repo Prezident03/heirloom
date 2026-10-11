@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { sql, ensureSchema } from "./db";
+import { sql, sqlTransaction, ensureSchema } from "./db";
 
 export type Album = {
   id: string;
@@ -21,14 +21,16 @@ export type AlbumPage = {
   date_label: string | null;
   location: string | null;
   background_id: string;
-  background_image_url: string | null; // 🆕 Yangi
+  background_image_url: string | null;
 };
+
+export type ElementType = "photo" | "text" | "sticker" | "video";
 
 export type PageElement = {
   id: string;
   page_id: string;
   slot_index: number;
-  type: "photo" | "text" | "sticker";
+  type: ElementType;
   photo_url: string | null;
   text_content: string | null;
   caption: string | null;
@@ -40,13 +42,13 @@ export type PageElement = {
   position_h: number | null;
   rotation: number;
   z_index: number;
-  frame_style: "polaroid" | "soft" | "none";
+  frame_style: string | null;
   sticker_id: string | null;
   sticker_color: string | null;
   text_size: number | null;
   text_color: string | null;
   text_align: "left" | "center" | "right" | null;
-  text_font: "handwriting" | "serif" | "sans" | null;
+  text_font: string | null;
   group_id: string | null;
   crop_scale: number | null;
   crop_dx: number | null;
@@ -54,553 +56,12 @@ export type PageElement = {
   flip_h: boolean | null;
   flip_v: boolean | null;
   photo_filter: string | null;
+  extra: string | null;
 };
 
-export const BACKGROUNDS = {
-  paper: { name: "Qog'oz", from: "#F4EDDD", to: "#ECE2C8" },
-  sage: { name: "Sage", from: "#E7EDE3", to: "#D3DECB" },
-  slate: { name: "Slate", from: "#E4E7E6", to: "#CBD2D0" },
-  blush: { name: "Blush", from: "#F3E4DD", to: "#E6C9BC" },
-  midnight: { name: "Midnight", from: "#2A3630", to: "#1B231F" },
-} as const;
-export type BackgroundId = keyof typeof BACKGROUNDS;
-
-export const FRAMES = {
-  polaroid: { name: "Polaroid" },
-  soft: { name: "Yumshoq soya" },
-  none: { name: "Ramkasiz" },
-} as const;
-export type FrameStyle = keyof typeof FRAMES;
-
-export const STICKERS = {
-  leaf: { name: "Barg", kind: "icon", defaultColor: "#2F4C48" },
-  flower: { name: "Gul", kind: "icon", defaultColor: "#2F4C48" },
-  heart: { name: "Yurak", kind: "icon", defaultColor: "#A8453A" },
-  star: { name: "Yulduz", kind: "icon", defaultColor: "#B8863B" },
-  sun: { name: "Quyosh", kind: "icon", defaultColor: "#B8863B" },
-  sparkles: { name: "Yulduzcha", kind: "icon", defaultColor: "#B8863B" },
-  moon: { name: "Oy", kind: "icon", defaultColor: "#2F4C48" },
-  cloud: { name: "Bulut", kind: "icon", defaultColor: "#5C7A73" },
-  gift: { name: "Sovg'a", kind: "icon", defaultColor: "#A8453A" },
-  cake: { name: "Tort", kind: "icon", defaultColor: "#A8453A" },
-  party: { name: "Bayram", kind: "icon", defaultColor: "#B8863B" },
-  camera: { name: "Kamera", kind: "icon", defaultColor: "#1E2621" },
-  music: { name: "Musiqa", kind: "icon", defaultColor: "#2F4C48" },
-  crown: { name: "Toj", kind: "icon", defaultColor: "#B8863B" },
-  umbrella: { name: "Soyabon", kind: "icon", defaultColor: "#5C7A73" },
-  snowflake: { name: "Qor kristali", kind: "icon", defaultColor: "#5C7A73" },
-  smile: { name: "Kulgi", kind: "icon", defaultColor: "#B8863B" },
-  feather: { name: "Pat", kind: "icon", defaultColor: "#5C7A73" },
-  "circle-shape": { name: "Doira", kind: "shape", defaultColor: "#D9BC85" },
-  "square-shape": { name: "Kvadrat", kind: "shape", defaultColor: "#5C7A73" },
-  "triangle-shape": { name: "Uchburchak", kind: "shape", defaultColor: "#A8453A" },
-  "tape-gold": { name: "Washi-lenta (oltin)", kind: "tape", defaultColor: "#D9BC85" },
-  "tape-teal": { name: "Washi-lenta (teal)", kind: "tape", defaultColor: "#5C7A73" },
-  "tape-blush": { name: "Washi-lenta (blush)", kind: "tape", defaultColor: "#E6C9BC" },
-  "tape-stripe": { name: "Washi-lenta (chiziqli)", kind: "tape", defaultColor: "#B8863B" },
-} as const;
-export type StickerId = keyof typeof STICKERS;
-
-export const LAYOUTS = {
-  l1: { name: "Bitta katta", slots: [{ type: "photo", x: 8, y: 8, w: 84, h: 60 }, { type: "text", x: 8, y: 72, w: 84, h: 20 }] },
-  l2: { name: "Ikkita yonma-yon", slots: [{ type: "photo", x: 6, y: 8, w: 41, h: 70 }, { type: "photo", x: 53, y: 8, w: 41, h: 70 }, { type: "text", x: 6, y: 82, w: 88, h: 12 }] },
-  l3: { name: "Katta + ikkita kichik", slots: [{ type: "photo", x: 6, y: 6, w: 60, h: 50 }, { type: "photo", x: 68, y: 6, w: 26, h: 24 }, { type: "photo", x: 68, y: 32, w: 26, h: 24 }, { type: "text", x: 6, y: 60, w: 88, h: 32 }] },
-  l4: { name: "Uchtasi qatorda", slots: [{ type: "photo", x: 5, y: 10, w: 28, h: 55 }, { type: "photo", x: 36, y: 10, w: 28, h: 55 }, { type: "photo", x: 67, y: 10, w: 28, h: 55 }, { type: "text", x: 5, y: 70, w: 90, h: 22 }] },
-} as const;
-export type LayoutId = keyof typeof LAYOUTS;
-
-export type TemplateSlot = {
-  type: "photo" | "text";
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  frame?: FrameStyle;
-  rotation?: number;
-  textStyle?: { size?: number; color?: string; align?: TextAlign; font?: TextFont };
-};
-
-export type TemplateSticker = {
-  stickerId: StickerId;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  color?: string;
-  rotation?: number;
-};
-
-export type Template = {
-  name: string;
-  category: string;
-  backgroundId: BackgroundId;
-  slots: TemplateSlot[];
-  stickers: TemplateSticker[];
-};
-
-const TEMPLATE_IDS = [
-  "classic-cream", "ikki-esdalik", "uch-lavha", "minimal-oq",
-  "klassik-katta", "ikki-foto-tort",
-  "kollej-2", "kollej-3", "kollej-4-grid", "kollej-4-mixed", "kollej-5", "kollej-6",
-  "sayohat", "tabiat-sayri", "sayohat-duo", "sayohat-trilogiya",
-  "bolalik-lahzalari", "oila-surati", "oila-avlodlari",
-  "toy-marosimi", "toy-tantana",
-  "tugilgan-kun", "tugilgan-kun-muborak",
-  "tabiat-manzarasi", "tabiat-qoyasi",
-  "yubiley", "bayram-kechasi",
-  "bahor", "qish-ertagi",
-  "romantik-kech",
-] as const;
-export type TemplateId = (typeof TEMPLATE_IDS)[number];
-
-export const TEMPLATES: Record<TemplateId, Template> = {
-  "classic-cream": {
-    name: "Klassik",
-    category: "Oddiy",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 8, y: 8, w: 84, h: 58, frame: "polaroid", rotation: -2 },
-      { type: "text", x: 8, y: 70, w: 84, h: 22, textStyle: { font: "serif", align: "center" } },
-    ],
-    stickers: [{ stickerId: "tape-gold", x: 38, y: 3, w: 24, h: 7, rotation: -3 }],
-  },
-  "ikki-esdalik": {
-    name: "Ikki xotira",
-    category: "Oddiy",
-    backgroundId: "sage",
-    slots: [
-      { type: "photo", x: 3, y: 7, w: 48, h: 64, rotation: -6 },
-      { type: "photo", x: 40, y: 14, w: 48, h: 64, rotation: 4 },
-      { type: "text", x: 6, y: 80, w: 88, h: 14, textStyle: { align: "center" } },
-    ],
-    stickers: [
-      { stickerId: "heart", x: 46, y: 4, w: 10, h: 10, color: "#A8453A", rotation: 8 },
-      { stickerId: "leaf", x: 2, y: 2, w: 9, h: 9, color: "#2F4C48", rotation: -10 },
-    ],
-  },
-  "uch-lavha": {
-    name: "Uch lavha",
-    category: "Oddiy",
-    backgroundId: "slate",
-    slots: [
-      { type: "photo", x: 2, y: 15, w: 33, h: 52, rotation: -8 },
-      { type: "photo", x: 29, y: 6, w: 33, h: 56, rotation: 4 },
-      { type: "photo", x: 57, y: 16, w: 33, h: 52, rotation: -6 },
-      { type: "text", x: 5, y: 70, w: 90, h: 22, textStyle: { align: "center" } },
-    ],
-    stickers: [
-      { stickerId: "cloud", x: 2, y: 2, w: 10, h: 10, color: "#5C7A73", rotation: 8 },
-      { stickerId: "umbrella", x: 88, y: 2, w: 10, h: 10, color: "#5C7A73", rotation: -8 },
-    ],
-  },
-  "minimal-oq": {
-    name: "Minimal",
-    category: "Oddiy",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 12, y: 10, w: 76, h: 62, frame: "none" },
-      { type: "text", x: 12, y: 76, w: 76, h: 16, textStyle: { align: "center", font: "sans", size: 16 } },
-    ],
-    stickers: [{ stickerId: "square-shape", x: 4, y: 4, w: 7, h: 7, color: "#D9BC85", rotation: 8 }],
-  },
-  sayohat: {
-    name: "Sayohat kundaligi",
-    category: "Sayohat",
-    backgroundId: "blush",
-    slots: [
-      { type: "photo", x: 5, y: 7, w: 56, h: 52, frame: "soft", rotation: -3 },
-      { type: "photo", x: 60, y: 2, w: 34, h: 30, rotation: 6 },
-      { type: "photo", x: 64, y: 27, w: 34, h: 30, rotation: -5 },
-      { type: "text", x: 6, y: 60, w: 88, h: 32, textStyle: { font: "sans" } },
-    ],
-    stickers: [
-      { stickerId: "camera", x: 4, y: 58, w: 10, h: 10, color: "#1E2621", rotation: -6 },
-      { stickerId: "sun", x: 84, y: 4, w: 10, h: 10, color: "#B8863B" },
-      { stickerId: "tape-blush", x: 60, y: 2, w: 22, h: 7, rotation: 4 },
-    ],
-  },
-  "tabiat-sayri": {
-    name: "Tabiat sayri",
-    category: "Sayohat",
-    backgroundId: "sage",
-    slots: [
-      { type: "photo", x: 5, y: 7, w: 56, h: 52, rotation: -4 },
-      { type: "photo", x: 60, y: 2, w: 34, h: 30, rotation: 5 },
-      { type: "photo", x: 64, y: 27, w: 34, h: 30, rotation: -6 },
-      { type: "text", x: 6, y: 60, w: 88, h: 32, textStyle: { font: "sans" } },
-    ],
-    stickers: [
-      { stickerId: "leaf", x: 2, y: 2, w: 10, h: 10, color: "#2F4C48", rotation: -20 },
-      { stickerId: "feather", x: 90, y: 2, w: 8, h: 8, color: "#5C7A73", rotation: 15 },
-      { stickerId: "cloud", x: 2, y: 90, w: 9, h: 9, color: "#5C7A73", rotation: 8 },
-    ],
-  },
-  "tugilgan-kun": {
-    name: "Tug'ilgan kun",
-    category: "Bayram",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 10, y: 10, w: 80, h: 55, frame: "polaroid", rotation: -2 },
-      { type: "text", x: 10, y: 68, w: 80, h: 24, textStyle: { font: "handwriting", align: "center", size: 26, color: "#A8453A" } },
-    ],
-    stickers: [
-      { stickerId: "cake", x: 4, y: 4, w: 12, h: 12, color: "#A8453A", rotation: -6 },
-      { stickerId: "party", x: 84, y: 4, w: 12, h: 12, color: "#B8863B", rotation: 8 },
-      { stickerId: "gift", x: 4, y: 84, w: 10, h: 10, color: "#2F4C48", rotation: 6 },
-      { stickerId: "sparkles", x: 86, y: 84, w: 10, h: 10, color: "#B8863B", rotation: -8 },
-    ],
-  },
-  yubiley: {
-    name: "Yubiley",
-    category: "Bayram",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 10, y: 8, w: 80, h: 52, frame: "polaroid", rotation: 2 },
-      { type: "text", x: 10, y: 64, w: 80, h: 26, textStyle: { font: "serif", align: "center", size: 24 } },
-    ],
-    stickers: [
-      { stickerId: "crown", x: 4, y: 4, w: 10, h: 10, color: "#B8863B", rotation: -6 },
-      { stickerId: "star", x: 88, y: 4, w: 9, h: 9, color: "#B8863B", rotation: 8 },
-      { stickerId: "tape-gold", x: 38, y: 2, w: 24, h: 6, rotation: 3 },
-      { stickerId: "tape-gold", x: 38, y: 60, w: 24, h: 6, rotation: -3 },
-    ],
-  },
-  "bayram-kechasi": {
-    name: "Bayram kechasi",
-    category: "Bayram",
-    backgroundId: "midnight",
-    slots: [
-      { type: "photo", x: 2, y: 12, w: 33, h: 48, rotation: -7 },
-      { type: "photo", x: 29, y: 4, w: 33, h: 52, rotation: 4 },
-      { type: "photo", x: 57, y: 14, w: 33, h: 48, rotation: -6 },
-      { type: "text", x: 5, y: 64, w: 90, h: 26, textStyle: { align: "center", color: "#F2EDE2" } },
-    ],
-    stickers: [
-      { stickerId: "party", x: 2, y: 2, w: 9, h: 9, color: "#D9BC85", rotation: 10 },
-      { stickerId: "music", x: 90, y: 2, w: 8, h: 8, color: "#D9BC85", rotation: -8 },
-      { stickerId: "sparkles", x: 2, y: 92, w: 8, h: 8, color: "#D9BC85", rotation: 8 },
-      { stickerId: "sparkles", x: 90, y: 92, w: 8, h: 8, color: "#D9BC85", rotation: -10 },
-    ],
-  },
-  bahor: {
-    name: "Bahor kayfiyati",
-    category: "Fasllar",
-    backgroundId: "sage",
-    slots: [
-      { type: "photo", x: 8, y: 10, w: 84, h: 56, rotation: -2 },
-      { type: "text", x: 8, y: 70, w: 84, h: 20, textStyle: { align: "center", font: "serif", color: "#2F4C48" } },
-    ],
-    stickers: [
-      { stickerId: "flower", x: 4, y: 4, w: 10, h: 10, color: "#A8453A", rotation: -8 },
-      { stickerId: "leaf", x: 88, y: 4, w: 9, h: 9, color: "#2F4C48", rotation: 15 },
-      { stickerId: "sun", x: 4, y: 88, w: 9, h: 9, color: "#B8863B", rotation: 10 },
-    ],
-  },
-  "qish-ertagi": {
-    name: "Qish ertagi",
-    category: "Fasllar",
-    backgroundId: "midnight",
-    slots: [
-      { type: "photo", x: 8, y: 10, w: 84, h: 54, frame: "soft", rotation: 2 },
-      { type: "text", x: 8, y: 68, w: 84, h: 24, textStyle: { align: "center", color: "#F2EDE2", font: "serif" } },
-    ],
-    stickers: [
-      { stickerId: "snowflake", x: 4, y: 4, w: 9, h: 9, color: "#D9BC85", rotation: 10 },
-      { stickerId: "moon", x: 86, y: 4, w: 9, h: 9, color: "#D9BC85", rotation: -8 },
-      { stickerId: "star", x: 4, y: 86, w: 8, h: 8, color: "#D9BC85", rotation: 12 },
-      { stickerId: "sparkles", x: 88, y: 86, w: 8, h: 8, color: "#D9BC85", rotation: -10 },
-    ],
-  },
-  "romantik-kech": {
-    name: "Romantik kech",
-    category: "Romantik",
-    backgroundId: "midnight",
-    slots: [
-      { type: "photo", x: 15, y: 8, w: 70, h: 58, frame: "polaroid", rotation: -3 },
-      { type: "text", x: 15, y: 70, w: 70, h: 20, textStyle: { align: "center", font: "handwriting", color: "#D9BC85" } },
-    ],
-    stickers: [
-      { stickerId: "heart", x: 4, y: 4, w: 9, h: 9, color: "#A8453A", rotation: -8 },
-      { stickerId: "moon", x: 88, y: 4, w: 9, h: 9, color: "#D9BC85", rotation: 6 },
-      { stickerId: "sparkles", x: 4, y: 88, w: 8, h: 8, color: "#D9BC85", rotation: 10 },
-    ],
-  },
-  "bolalik-lahzalari": {
-    name: "Bolalik lahzalari",
-    category: "Oila",
-    backgroundId: "blush",
-    slots: [
-      { type: "photo", x: 3, y: 6, w: 48, h: 62, rotation: -7 },
-      { type: "photo", x: 39, y: 13, w: 48, h: 62, rotation: 5 },
-      { type: "text", x: 6, y: 78, w: 88, h: 16, textStyle: { align: "center", font: "handwriting" } },
-    ],
-    stickers: [
-      { stickerId: "smile", x: 46, y: 3, w: 9, h: 9, color: "#B8863B", rotation: -6 },
-      { stickerId: "crown", x: 2, y: 2, w: 9, h: 9, color: "#B8863B", rotation: -8 },
-      { stickerId: "star", x: 90, y: 2, w: 8, h: 8, color: "#B8863B", rotation: 8 },
-    ],
-  },
-  "klassik-katta": {
-    name: "Klassik katta",
-    category: "Oddiy",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 6, y: 6, w: 88, h: 62, frame: "polaroid", rotation: -2 },
-      { type: "text", x: 6, y: 72, w: 88, h: 20, textStyle: { align: "center", font: "serif" } },
-    ],
-    stickers: [{ stickerId: "tape-gold", x: 38, y: 2, w: 24, h: 6, rotation: -2 }],
-  },
-  "ikki-foto-tort": {
-    name: "Ikki foto (tort)",
-    category: "Oddiy",
-    backgroundId: "slate",
-    slots: [
-      { type: "photo", x: 8, y: 6, w: 84, h: 44, frame: "soft", rotation: 2 },
-      { type: "photo", x: 8, y: 54, w: 84, h: 38, rotation: -3 },
-    ],
-    stickers: [],
-  },
-  "kollej-2": {
-    name: "2 rasm kolleji",
-    category: "Kollej",
-    backgroundId: "sage",
-    slots: [
-      { type: "photo", x: 4, y: 8, w: 44, h: 84, rotation: -3 },
-      { type: "photo", x: 52, y: 8, w: 44, h: 84, rotation: 3 },
-    ],
-    stickers: [{ stickerId: "tape-teal", x: 46, y: 2, w: 10, h: 6 }],
-  },
-  "kollej-3": {
-    name: "3 rasm kolleji",
-    category: "Kollej",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 4, y: 14, w: 29, h: 72, rotation: -6 },
-      { type: "photo", x: 35, y: 6, w: 29, h: 80, rotation: 3 },
-      { type: "photo", x: 66, y: 12, w: 29, h: 74, rotation: -4 },
-    ],
-    stickers: [],
-  },
-  "kollej-4-grid": {
-    name: "4 rasm (2x2)",
-    category: "Kollej",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 2, y: 2, w: 48, h: 48, rotation: -4 },
-      { type: "photo", x: 50, y: 2, w: 48, h: 48, rotation: 3 },
-      { type: "photo", x: 2, y: 50, w: 48, h: 48, rotation: -2 },
-      { type: "photo", x: 50, y: 50, w: 48, h: 48, rotation: 5 },
-    ],
-    stickers: [],
-  },
-  "kollej-4-mixed": {
-    name: "4 rasm (aralash)",
-    category: "Kollej",
-    backgroundId: "slate",
-    slots: [
-      { type: "photo", x: 2, y: 2, w: 60, h: 60, rotation: -3 },
-      { type: "photo", x: 66, y: 2, w: 32, h: 28, rotation: 2 },
-      { type: "photo", x: 66, y: 34, w: 32, h: 28, rotation: -2 },
-      { type: "photo", x: 2, y: 66, w: 96, h: 32, rotation: 1 },
-    ],
-    stickers: [],
-  },
-  "kollej-5": {
-    name: "5 rasm kolleji",
-    category: "Kollej",
-    backgroundId: "blush",
-    slots: [
-      { type: "photo", x: 2, y: 2, w: 48, h: 48, rotation: -4 },
-      { type: "photo", x: 50, y: 2, w: 48, h: 48, rotation: 3 },
-      { type: "photo", x: 2, y: 54, w: 31, h: 44, rotation: -2 },
-      { type: "photo", x: 34.5, y: 54, w: 31, h: 44, rotation: 2 },
-      { type: "photo", x: 67, y: 54, w: 31, h: 44, rotation: -3 },
-    ],
-    stickers: [],
-  },
-  "kollej-6": {
-    name: "6 rasm (3x2)",
-    category: "Kollej",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 0, y: 0, w: 33.3, h: 50, rotation: -3 },
-      { type: "photo", x: 33.3, y: 0, w: 33.3, h: 50, rotation: 2 },
-      { type: "photo", x: 66.6, y: 0, w: 33.4, h: 50, rotation: -2 },
-      { type: "photo", x: 0, y: 50, w: 33.3, h: 50, rotation: 3 },
-      { type: "photo", x: 33.3, y: 50, w: 33.3, h: 50, rotation: -4 },
-      { type: "photo", x: 66.6, y: 50, w: 33.4, h: 50, rotation: 1 },
-    ],
-    stickers: [],
-  },
-  "sayohat-duo": {
-    name: "Sayohat duo",
-    category: "Sayohat",
-    backgroundId: "sage",
-    slots: [
-      { type: "photo", x: 4, y: 6, w: 58, h: 88, rotation: -4 },
-      { type: "photo", x: 66, y: 8, w: 30, h: 44, rotation: 3 },
-      { type: "text", x: 66, y: 56, w: 30, h: 36, textStyle: { font: "handwriting", color: "#2F4C48" } },
-    ],
-    stickers: [
-      { stickerId: "camera", x: 3, y: 90, w: 10, h: 10, color: "#1E2621" },
-      { stickerId: "sun", x: 88, y: 2, w: 10, h: 10, color: "#B8863B" },
-    ],
-  },
-  "sayohat-trilogiya": {
-    name: "Sayohat trilogiyasi",
-    category: "Sayohat",
-    backgroundId: "blush",
-    slots: [
-      { type: "photo", x: 4, y: 7, w: 30, h: 50, rotation: -7 },
-      { type: "photo", x: 35, y: 4, w: 30, h: 54, rotation: 4 },
-      { type: "photo", x: 66, y: 8, w: 30, h: 48, rotation: -5 },
-      { type: "text", x: 4, y: 62, w: 92, h: 32, textStyle: { align: "center" } },
-    ],
-    stickers: [
-      { stickerId: "camera", x: 2, y: 2, w: 9, h: 9, color: "#1E2621" },
-      { stickerId: "feather", x: 90, y: 2, w: 8, h: 8, color: "#5C7A73" },
-    ],
-  },
-  "oila-surati": {
-    name: "Oila surati",
-    category: "Oila",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 5, y: 5, w: 90, h: 62, frame: "polaroid", rotation: -2 },
-      { type: "text", x: 5, y: 70, w: 90, h: 22, textStyle: { align: "center", font: "serif" } },
-    ],
-    stickers: [
-      { stickerId: "flower", x: 2, y: 2, w: 10, h: 10, color: "#A8453A" },
-      { stickerId: "leaf", x: 88, y: 2, w: 9, h: 9, color: "#2F4C48" },
-    ],
-  },
-  "oila-avlodlari": {
-    name: "Oila avlodlari",
-    category: "Oila",
-    backgroundId: "blush",
-    slots: [
-      { type: "photo", x: 3, y: 4, w: 46, h: 78, rotation: -5 },
-      { type: "photo", x: 51, y: 4, w: 46, h: 78, rotation: 4 },
-      { type: "text", x: 3, y: 84, w: 94, h: 12, textStyle: { align: "center" } },
-    ],
-    stickers: [
-      { stickerId: "heart", x: 46, y: 3, w: 9, h: 9, color: "#A8453A", rotation: 8 },
-      { stickerId: "star", x: 2, y: 2, w: 8, h: 8, color: "#B8863B", rotation: -8 },
-    ],
-  },
-  "toy-marosimi": {
-    name: "To'y marosimi",
-    category: "To'y",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 4, y: 6, w: 44, h: 70, rotation: -4 },
-      { type: "photo", x: 52, y: 6, w: 44, h: 70, rotation: 5 },
-      { type: "text", x: 4, y: 80, w: 92, h: 12, textStyle: { align: "center", font: "serif", color: "#B8863B" } },
-    ],
-    stickers: [
-      { stickerId: "heart", x: 2, y: 2, w: 9, h: 9, color: "#A8453A", rotation: -8 },
-      { stickerId: "tape-gold", x: 38, y: 78, w: 24, h: 6, rotation: -3 },
-    ],
-  },
-  "toy-tantana": {
-    name: "To'y tantanasi",
-    category: "To'y",
-    backgroundId: "blush",
-    slots: [
-      { type: "photo", x: 12, y: 6, w: 76, h: 60, frame: "polaroid", rotation: -3 },
-      { type: "text", x: 12, y: 70, w: 76, h: 20, textStyle: { align: "center", font: "handwriting", color: "#A8453A" } },
-    ],
-    stickers: [
-      { stickerId: "heart", x: 4, y: 4, w: 9, h: 9, color: "#A8453A", rotation: -8 },
-      { stickerId: "flower", x: 88, y: 4, w: 9, h: 9, color: "#A8453A", rotation: 10 },
-    ],
-  },
-  "tugilgan-kun-muborak": {
-    name: "Tug'ilgan kun (kollej)",
-    category: "Tug'ilgan kun",
-    backgroundId: "paper",
-    slots: [
-      { type: "photo", x: 6, y: 6, w: 52, h: 60, rotation: -3 },
-      { type: "photo", x: 62, y: 6, w: 32, h: 28, rotation: 2 },
-      { type: "photo", x: 62, y: 38, w: 32, h: 28, rotation: -2 },
-      { type: "text", x: 6, y: 70, w: 88, h: 24, textStyle: { align: "center", font: "handwriting", color: "#A8453A" } },
-    ],
-    stickers: [
-      { stickerId: "cake", x: 2, y: 2, w: 10, h: 10, color: "#A8453A" },
-      { stickerId: "party", x: 88, y: 2, w: 10, h: 10, color: "#B8863B" },
-      { stickerId: "sparkles", x: 2, y: 88, w: 9, h: 9, color: "#B8863B" },
-      { stickerId: "gift", x: 88, y: 88, w: 9, h: 9, color: "#2F4C48" },
-    ],
-  },
-  "tabiat-manzarasi": {
-    name: "Tabiat manzarasi",
-    category: "Tabiat",
-    backgroundId: "sage",
-    slots: [
-      { type: "photo", x: 4, y: 6, w: 92, h: 58, frame: "soft", rotation: 2 },
-      { type: "text", x: 4, y: 68, w: 92, h: 26, textStyle: { align: "center", font: "serif", color: "#2F4C48" } },
-    ],
-    stickers: [
-      { stickerId: "leaf", x: 2, y: 2, w: 10, h: 10, color: "#2F4C48" },
-      { stickerId: "feather", x: 88, y: 2, w: 9, h: 9, color: "#5C7A73" },
-      { stickerId: "sun", x: 2, y: 88, w: 9, h: 9, color: "#B8863B" },
-    ],
-  },
-  "tabiat-qoyasi": {
-    name: "Tabiat qo'ynida",
-    category: "Tabiat",
-    backgroundId: "slate",
-    slots: [
-      { type: "photo", x: 4, y: 8, w: 44, h: 84, rotation: -4 },
-      { type: "photo", x: 52, y: 8, w: 44, h: 44, rotation: 3 },
-      { type: "photo", x: 52, y: 56, w: 44, h: 36, rotation: -2 },
-    ],
-    stickers: [
-      { stickerId: "cloud", x: 2, y: 2, w: 9, h: 9, color: "#5C7A73" },
-      { stickerId: "snowflake", x: 88, y: 2, w: 8, h: 8, color: "#5C7A73" },
-      { stickerId: "leaf", x: 2, y: 90, w: 8, h: 8, color: "#2F4C48" },
-    ],
-  },
-};
-
-export async function applyPageTemplate(pageId: string, templateId: TemplateId): Promise<void> {
-  await ensureSchema();
-  const tpl = TEMPLATES[templateId];
-  if (!tpl) return;
-
-  await sql`UPDATE album_pages SET background_id = ${tpl.backgroundId} WHERE id = ${pageId}`;
-  await sql`DELETE FROM page_elements WHERE page_id = ${pageId}`;
-
-  const now = new Date().toISOString();
-  let slotIndex = 0;
-
-  for (const slot of tpl.slots) {
-    const id = randomUUID();
-    if (slot.type === "photo") {
-      await sql`
-        INSERT INTO page_elements (id, page_id, slot_index, type, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style)
-        VALUES (${id}, ${pageId}, ${slotIndex}, 'photo', ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, ${slot.rotation ?? 0}, ${slotIndex}, ${slot.frame || "polaroid"})
-      `;
-    } else {
-      const ts = slot.textStyle;
-      await sql`
-        INSERT INTO page_elements (id, page_id, slot_index, type, text_content, created_at, position_x, position_y, position_w, position_h, rotation, z_index, text_size, text_color, text_align, text_font)
-        VALUES (${id}, ${pageId}, ${slotIndex}, 'text', '', ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, 0, ${slotIndex}, ${ts?.size ?? null}, ${ts?.color ?? null}, ${ts?.align ?? null}, ${ts?.font ?? null})
-      `;
-    }
-    slotIndex++;
-  }
-
-  for (const st of tpl.stickers) {
-    const id = randomUUID();
-    const color = st.color || STICKERS[st.stickerId]?.defaultColor || null;
-    await sql`
-      INSERT INTO page_elements (id, page_id, slot_index, type, sticker_id, sticker_color, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
-      VALUES (${id}, ${pageId}, ${slotIndex}, 'sticker', ${st.stickerId}, ${color}, ${now}, ${st.x}, ${st.y}, ${st.w}, ${st.h}, ${st.rotation ?? 0}, ${slotIndex})
-    `;
-    slotIndex++;
-  }
-}
+// ============================================================
+// Albomlar
+// ============================================================
 
 export async function createAlbum(
   familyId: string,
@@ -617,7 +78,7 @@ export async function createAlbum(
     VALUES (${id}, ${familyId}, ${title}, ${input.description?.trim() || null}, ${input.dateLabel?.trim() || null}, ${input.location?.trim() || null}, ${createdBy}, ${createdAt})
   `;
 
-  await createAlbumPage(id, "l1");
+  await createAlbumPage(id);
 
   return {
     id,
@@ -645,15 +106,30 @@ export async function getAlbumById(albumId: string, familyId: string): Promise<A
 
 export async function deleteAlbum(albumId: string, familyId: string): Promise<void> {
   await ensureSchema();
-  await sql`DELETE FROM page_elements WHERE page_id IN (SELECT id FROM album_pages WHERE album_id = ${albumId})`;
-  await sql`DELETE FROM album_pages WHERE album_id = ${albumId}`;
-  await sql`DELETE FROM albums WHERE id = ${albumId} AND family_id = ${familyId}`;
+  // Avval albom shu oilaga tegishli ekanini tekshiramiz — aks holda boshqa
+  // oilaning sahifa/elementlari o'chib ketishi mumkin edi.
+  const album = await getAlbumById(albumId, familyId);
+  if (!album) return;
+  await sqlTransaction((tx) => [
+    tx`DELETE FROM page_elements WHERE page_id IN (SELECT id FROM album_pages WHERE album_id = ${albumId})`,
+    tx`DELETE FROM album_pages WHERE album_id = ${albumId}`,
+    tx`DELETE FROM albums WHERE id = ${albumId} AND family_id = ${familyId}`,
+  ]);
 }
 
-export async function updateAlbumTitle(albumId: string, title: string): Promise<void> {
+export async function updateAlbumTitle(albumId: string, familyId: string, title: string): Promise<void> {
   await ensureSchema();
-  await sql`UPDATE albums SET title = ${title.trim()} WHERE id = ${albumId}`;
+  await sql`UPDATE albums SET title = ${title.trim()} WHERE id = ${albumId} AND family_id = ${familyId}`;
 }
+
+export async function setAlbumCover(albumId: string, coverUrl: string | null): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE albums SET cover_url = ${coverUrl} WHERE id = ${albumId}`;
+}
+
+// ============================================================
+// Sahifalar va elementlar
+// ============================================================
 
 export async function getPagesForAlbum(albumId: string): Promise<AlbumPage[]> {
   await ensureSchema();
@@ -666,364 +142,277 @@ export async function getElementsForPages(pageIds: string[]): Promise<PageElemen
   return (await sql`SELECT * FROM page_elements WHERE page_id = ANY(${pageIds})`) as PageElement[];
 }
 
-export async function createAlbumPage(albumId: string, layoutId: LayoutId): Promise<AlbumPage> {
-  await ensureSchema();
-  const existing = (await sql`SELECT COUNT(*)::int AS c FROM album_pages WHERE album_id = ${albumId}`) as { c: number }[];
-  const order = existing[0]?.c ?? 0;
-
-  const id = randomUUID();
-  await sql`INSERT INTO album_pages (id, album_id, page_order, layout_id) VALUES (${id}, ${albumId}, ${order}, ${layoutId})`;
-  await createEmptyElements(id, layoutId);
-
-  return { id, album_id: albumId, page_order: order, layout_id: layoutId, date_label: null, location: null, background_id: "paper", background_image_url: null };
+async function nextPageOrder(albumId: string): Promise<number> {
+  const rows = (await sql`SELECT COALESCE(MAX(page_order), -1)::int AS m FROM album_pages WHERE album_id = ${albumId}`) as { m: number }[];
+  return (rows[0]?.m ?? -1) + 1;
 }
 
-async function createEmptyElements(pageId: string, layoutId: LayoutId): Promise<void> {
-  const layout = LAYOUTS[layoutId];
+/** Bo'sh (elementlarsiz) sahifa yaratadi. */
+export async function createAlbumPage(albumId: string): Promise<AlbumPage> {
+  await ensureSchema();
+  const order = await nextPageOrder(albumId);
+  const id = randomUUID();
+  await sql`INSERT INTO album_pages (id, album_id, page_order, layout_id, background_id) VALUES (${id}, ${albumId}, ${order}, 'free', 'paper')`;
+  return { id, album_id: albumId, page_order: order, layout_id: "free", date_label: null, location: null, background_id: "paper", background_image_url: null };
+}
+
+/** Bitta katta rasmli sahifa yaratadi (ommaviy yuklash uchun). */
+export async function createPhotoPage(albumId: string, photoUrl: string): Promise<string> {
+  await ensureSchema();
+  const order = await nextPageOrder(albumId);
+  const pageId = randomUUID();
   const now = new Date().toISOString();
-  for (let i = 0; i < layout.slots.length; i++) {
-    const slot = layout.slots[i];
-    await sql`
-      INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
-      VALUES (${randomUUID()}, ${pageId}, ${i}, ${slot.type}, ${null}, ${slot.type === "text" ? "" : null}, ${now}, ${slot.x}, ${slot.y}, ${slot.w}, ${slot.h}, 0, ${i})
-    `;
-  }
+  await sqlTransaction((tx) => [
+    tx`INSERT INTO album_pages (id, album_id, page_order, layout_id, background_id) VALUES (${pageId}, ${albumId}, ${order}, 'free', 'paper')`,
+    tx`
+      INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style)
+      VALUES (${randomUUID()}, ${pageId}, 0, 'photo', ${photoUrl}, ${now}, 12, 8, 76, 84, -1.5, 0, 'polaroid')
+    `,
+  ]);
+  return pageId;
 }
 
 // ============================================================
-// 🆕 Background image
+// Editor holatini saqlash (sinxronlash)
 // ============================================================
 
-export async function updatePageBackgroundImage(pageId: string, imageUrl: string | null): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE album_pages SET background_image_url = ${imageUrl} WHERE id = ${pageId}`;
+export type SaveElementInput = {
+  id: string;
+  type: ElementType;
+  photo_url?: string | null;
+  text_content?: string | null;
+  caption?: string | null;
+  location?: string | null;
+  created_at?: string | null;
+  position_x: number;
+  position_y: number;
+  position_w: number;
+  position_h: number;
+  rotation?: number;
+  frame_style?: string | null;
+  sticker_id?: string | null;
+  sticker_color?: string | null;
+  text_size?: number | null;
+  text_color?: string | null;
+  text_align?: string | null;
+  text_font?: string | null;
+  group_id?: string | null;
+  crop_scale?: number | null;
+  flip_h?: boolean | null;
+  flip_v?: boolean | null;
+  photo_filter?: string | null;
+  extra?: string | null;
+};
+
+export type SavePageInput = {
+  id: string;
+  background_id?: string | null;
+  background_image_url?: string | null;
+  date_label?: string | null;
+  location?: string | null;
+  elements: SaveElementInput[];
+};
+
+export type SaveAlbumInput = {
+  /** Albomdagi BARCHA sahifalarning yangi tartibi. Bu ro'yxatda yo'q sahifalar o'chiriladi. */
+  pageOrder: string[];
+  /** Faqat o'zgargan sahifalar — ularning elementlari to'liq almashtiriladi. */
+  pages: SavePageInput[];
+  coverUrl?: string | null;
+};
+
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
+const TOKEN_RE = /^[A-Za-z0-9:#_.-]{1,64}$/;
+const ELEMENT_TYPES = new Set<ElementType>(["photo", "text", "sticker", "video"]);
+const MAX_PAGES = 200;
+const MAX_ELEMENTS_PER_PAGE = 150;
+
+function num(v: unknown, min: number, max: number, fallback: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
 }
 
-export async function changePageLayout(pageId: string, layoutId: LayoutId): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE album_pages SET layout_id = ${layoutId} WHERE id = ${pageId}`;
-  await sql`DELETE FROM page_elements WHERE page_id = ${pageId}`;
-  await createEmptyElements(pageId, layoutId);
+function str(v: unknown, maxLen: number): string | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v);
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
-export async function updateElementPhoto(elementId: string, photoUrl: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE page_elements SET photo_url = ${photoUrl} WHERE id = ${elementId}`;
-}
-
-export async function updateElementText(elementId: string, text: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE page_elements SET text_content = ${text} WHERE id = ${elementId}`;
-}
-
-export async function updatePageMeta(pageId: string, dateLabel: string, location: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE album_pages SET date_label = ${dateLabel || null}, location = ${location || null} WHERE id = ${pageId}`;
-}
-
-export async function setAlbumCover(albumId: string, coverUrl: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE albums SET cover_url = ${coverUrl} WHERE id = ${albumId}`;
-}
-
-export async function deletePage(pageId: string): Promise<void> {
-  await ensureSchema();
-  await sql`DELETE FROM page_elements WHERE page_id = ${pageId}`;
-  await sql`DELETE FROM album_pages WHERE id = ${pageId}`;
-}
-
-export async function deleteElement(elementId: string, pageId: string): Promise<void> {
-  await ensureSchema();
-  await sql`DELETE FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`;
-}
-
-export async function reorderPageElements(pageId: string, elementIds: string[]): Promise<void> {
-  await ensureSchema();
-  for (let i = 0; i < elementIds.length; i++) {
-    await sql`UPDATE page_elements SET slot_index = ${i} WHERE id = ${elementIds[i]} AND page_id = ${pageId}`;
+function httpsUrl(v: unknown): string | null {
+  if (typeof v !== "string" || !v) return null;
+  if (v.length > 2048) return null;
+  try {
+    const u = new URL(v);
+    return u.protocol === "https:" ? u.toString() : null;
+  } catch {
+    return null;
   }
 }
 
-export async function moveElementUp(elementId: string, pageId: string): Promise<void> {
-  await ensureSchema();
-  const element = (await sql`SELECT slot_index FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`) as { slot_index: number }[];
-  if (!element[0] || element[0].slot_index === 0) return;
-  const currentIndex = element[0].slot_index;
-  const prevElement = (await sql`SELECT id FROM page_elements WHERE page_id = ${pageId} AND slot_index = ${currentIndex - 1}`) as { id: string }[];
-  if (prevElement[0]) {
-    await sql`UPDATE page_elements SET slot_index = ${currentIndex} WHERE id = ${prevElement[0].id}`;
-    await sql`UPDATE page_elements SET slot_index = ${currentIndex - 1} WHERE id = ${elementId}`;
+function token(v: unknown): string | null {
+  return typeof v === "string" && TOKEN_RE.test(v) ? v : null;
+}
+
+function color(v: unknown): string | null {
+  return typeof v === "string" && COLOR_RE.test(v) ? v : null;
+}
+
+function jsonText(v: unknown, maxLen: number): string | null {
+  if (typeof v !== "string" || !v) return null;
+  if (v.length > maxLen) return null;
+  try {
+    const parsed = JSON.parse(v);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? JSON.stringify(parsed) : null;
+  } catch {
+    return null;
   }
 }
 
-export async function moveElementDown(elementId: string, pageId: string): Promise<void> {
+function sanitizeElement(el: SaveElementInput) {
+  if (!el || typeof el !== "object" || !ID_RE.test(String(el.id))) throw new Error("Element ID noto'g'ri.");
+  if (!ELEMENT_TYPES.has(el.type)) throw new Error("Element turi noto'g'ri.");
+  const align = el.text_align === "center" || el.text_align === "right" || el.text_align === "left" ? el.text_align : null;
+  return {
+    id: String(el.id),
+    type: el.type,
+    photo_url: httpsUrl(el.photo_url),
+    text_content: str(el.text_content, 5000),
+    caption: str(el.caption, 500),
+    location: str(el.location, 300),
+    created_at: str(el.created_at, 40) || new Date().toISOString(),
+    position_x: num(el.position_x, -500, 600, 0),
+    position_y: num(el.position_y, -500, 600, 0),
+    position_w: num(el.position_w, 0.1, 1000, 20),
+    position_h: num(el.position_h, 0.1, 1000, 20),
+    rotation: num(el.rotation, -3600, 3600, 0),
+    frame_style: token(el.frame_style),
+    sticker_id: token(el.sticker_id),
+    sticker_color: color(el.sticker_color),
+    text_size: el.text_size == null ? null : Math.round(num(el.text_size, 1, 1000, 24)),
+    text_color: color(el.text_color),
+    text_align: align,
+    text_font: token(el.text_font),
+    group_id: el.group_id && ID_RE.test(String(el.group_id)) ? String(el.group_id) : null,
+    crop_scale: el.crop_scale == null ? null : num(el.crop_scale, 1, 20, 1),
+    flip_h: !!el.flip_h,
+    flip_v: !!el.flip_v,
+    photo_filter: jsonText(el.photo_filter, 1000),
+    extra: jsonText(el.extra, 4000),
+  };
+}
+
+function sanitizePage(p: SavePageInput) {
+  if (!p || typeof p !== "object" || !ID_RE.test(String(p.id))) throw new Error("Sahifa ID noto'g'ri.");
+  const elements = Array.isArray(p.elements) ? p.elements : [];
+  if (elements.length > MAX_ELEMENTS_PER_PAGE) throw new Error("Sahifada elementlar juda ko'p.");
+  return {
+    id: String(p.id),
+    background_id: token(p.background_id) || "paper",
+    background_image_url: httpsUrl(p.background_image_url),
+    date_label: str(p.date_label, 120),
+    location: str(p.location, 200),
+    elements: elements.map(sanitizeElement),
+  };
+}
+
+/**
+ * Editordagi albom holatini bazaga yozadi. Barcha tekshiruvlar albom
+ * aynan shu oilaga tegishli ekaniga va sahifa/element ID'lari boshqa
+ * albomlarnikiga to'qnash kelmasligiga asoslanadi.
+ */
+export async function saveAlbumState(albumId: string, familyId: string, input: SaveAlbumInput): Promise<void> {
   await ensureSchema();
-  const element = (await sql`SELECT slot_index FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`) as { slot_index: number }[];
-  if (!element[0]) return;
-  const currentIndex = element[0].slot_index;
-  const nextElement = (await sql`SELECT id FROM page_elements WHERE page_id = ${pageId} AND slot_index = ${currentIndex + 1}`) as { id: string }[];
-  if (nextElement[0]) {
-    await sql`UPDATE page_elements SET slot_index = ${currentIndex} WHERE id = ${nextElement[0].id}`;
-    await sql`UPDATE page_elements SET slot_index = ${currentIndex + 1} WHERE id = ${elementId}`;
+  const album = await getAlbumById(albumId, familyId);
+  if (!album) throw new Error("Albom topilmadi.");
+
+  const pageOrder = Array.isArray(input?.pageOrder) ? input.pageOrder.map(String) : [];
+  if (pageOrder.length === 0) throw new Error("Albomda kamida bitta sahifa bo'lishi kerak.");
+  if (pageOrder.length > MAX_PAGES) throw new Error("Sahifalar juda ko'p.");
+  if (new Set(pageOrder).size !== pageOrder.length || pageOrder.some((id) => !ID_RE.test(id))) {
+    throw new Error("Sahifa tartibi noto'g'ri.");
   }
-}
 
-export async function updateElementPosition(
-  elementId: string,
-  pageId: string,
-  pos: { x: number; y: number; w: number; h: number; zIndex?: number; rotation?: number }
-): Promise<void> {
-  await ensureSchema();
-  if (pos.x !== undefined) {
-    await sql`UPDATE page_elements SET position_x = ${pos.x} WHERE id = ${elementId} AND page_id = ${pageId}`;
+  const pages = (Array.isArray(input?.pages) ? input.pages : []).map(sanitizePage);
+  const orderSet = new Set(pageOrder);
+  if (pages.some((p) => !orderSet.has(p.id))) throw new Error("Saqlanayotgan sahifa tartibda yo'q.");
+
+  const existingRows = (await sql`SELECT id FROM album_pages WHERE album_id = ${albumId}`) as { id: string }[];
+  const existing = new Set(existingRows.map((r) => r.id));
+  const dirty = new Map(pages.map((p) => [p.id, p]));
+
+  // Yangi sahifa bo'lishi kerak bo'lgan ID'lar boshqa albomda band emasligini tekshiramiz.
+  const newIds = pageOrder.filter((id) => !existing.has(id));
+  if (newIds.some((id) => !dirty.has(id))) throw new Error("Yangi sahifa ma'lumoti yetishmayapti.");
+  if (newIds.length > 0) {
+    const taken = (await sql`SELECT id FROM album_pages WHERE id = ANY(${newIds})`) as { id: string }[];
+    if (taken.length > 0) throw new Error("Sahifa ID band.");
   }
-  if (pos.y !== undefined) {
-    await sql`UPDATE page_elements SET position_y = ${pos.y} WHERE id = ${elementId} AND page_id = ${pageId}`;
+
+  // Elementlar ID'si boshqa albomdagi elementga tegishli bo'lmasligi kerak.
+  const elementIds = pages.flatMap((p) => p.elements.map((e) => e.id));
+  if (new Set(elementIds).size !== elementIds.length) throw new Error("Element ID'lari takrorlangan.");
+  if (elementIds.length > 0) {
+    const foreign = (await sql`
+      SELECT pe.id FROM page_elements pe
+      LEFT JOIN album_pages ap ON ap.id = pe.page_id
+      WHERE pe.id = ANY(${elementIds}) AND (ap.album_id IS NULL OR ap.album_id <> ${albumId})
+    `) as { id: string }[];
+    if (foreign.length > 0) throw new Error("Element ID band.");
   }
-  if (pos.w !== undefined) {
-    await sql`UPDATE page_elements SET position_w = ${pos.w} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  }
-  if (pos.h !== undefined) {
-    await sql`UPDATE page_elements SET position_h = ${pos.h} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  }
-  if (pos.zIndex !== undefined) {
-    await sql`UPDATE page_elements SET z_index = ${pos.zIndex} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  }
-  if (pos.rotation !== undefined) {
-    await sql`UPDATE page_elements SET rotation = ${pos.rotation} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  }
-}
 
-export async function groupElements(pageId: string, elementIds: string[], groupId: string): Promise<void> {
-  await ensureSchema();
-  for (const id of elementIds) {
-    await sql`UPDATE page_elements SET group_id = ${groupId} WHERE id = ${id} AND page_id = ${pageId}`;
-  }
-}
+  const removedPages = [...existing].filter((id) => !orderSet.has(id));
+  const dirtyIds = pages.map((p) => p.id);
+  const coverUrl = input.coverUrl === undefined ? undefined : httpsUrl(input.coverUrl);
 
-export async function ungroupElements(pageId: string, elementIds: string[]): Promise<void> {
-  await ensureSchema();
-  for (const id of elementIds) {
-    await sql`UPDATE page_elements SET group_id = NULL WHERE id = ${id} AND page_id = ${pageId}`;
-  }
-}
-
-export async function updateElementCrop(
-  elementId: string,
-  pageId: string,
-  crop: { scale?: number; dx?: number; dy?: number; flipH?: boolean; flipV?: boolean }
-): Promise<void> {
-  await ensureSchema();
-  if (crop.scale !== undefined) await sql`UPDATE page_elements SET crop_scale = ${crop.scale} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  if (crop.dx !== undefined) await sql`UPDATE page_elements SET crop_dx = ${crop.dx} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  if (crop.dy !== undefined) await sql`UPDATE page_elements SET crop_dy = ${crop.dy} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  if (crop.flipH !== undefined) await sql`UPDATE page_elements SET flip_h = ${crop.flipH} WHERE id = ${elementId} AND page_id = ${pageId}`;
-  if (crop.flipV !== undefined) await sql`UPDATE page_elements SET flip_v = ${crop.flipV} WHERE id = ${elementId} AND page_id = ${pageId}`;
-}
-
-export async function updateElementFilter(elementId: string, pageId: string, filterJson: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE page_elements SET photo_filter = ${filterJson} WHERE id = ${elementId} AND page_id = ${pageId}`;
-}
-
-export async function updateElementCaption(elementId: string, caption: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE page_elements SET caption = ${caption.trim() || null} WHERE id = ${elementId}`;
-}
-
-export async function updateElementLocation(elementId: string, location: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE page_elements SET location = ${location.trim() || null} WHERE id = ${elementId}`;
-}
-
-export async function updatePageBackground(pageId: string, backgroundId: BackgroundId): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE album_pages SET background_id = ${backgroundId} WHERE id = ${pageId}`;
-}
-
-export async function updateElementFrame(elementId: string, frameStyle: FrameStyle): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE page_elements SET frame_style = ${frameStyle} WHERE id = ${elementId}`;
-}
-
-export type TextAlign = "left" | "center" | "right";
-export type TextFont = "handwriting" | "serif" | "sans";
-
-export async function updateElementTextStyle(
-  elementId: string,
-  style: { size: number; color: string; align: TextAlign; font: TextFont }
-): Promise<void> {
-  await ensureSchema();
-  await sql`
-    UPDATE page_elements
-    SET text_size = ${style.size}, text_color = ${style.color}, text_align = ${style.align}, text_font = ${style.font}
-    WHERE id = ${elementId}
-  `;
-}
-
-export async function addStickerElement(
-  pageId: string,
-  stickerId: StickerId,
-  pos: { x: number; y: number; w: number; h: number },
-  color?: string
-): Promise<string> {
-  await ensureSchema();
-  const id = randomUUID();
-  const now = new Date().toISOString();
-  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  const stickerColor = color || STICKERS[stickerId]?.defaultColor || null;
-  await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, sticker_id, sticker_color, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
-    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'sticker', ${stickerId}, ${stickerColor}, ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1})
-  `;
-  return id;
-}
-
-export async function updateElementStickerColor(elementId: string, color: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE page_elements SET sticker_color = ${color} WHERE id = ${elementId}`;
-}
-
-export async function addTextElement(
-  pageId: string,
-  pos: { x: number; y: number; w: number; h: number }
-): Promise<string> {
-  await ensureSchema();
-  const id = randomUUID();
-  const now = new Date().toISOString();
-  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, text_content, created_at, position_x, position_y, position_w, position_h, rotation, z_index)
-    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'text', '', ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1})
-  `;
-  return id;
-}
-
-export async function addPhotoElement(
-  pageId: string,
-  pos: { x: number; y: number; w: number; h: number }
-): Promise<string> {
-  await ensureSchema();
-  const id = randomUUID();
-  const now = new Date().toISOString();
-  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style)
-    VALUES (${id}, ${pageId}, ${maxSlotRows[0].m + 1}, 'photo', ${now}, ${pos.x}, ${pos.y}, ${pos.w}, ${pos.h}, 0, ${maxZRows[0].m + 1}, 'polaroid')
-  `;
-  return id;
-}
-
-export async function changeZIndex(elementId: string, pageId: string, direction: "up" | "down"): Promise<void> {
-  await ensureSchema();
-  const rows = (await sql`
-    SELECT id, z_index FROM page_elements
-    WHERE page_id = ${pageId}
-    ORDER BY z_index ASC, slot_index ASC
-  `) as { id: string; z_index: number }[];
-  const idx = rows.findIndex((r) => r.id === elementId);
-  if (idx < 0) return;
-  const swapIdx = direction === "up" ? idx + 1 : idx - 1;
-  if (swapIdx < 0 || swapIdx >= rows.length) return;
-  const a = rows[idx];
-  const b = rows[swapIdx];
-  await sql`UPDATE page_elements SET z_index = ${b.z_index} WHERE id = ${a.id} AND page_id = ${pageId}`;
-  await sql`UPDATE page_elements SET z_index = ${a.z_index} WHERE id = ${b.id} AND page_id = ${pageId}`;
-}
-
-export async function duplicateElement(elementId: string, pageId: string): Promise<string | null> {
-  await ensureSchema();
-  const rows = (await sql`SELECT * FROM page_elements WHERE id = ${elementId} AND page_id = ${pageId}`) as (PageElement & { slot_index: number })[];
-  const src = rows[0];
-  if (!src) return null;
-  const newId = randomUUID();
-  const maxSlotRows = (await sql`SELECT COALESCE(MAX(slot_index), -1)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  const maxZRows = (await sql`SELECT COALESCE(MAX(z_index), 0)::int AS m FROM page_elements WHERE page_id = ${pageId}`) as { m: number }[];
-  const now = new Date().toISOString();
-  await sql`
-    INSERT INTO page_elements (id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at, position_x, position_y, position_w, position_h, rotation, z_index, frame_style, sticker_id, sticker_color, text_size, text_color, text_align, text_font, crop_scale, crop_dx, crop_dy, flip_h, flip_v, photo_filter)
-    VALUES (
-      ${newId},
-      ${pageId},
-      ${maxSlotRows[0].m + 1},
-      ${src.type},
-      ${src.photo_url},
-      ${src.text_content},
-      ${src.caption},
-      ${src.location},
-      ${now},
-      ${(src.position_x ?? 8) + 3},
-      ${(src.position_y ?? 8) + 3},
-      ${src.position_w ?? 40},
-      ${src.position_h ?? 40},
-      ${src.rotation ?? 0},
-      ${maxZRows[0].m + 1},
-      ${src.frame_style ?? "polaroid"},
-      ${src.sticker_id ?? null},
-      ${src.sticker_color ?? null},
-      ${src.text_size ?? 22},
-      ${src.text_color ?? "#2E362F"},
-      ${src.text_align ?? "left"},
-      ${src.text_font ?? "handwriting"},
-      ${src.crop_scale ?? 1},
-      ${src.crop_dx ?? 0},
-      ${src.crop_dy ?? 0},
-      ${src.flip_h ?? false},
-      ${src.flip_v ?? false},
-      ${src.photo_filter ?? null}
-    )
-  `;
-  return newId;
-}
-
-// ============================================================
-// 🆕 YANGI: Sahifalarni boshqarish funksiyalari
-// ============================================================
-
-export async function reorderAlbumPages(albumId: string, pageIds: string[]): Promise<void> {
-  await ensureSchema();
-  for (let i = 0; i < pageIds.length; i++) {
-    await sql`UPDATE album_pages SET page_order = ${i} WHERE id = ${pageIds[i]} AND album_id = ${albumId}`;
-  }
-}
-
-export async function duplicateAlbumPage(pageId: string, albumId: string): Promise<string> {
-  await ensureSchema();
-  
-  const pages = await sql`SELECT * FROM album_pages WHERE id = ${pageId} AND album_id = ${albumId}` as AlbumPage[];
-  const page = pages[0];
-  if (!page) throw new Error("Sahifa topilmadi");
-  
-  const newPageId = randomUUID();
-  const now = new Date().toISOString();
-  
-  const existing = (await sql`SELECT COUNT(*)::int AS c FROM album_pages WHERE album_id = ${albumId}`) as { c: number }[];
-  const order = existing[0]?.c ?? 0;
-  
-  await sql`
-    INSERT INTO album_pages (id, album_id, page_order, layout_id, date_label, location, background_id, background_image_url)
-    VALUES (${newPageId}, ${albumId}, ${order}, ${page.layout_id}, ${page.date_label}, ${page.location}, ${page.background_id}, ${page.background_image_url})
-  `;
-  
-  const elements = await sql`SELECT * FROM page_elements WHERE page_id = ${pageId}` as PageElement[];
-  for (const el of elements) {
-    await sql`
-      INSERT INTO page_elements (
-        id, page_id, slot_index, type, photo_url, text_content, caption, location,
-        created_at, position_x, position_y, position_w, position_h, rotation, z_index,
-        frame_style, sticker_id, sticker_color, text_size, text_color, text_align, text_font
-      ) VALUES (
-        ${randomUUID()}, ${newPageId}, ${el.slot_index}, ${el.type}, ${el.photo_url}, ${el.text_content},
-        ${el.caption}, ${el.location}, ${now}, ${el.position_x}, ${el.position_y},
-        ${el.position_w}, ${el.position_h}, ${el.rotation}, ${el.z_index},
-        ${el.frame_style}, ${el.sticker_id}, ${el.sticker_color},
-        ${el.text_size}, ${el.text_color}, ${el.text_align}, ${el.text_font}
-      )
-    `;
-  }
-  
-  return newPageId;
+  await sqlTransaction((tx) => {
+    const q = [];
+    if (removedPages.length > 0) {
+      q.push(tx`DELETE FROM page_elements WHERE page_id = ANY(${removedPages})`);
+      q.push(tx`DELETE FROM album_pages WHERE album_id = ${albumId} AND id = ANY(${removedPages})`);
+    }
+    if (dirtyIds.length > 0) {
+      q.push(tx`DELETE FROM page_elements WHERE page_id = ANY(${dirtyIds})`);
+    }
+    pageOrder.forEach((pageId, order) => {
+      const p = dirty.get(pageId);
+      if (!p) {
+        q.push(tx`UPDATE album_pages SET page_order = ${order} WHERE id = ${pageId} AND album_id = ${albumId}`);
+        return;
+      }
+      if (existing.has(pageId)) {
+        q.push(tx`
+          UPDATE album_pages
+          SET page_order = ${order}, background_id = ${p.background_id}, background_image_url = ${p.background_image_url},
+              date_label = ${p.date_label}, location = ${p.location}
+          WHERE id = ${pageId} AND album_id = ${albumId}
+        `);
+      } else {
+        q.push(tx`
+          INSERT INTO album_pages (id, album_id, page_order, layout_id, date_label, location, background_id, background_image_url)
+          VALUES (${pageId}, ${albumId}, ${order}, 'free', ${p.date_label}, ${p.location}, ${p.background_id}, ${p.background_image_url})
+        `);
+      }
+      p.elements.forEach((el, index) => {
+        q.push(tx`
+          INSERT INTO page_elements (
+            id, page_id, slot_index, type, photo_url, text_content, caption, location, created_at,
+            position_x, position_y, position_w, position_h, rotation, z_index,
+            frame_style, sticker_id, sticker_color, text_size, text_color, text_align, text_font,
+            group_id, crop_scale, crop_dx, crop_dy, flip_h, flip_v, photo_filter, extra
+          ) VALUES (
+            ${el.id}, ${pageId}, ${index}, ${el.type}, ${el.photo_url}, ${el.text_content}, ${el.caption}, ${el.location}, ${el.created_at},
+            ${el.position_x}, ${el.position_y}, ${el.position_w}, ${el.position_h}, ${el.rotation}, ${index},
+            ${el.frame_style}, ${el.sticker_id}, ${el.sticker_color}, ${el.text_size}, ${el.text_color}, ${el.text_align}, ${el.text_font},
+            ${el.group_id}, ${el.crop_scale}, 0, 0, ${el.flip_h}, ${el.flip_v}, ${el.photo_filter}, ${el.extra}
+          )
+        `);
+      });
+    });
+    if (coverUrl !== undefined) {
+      q.push(tx`UPDATE albums SET cover_url = ${coverUrl} WHERE id = ${albumId} AND family_id = ${familyId}`);
+    }
+    return q;
+  });
 }
