@@ -36,6 +36,7 @@ import {
   saveAlbumState,
   setCustomAlbumCover,
   resetAlbumCover,
+  setAlbumSharing,
   type SaveAlbumInput,
 } from "@/lib/albums";
 import { addMedia } from "@/lib/media";
@@ -1099,4 +1100,21 @@ export async function setAlbumCoverAction(_prevState: ActionState, formData: For
   }
   revalidatePath(`/${familySlug}/dashboard`);
   return { ok: true };
+}
+
+/** Albom uchun faqat ko'rish huquqli havolani yoqadi yoki o'chiradi. */
+export async function shareAlbumAction(
+  familySlug: string,
+  albumId: string,
+  enabled: boolean
+): Promise<{ ok?: boolean; error?: string; token?: string | null }> {
+  const check = await requireEditableFamily(String(familySlug || ""));
+  if ("error" in check) return { error: check.error };
+  try {
+    const token = await setAlbumSharing(String(albumId), check.family.id, !!enabled);
+    revalidatePath(`/${check.family.slug}/dashboard`);
+    return { ok: true, token };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ulashishni sozlab bo'lmadi." };
+  }
 }

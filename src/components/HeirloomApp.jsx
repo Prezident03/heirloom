@@ -293,6 +293,7 @@ export default function HeirloomApp({
   registerMediaAction,
   setFamilyCoverAction,
   setAlbumCoverAction,
+  shareAlbumAction,
   familyCoverUrl = null,
   bulkUploadPhotosAction,
   createPlaceAction,
@@ -421,6 +422,7 @@ export default function HeirloomApp({
                 saveAlbumAction={saveAlbumAction}
                 registerMediaAction={registerMediaAction}
                 setAlbumCoverAction={setAlbumCoverAction}
+                shareAlbumAction={shareAlbumAction}
               />
             )}
             {view === VIEWS.PEOPLE && (

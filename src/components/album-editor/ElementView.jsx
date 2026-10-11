@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useLayoutEffect, useRef, useEffect } from "react";
+import React, { memo, useLayoutEffect, useRef, useEffect, useState } from "react";
 import { ImagePlus, Play, Film } from "lucide-react";
 import { PAGE_W, PAGE_H, FONT_BY_ID, backgroundCss, frameLayout, filterCss } from "./constants";
 import { StickerArt, stickerDef } from "./stickers";
@@ -42,8 +42,12 @@ export function imageBox(crop, iw, ih, aspect, imgRot = 0) {
 }
 
 function MediaImage({ el, iw, ih, mode, videoFrame, onAspect }) {
-  const crop = clampCrop(el.crop || { s: 1, cx: 0.5, cy: 0.5 }, iw, ih, el.aspect, el.imgRot);
-  const box = imageBox(crop, iw, ih, el.aspect, el.imgRot);
+  // Nisbat bazada saqlanmagan bo'lishi mumkin (eski yoki ommaviy yuklangan rasmlar) —
+  // shunda uni rasm yuklangach o'zimiz aniqlaymiz, aks holda rasm cho'zilib ketadi.
+  const [natAspect, setNatAspect] = useState(null);
+  const aspect = el.aspect || natAspect;
+  const crop = clampCrop(el.crop || { s: 1, cx: 0.5, cy: 0.5 }, iw, ih, aspect, el.imgRot);
+  const box = imageBox(crop, iw, ih, aspect, el.imgRot);
   const rotated = el.imgRot % 180 !== 0;
   const innerW = rotated ? box.H : box.W;
   const innerH = rotated ? box.W : box.H;
@@ -60,16 +64,20 @@ function MediaImage({ el, iw, ih, mode, videoFrame, onAspect }) {
     userSelect: "none",
     pointerEvents: "none",
     display: "block",
+    // Nisbat hali noma'lum bo'lsa — cho'zmasdan, "cover" rejimida ko'rsatamiz.
+    ...(aspect ? null : { left: 0, top: 0, width: iw, height: ih, objectFit: "cover" }),
   };
   const reportAspect = (t) => {
-    if (!t || !onAspect) return;
+    if (!t) return;
     const nw = t.naturalWidth || t.videoWidth, nh = t.naturalHeight || t.videoHeight;
-    if (nw && nh) onAspect(el.id, nw / nh);
+    if (!nw || !nh) return;
+    if (!el.aspect && (!natAspect || Math.abs(natAspect - nw / nh) > 0.001)) setNatAspect(nw / nh);
+    onAspect?.(el.id, nw / nh);
   };
   const handleImgLoad = (e) => reportAspect(e.currentTarget);
   // Server render'dan keyin rasm hidratsiyadan oldin yuklanib bo'lgan bo'lsa,
   // onLoad chaqirilmaydi — shuning uchun ref orqali ham tekshiramiz.
-  const imgRef = (node) => { if (node && node.complete && node.naturalWidth && !el.aspect) reportAspect(node); };
+  const imgRef = (node) => { if (node && node.complete && node.naturalWidth && !aspect) reportAspect(node); };
   let media;
   if (el.type === "video" && mode !== "export") {
     media = (
@@ -92,6 +100,7 @@ function MediaImage({ el, iw, ih, mode, videoFrame, onAspect }) {
       </div>
     );
   }
+  if (!aspect) return <div style={{ position: "absolute", inset: 0 }}>{media}</div>;
   return (
     <div style={{ position: "absolute", left: box.left, top: box.top, width: box.W, height: box.H }}>
       {media}

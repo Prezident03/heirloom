@@ -135,11 +135,14 @@ async function renderPagesToCanvases(pages, { pixelRatio = 2, onProgress } = {})
       flushSync(() => root.render(<PageView page={pages[i]} mode="export" videoFrames={videoFrames} />));
       const node = host.firstElementChild;
       await waitForImages(node);
+      // Rasm nisbati yuklangandan keyin aniqlansa, qayta chizilishini kutamiz.
+      await new Promise((r) => setTimeout(r, 60));
+      await waitForImages(host.firstElementChild);
       await document.fonts?.ready;
       if (fontEmbedCSS === undefined) {
         try { fontEmbedCSS = await buildFontEmbedCss(pages); } catch { fontEmbedCSS = null; }
       }
-      const canvas = await toCanvas(node, {
+      const canvas = await toCanvas(host.firstElementChild, {
         pixelRatio,
         width: PAGE_W,
         height: PAGE_H,

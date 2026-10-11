@@ -20,6 +20,7 @@ import { Preview } from "./Preview";
 import { EDITOR_CSS, PopButton, C } from "./ui";
 import { uploadMediaFile, readDimensions, mediaKind, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from "./media";
 import { exportPageImage, exportAlbumPdf, slugify } from "./exporter";
+import { SharePopover } from "./SharePopover";
 
 const DRAFT_PREFIX = "heirloom:album-draft:";
 const clock = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -104,7 +105,7 @@ const SHORTCUTS = [
 
 export default function Editor({
   album, familySlug, canEdit, photos = [], media = [],
-  saveAlbumAction, renameAlbumAction, deleteAlbumAction, registerMediaAction,
+  saveAlbumAction, renameAlbumAction, deleteAlbumAction, registerMediaAction, shareAlbumAction,
   onBack, initialPanel = null,
 }) {
   const router = useRouter();
@@ -1452,6 +1453,7 @@ export default function Editor({
         )}
         <div style={{ flex: 1 }} />
         {exporting && <span className="he-save he-hide-sm"><Loader2 size={14} className="he-spin" /> {exporting}</span>}
+        {canEdit && shareAlbumAction && <SharePopover album={album} familySlug={familySlug} shareAlbumAction={shareAlbumAction} />}
         <button type="button" className="he-btn" onClick={() => { if (cropId) exitCrop(true); setPreview({ index: pageIndex }); }} title="Ko'rish rejimi">
           <Eye size={16} /> <span className="he-hide-sm">Ko&apos;rish</span>
         </button>

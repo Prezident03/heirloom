@@ -210,6 +210,7 @@ export function AlbumsView({
   saveAlbumAction,
   registerMediaAction,
   setAlbumCoverAction,
+  shareAlbumAction,
   newAlbumId,
 }) {
   const openAlbum = albums.find((a) => a.id === openAlbumId) || null;
@@ -237,6 +238,7 @@ export function AlbumsView({
           renameAlbumAction={renameAlbumAction}
           deleteAlbumAction={deleteAlbumAction}
           registerMediaAction={registerMediaAction}
+          shareAlbumAction={shareAlbumAction}
           initialPanel={newAlbumId === openAlbum.id ? "templates" : null}
           onBack={() => setOpenAlbumId(null)}
         />
