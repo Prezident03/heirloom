@@ -106,6 +106,7 @@ const SHORTCUTS = [
 export default function Editor({
   album, familySlug, canEdit, photos = [], media = [],
   saveAlbumAction, renameAlbumAction, deleteAlbumAction, registerMediaAction, shareAlbumAction,
+  isPremium = false,
   onBack, initialPanel = null,
 }) {
   const router = useRouter();
@@ -238,7 +239,7 @@ export default function Editor({
   }, []);
 
   const compact = stage.w < 640;
-  const pad = compact ? 14 : 44;
+  const pad = compact || stage.h < 420 ? 8 : 24;
   const fit = Math.max(0.05, Math.min((stage.w - pad * 2) / PAGE_W, (stage.h - pad * 2) / PAGE_H));
   const s = zoom === "fit" ? fit : zoom;
   const effPan = zoom === "fit" ? { x: 0, y: 0 } : pan;
@@ -667,6 +668,7 @@ export default function Editor({
     for (let i = 0; i < list.length; i++) {
       const file = list[i];
       const kind = mediaKind(file);
+      if (kind === "video" && !isPremium) { showToast("Video yuklash faqat Premium obunachilar uchun."); continue; }
       if (kind === "photo" && file.size > MAX_IMAGE_BYTES) { showToast(`${file.name}: rasm 25MB dan katta.`); continue; }
       if (kind === "video" && file.size > MAX_VIDEO_BYTES) { showToast(`${file.name}: video 200MB dan katta.`); continue; }
       const dims = await readDimensions(file);
@@ -703,6 +705,33 @@ export default function Editor({
     doc.pages.forEach((p) => p.elements.forEach((e) => { if (e.src && (e.type === "photo" || e.type === "video")) push({ url: e.src, kind: e.type, width: e.aspect ? e.aspect * 1000 : null, height: e.aspect ? 1000 : null }); }));
     return out;
   }, [sessionMedia, media, photos, doc]);
+
+  // Rasmlar papkalarga ajratiladi: shu albom, albomga qo'yilmagan yuklanganlar, boshqa albomlar.
+  const folders = useMemo(() => {
+    const byUrl = new Map(library.map((m) => [m.url, m]));
+    const item = (url) => byUrl.get(url) || { url, kind: "photo" };
+    const current = [];
+    const seenCur = new Set();
+    doc.pages.forEach((p) => p.elements.forEach((e) => {
+      if (e.type === "photo" && e.src && !e.src.startsWith("blob:") && !seenCur.has(e.src)) { seenCur.add(e.src); current.push(item(e.src)); }
+    }));
+    const others = new Map();
+    const inAlbums = new Set(seenCur);
+    photos.forEach((p) => {
+      if (!p.photo_url) return;
+      inAlbums.add(p.photo_url);
+      if (p.album_id === album.id) return;
+      if (!others.has(p.album_id)) others.set(p.album_id, { id: p.album_id, name: p.album_title || "Albom", items: [], seen: new Set() });
+      const f = others.get(p.album_id);
+      if (!f.seen.has(p.photo_url)) { f.seen.add(p.photo_url); f.items.push(item(p.photo_url)); }
+    });
+    const uploaded = library.filter((m) => m.kind === "photo" && !inAlbums.has(m.url));
+    return [
+      { id: "current", name: "Shu albom", hint: "Bu albomdagi rasmlar", items: current },
+      { id: "uploads", name: "Yuklanganlar", hint: "Hali albomga qo'yilmagan", items: uploaded },
+      ...[...others.values()].map(({ seen, ...f }) => f), // eslint-disable-line no-unused-vars
+    ];
+  }, [library, doc, photos, album.id]);
 
   // ========================== Saqlash ==========================
   const [saveState, setSaveState] = useState("saved");
@@ -832,7 +861,7 @@ export default function Editor({
     }
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     startTransition(() => router.refresh());
-    onBack();
+    onBack(docRef.current);
   };
 
   const savedTitleRef = useRef(album.title);
@@ -1488,7 +1517,7 @@ export default function Editor({
       {/* ───────────── Asosiy maydon ───────────── */}
       <div className="he-main">
         {canEdit && <Rail panel={panel} setPanel={(p) => { setPanel(p); if (p !== "photos" && p !== "upload" && p !== "videos") setReplaceTarget(null); }} />}
-        {canEdit && <Drawer panel={panel} setPanel={setPanel} api={api} library={library} uploads={uploads} page={page} replaceTarget={replaceTarget} />}
+        {canEdit && <Drawer panel={panel} setPanel={setPanel} api={api} library={library} folders={folders} uploads={uploads} page={page} replaceTarget={replaceTarget} isPremium={isPremium} />}
 
         <div
           ref={stageRef}
@@ -1569,13 +1598,13 @@ export default function Editor({
         canEdit={canEdit}
         zoomPct={zoomPct}
         onZoom={onZoom}
-        compact={compact}
+        compact={compact || stage.h < 420}
       />
 
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/mp4,video/webm,video/quicktime"
+        accept={isPremium ? "image/*,.heic,.heif,video/mp4,video/webm,video/quicktime" : "image/*,.heic,.heif"}
         multiple
         style={{ display: "none" }}
         onChange={(e) => {

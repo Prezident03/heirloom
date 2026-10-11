@@ -6,6 +6,7 @@ import { BookImage, Plus, X, ImagePlus, Loader2 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { AlbumCard } from "./shared";
 import Editor from "./album-editor/Editor";
+import AlbumViewer from "./album-editor/AlbumViewer";
 
 // ============================================================
 // Albomlar ro'yxati, yaratish/yuklash oynalari va Album Editor'ga kirish.
@@ -211,9 +212,14 @@ export function AlbumsView({
   registerMediaAction,
   setAlbumCoverAction,
   shareAlbumAction,
+  isPremium,
   newAlbumId,
 }) {
   const openAlbum = albums.find((a) => a.id === openAlbumId) || null;
+  // Albom avval ko'rish rejimida ochiladi; yangi yaratilgan albom — darhol editorda.
+  const [mode, setMode] = useState({ id: null, editing: false, doc: null });
+  const editing = mode.id === openAlbumId ? mode.editing : newAlbumId === openAlbumId;
+  const viewDoc = mode.id === openAlbumId ? mode.doc : null;
 
   if (openAlbumId && !openAlbum) {
     // Yangi yaratilgan albom server ma'lumotida hali paydo bo'lmagan bo'lishi mumkin.
@@ -226,7 +232,17 @@ export function AlbumsView({
 
   return (
     <div className="fm-fade" style={{ height: "100%", overflow: "auto" }}>
-      {openAlbum && (
+      {openAlbum && !editing && (
+        <AlbumViewer
+          key={`v-${openAlbum.id}`}
+          album={openAlbum}
+          doc={viewDoc}
+          canEdit={canEdit}
+          onEdit={() => setMode({ id: openAlbum.id, editing: true, doc: null })}
+          onClose={() => { setMode({ id: null, editing: false, doc: null }); setOpenAlbumId(null); }}
+        />
+      )}
+      {openAlbum && editing && (
         <Editor
           key={openAlbum.id}
           album={openAlbum}
@@ -239,8 +255,9 @@ export function AlbumsView({
           deleteAlbumAction={deleteAlbumAction}
           registerMediaAction={registerMediaAction}
           shareAlbumAction={shareAlbumAction}
+          isPremium={isPremium}
           initialPanel={newAlbumId === openAlbum.id ? "templates" : null}
-          onBack={() => setOpenAlbumId(null)}
+          onBack={(doc) => setMode({ id: openAlbum.id, editing: false, doc })}
         />
       )}
       <AlbumGrid

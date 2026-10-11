@@ -17,6 +17,7 @@ import {
   revokeInvite,
   acceptInvite,
   setFamilyCover,
+  isPremiumFamily,
 } from "@/lib/family";
 import {
   createPerson,
@@ -609,6 +610,7 @@ export async function registerMediaAction(
   const url = String(input?.url || "");
   if (!isBlobUrl(url)) return { error: "Fayl manzili noto'g'ri." };
   const kind = input?.kind === "video" ? "video" : "photo";
+  if (kind === "video" && !isPremiumFamily(check.family)) return { error: "Video yuklash faqat Premium obunachilar uchun." };
   try {
     const item = await addMedia(check.family.id, check.session.id, {
       url,
