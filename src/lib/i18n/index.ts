@@ -35,9 +35,13 @@ export function getLang(): Lang {
 
 /** Tarjima. `vars` — {name} ko'rinishidagi o'rinbosarlar. */
 export function t(text: string | null | undefined, vars?: Record<string, string | number>): string {
+  return translate(current, text, vars);
+}
+
+export function translate(lang: Lang, text: string | null | undefined, vars?: Record<string, string | number>): string {
   if (text == null) return "";
   const s = String(text);
-  const dict = DICTS[current];
+  const dict = DICTS[lang];
   let out = (dict && dict[s]) || s;
   if (vars) for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(String(v));
   return out;

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, RotateCcw, RotateCw, FlipHorizontal2, ZoomIn, ZoomOut, Loader2 } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
+import { t as tr } from "@/lib/i18n";
 
 // ============================================================
 // Profil rasmi uchun kesish oynasi (Telegram uslubida):
@@ -27,7 +28,7 @@ async function loadImageUrl(src) {
     if (!res.ok) throw new Error(String(res.status));
     blob = await res.blob();
   } catch {
-    throw new Error("Bu rasmni kesish uchun ochib bo'lmadi.");
+    throw new Error(tr("Bu rasmni kesish uchun ochib bo'lmadi."));
   }
   return loadImageFile(new File([blob], "image", { type: blob.type || "image/jpeg" }));
 }
@@ -46,11 +47,11 @@ export async function loadImageFile(file) {
     img.decoding = "async";
     img.src = url;
     await img.decode();
-    if (!img.naturalWidth) throw new Error("empty");
+    if (!img.naturalWidth) throw new Error(tr("empty"));
     return { img, url };
   } catch {
     URL.revokeObjectURL(url);
-    throw new Error("Bu rasm formatini ochib bo'lmadi. JPG, PNG, WEBP, HEIC, GIF yoki AVIF tanlang.");
+    throw new Error(tr("Bu rasm formatini ochib bo'lmadi. JPG, PNG, WEBP, HEIC, GIF yoki AVIF tanlang."));
   }
 }
 
@@ -61,7 +62,7 @@ export async function loadImageFile(file) {
  *   outputWidth: natijaviy JPEG kengligi (px)
  *   file yoki src: manba (fayl yoki mavjud rasm manzili)
  */
-export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, shape = "circle", aspect = 1, outputWidth = 800, title = "Rasmni joylashtiring", onUseOriginal, externalError }) {
+export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, shape = "circle", aspect = 1, outputWidth = 800, title = tr("Rasmni joylashtiring"), onUseOriginal, externalError }) {
   const [src, setSrc] = useState(null); // { img, url }
   const [error, setError] = useState("");
   const [zoom, setZoom] = useState(1);
@@ -197,7 +198,7 @@ export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, s
     ctx.scale(total, total);
     ctx.drawImage(src.img, -nw / 2, -nh / 2);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-    if (!blob) { setError("Rasmni tayyorlab bo'lmadi."); return; }
+    if (!blob) { setError(tr("Rasmni tayyorlab bo'lmadi.")); return; }
     onConfirm(new File([blob], "image.jpg", { type: "image/jpeg" }));
   };
 
@@ -212,14 +213,14 @@ export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, s
   return createPortal(
     <div
       role="dialog"
-      aria-label="Profil rasmini kesish"
+      aria-label={tr("Profil rasmini kesish")}
       style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(12,15,13,0.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, fontFamily: "Inter, sans-serif" }}
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onCancel(); }}
     >
       <div style={{ background: "#1C211E", borderRadius: 18, padding: 18, width: stage + 36, maxWidth: "100%", color: "#F2EDE2", boxShadow: "0 30px 80px rgba(0,0,0,0.5)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div style={{ fontFamily: "Fraunces, serif", fontSize: 18 }}>{title}</div>
-          <button type="button" onClick={onCancel} disabled={saving} style={{ ...iconBtn, width: 32, height: 32, background: "transparent" }} title="Yopish"><X size={18} /></button>
+          <button type="button" onClick={onCancel} disabled={saving} style={{ ...iconBtn, width: 32, height: 32, background: "transparent" }} title={tr("Yopish")}><X size={18} /></button>
         </div>
 
         <div
@@ -239,15 +240,15 @@ export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, s
           <div style={{ position: "absolute", left: "50%", top: "50%", width: FW, height: FH, marginLeft: -FW / 2, marginTop: -FH / 2, borderRadius: shape === "circle" ? "50%" : 8, boxShadow: "0 0 0 9999px rgba(0,0,0,0.58)", border: "2px solid rgba(255,255,255,0.85)", pointerEvents: "none" }} />
           {!src && !error && (
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-              <Loader2 size={18} style={{ animation: "fm-spin 0.9s linear infinite" }} /> Rasm ochilmoqda…
+              <Loader2 size={18} style={{ animation: "fm-spin 0.9s linear infinite" }} /> {tr("Rasm ochilmoqda…")}
             </div>
           )}
           {error && (
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: 24, textAlign: "center", color: "#F2B8AE", fontSize: 13, lineHeight: 1.5 }}>
-              {error}
+              {tr(error)}
               {onUseOriginal && (
                 <button type="button" onClick={onUseOriginal} disabled={saving} style={{ height: 36, padding: "0 14px", borderRadius: 9, border: "none", background: "rgba(255,255,255,0.14)", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
-                  Kesmasdan shu rasmni qo&apos;yish
+                  {tr("Kesmasdan shu rasmni qo'yish")}
                 </button>
               )}
             </div>
@@ -264,17 +265,17 @@ export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, s
             value={zoom}
             disabled={!src}
             onChange={(e) => setZoomAround(Number(e.target.value))}
-            aria-label="Kattalashtirish"
+            aria-label={tr("Kattalashtirish")}
             style={{ flex: 1, accentColor: TOKENS.gold }}
           />
           <ZoomIn size={16} style={{ opacity: 0.7, flexShrink: 0 }} />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button type="button" style={iconBtn} onClick={() => rotateBy(-90)} disabled={!src} title="Chapga burish"><RotateCcw size={17} /></button>
-          <button type="button" style={iconBtn} onClick={() => rotateBy(90)} disabled={!src} title="O'ngga burish"><RotateCw size={17} /></button>
-          <button type="button" style={{ ...iconBtn, background: flip ? "rgba(184,134,59,0.35)" : iconBtn.background }} onClick={() => setFlip((f) => !f)} disabled={!src} title="Ko'zgu aks"><FlipHorizontal2 size={17} /></button>
-          <button type="button" style={{ ...iconBtn, width: "auto", padding: "0 12px", fontSize: 12.5, fontWeight: 600 }} onClick={reset} disabled={!src}>Qayta</button>
+          <button type="button" style={iconBtn} onClick={() => rotateBy(-90)} disabled={!src} title={tr("Chapga burish")}><RotateCcw size={17} /></button>
+          <button type="button" style={iconBtn} onClick={() => rotateBy(90)} disabled={!src} title={tr("O'ngga burish")}><RotateCw size={17} /></button>
+          <button type="button" style={{ ...iconBtn, background: flip ? "rgba(184,134,59,0.35)" : iconBtn.background }} onClick={() => setFlip((f) => !f)} disabled={!src} title={tr("Ko'zgu aks")}><FlipHorizontal2 size={17} /></button>
+          <button type="button" style={{ ...iconBtn, width: "auto", padding: "0 12px", fontSize: 12.5, fontWeight: 600 }} onClick={reset} disabled={!src}>{tr("Qayta")}</button>
           <div style={{ flex: 1 }} />
           <button
             type="button"
@@ -283,14 +284,14 @@ export function ImageCropper({ file, src: srcUrl, onCancel, onConfirm, saving, s
             style={{ height: 40, padding: "0 18px", borderRadius: 10, border: "none", background: TOKENS.gold, color: "#fff", fontSize: 14, fontWeight: 600, cursor: !src || saving ? "default" : "pointer", opacity: !src || saving ? 0.6 : 1, display: "flex", alignItems: "center", gap: 6 }}
           >
             {saving && <Loader2 size={15} style={{ animation: "fm-spin 0.9s linear infinite" }} />}
-            {saving ? "Saqlanmoqda…" : "Saqlash"}
+            {saving ? tr("Saqlanmoqda…") : tr("Saqlash")}
           </button>
         </div>
         {externalError && (
           <div style={{ fontSize: 12.5, color: "#F2B8AE", marginTop: 12, textAlign: "center" }}>{externalError}</div>
         )}
         <div style={{ fontSize: 11.5, opacity: 0.55, marginTop: 12, textAlign: "center" }}>
-          Surib joylashtiring · g&apos;ildirak yoki ikki barmoq bilan kattalashtiring
+          {tr("Surib joylashtiring · g'ildirak yoki ikki barmoq bilan kattalashtiring")}
         </div>
       </div>
     </div>,

@@ -6,6 +6,7 @@ import { getInviteByCode, getMembership } from "@/lib/family";
 import { sql } from "@/lib/db";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 import { acceptInviteFormAction } from "@/lib/actions";
+import { getT } from "@/lib/i18n/server";
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Egasi",
@@ -15,6 +16,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default async function InvitePage({ params }: { params: Promise<{ code: string }> }) {
+  const t = await getT();
   const { code } = await params;
 
   let session = null;
@@ -80,8 +82,8 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
 
         {!invite || !familyName ? (
           <>
-            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 10px" }}>Taklif topilmadi</h1>
-            <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6 }}>Bu havola noto'g'ri yoki muddati o'tgan bo'lishi mumkin.</p>
+            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 10px" }}>{t("Taklif topilmadi")}</h1>
+            <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6 }}>{t("Bu havola noto'g'ri yoki muddati o'tgan bo'lishi mumkin.")}</p>
           </>
         ) : statusMessage ? (
           <>
@@ -91,19 +93,19 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
         ) : alreadyMember ? (
           <>
             <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 10px" }}>{familyName}</h1>
-            <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 20 }}>Siz allaqachon bu oila a'zosisiz.</p>
+            <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 20 }}>{t("Siz allaqachon bu oila a'zosisiz.")}</p>
             <Link
               href={`/${familySlug}/dashboard`}
               style={{ display: "inline-block", background: TOKENS.ink, color: TOKENS.parchment, borderRadius: 8, padding: "12px 22px", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}
             >
-              Dashboard'ga o'tish
+              {t("Dashboard'ga o'tish")}
             </Link>
           </>
         ) : session ? (
           <>
             <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 6px" }}>{familyName}</h1>
             <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 20 }}>
-              Sizni <b>{ROLE_LABELS[invite.role] || invite.role}</b> sifatida shu oilaga qo'shilishga taklif qilishdi.
+              {t("Sizni")} <b>{t(ROLE_LABELS[invite.role]) || invite.role}</b> {t("sifatida shu oilaga qo'shilishga taklif qilishdi.")}
             </p>
             <form action={acceptInviteFormAction}>
               <input type="hidden" name="code" value={code} />
@@ -111,7 +113,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
                 type="submit"
                 style={{ width: "100%", background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "13px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
-                Qo'shilish
+                {t("Qo'shilish")}
               </button>
             </form>
           </>
@@ -119,20 +121,20 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
           <>
             <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 6px" }}>{familyName}</h1>
             <p style={{ fontSize: 13.5, color: TOKENS.ink60, lineHeight: 1.6, marginBottom: 20 }}>
-              Sizni shu oilaga qo'shilishga taklif qilishdi. Davom etish uchun kiring yoki hisob yarating.
+              {t("Sizni shu oilaga qo'shilishga taklif qilishdi. Davom etish uchun kiring yoki hisob yarating.")}
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <Link
                 href={`/login?invite=${code}`}
                 style={{ flex: 1, background: TOKENS.ink, color: TOKENS.parchment, borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}
               >
-                Kirish
+                {t("Kirish")}
               </Link>
               <Link
                 href={`/register?invite=${code}`}
                 style={{ flex: 1, background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}
               >
-                Ro'yxatdan o'tish
+                {t("Ro'yxatdan o'tish")}
               </Link>
             </div>
           </>

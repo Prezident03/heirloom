@@ -1,6 +1,7 @@
 "use client";
 
 import { upload } from "@vercel/blob/client";
+import { t } from "@/lib/i18n";
 
 export const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
@@ -40,9 +41,9 @@ export function readDimensions(file) {
  */
 export async function uploadMediaFile(file, { familySlug, registerMediaAction, onProgress, dims }) {
   const kind = mediaKind(file);
-  if (!kind) throw new Error("Faqat rasm yoki video fayllarini yuklash mumkin.");
-  if (kind === "photo" && file.size > MAX_IMAGE_BYTES) throw new Error("Rasm hajmi 25MB dan oshmasligi kerak.");
-  if (kind === "video" && file.size > MAX_VIDEO_BYTES) throw new Error("Video hajmi 200MB dan oshmasligi kerak.");
+  if (!kind) throw new Error(t("Faqat rasm yoki video fayllarini yuklash mumkin."));
+  if (kind === "photo" && file.size > MAX_IMAGE_BYTES) throw new Error(t("Rasm hajmi 25MB dan oshmasligi kerak."));
+  if (kind === "video" && file.size > MAX_VIDEO_BYTES) throw new Error(t("Video hajmi 200MB dan oshmasligi kerak."));
 
   const { width, height } = dims || (await readDimensions(file));
   const safeName = (file.name || (kind === "video" ? "video.mp4" : "photo.jpg")).replace(/[^\w.-]+/g, "-").slice(-80);

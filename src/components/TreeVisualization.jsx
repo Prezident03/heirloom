@@ -4,6 +4,7 @@ import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useLayo
 import * as d3 from "d3";
 import { TOKENS } from "@/lib/uiTokens";
 import { CARD_W, CARD_H, layoutFamilyTree, lineageOf } from "@/lib/treeLayout";
+import { t as tr } from "@/lib/i18n";
 
 /**
  * Oila daraxti (SVG). Joylashuv `layoutFamilyTree` da — qat'iy oraliqlar bilan,
@@ -90,11 +91,11 @@ const PersonCard = React.memo(function PersonCard({ card, person, selected, isMe
       {isMe && (
         <g transform={`translate(${CARD_W / 2 - 30},${-CARD_H / 2 + 12})`}>
           <rect x={-16} y={-8} width={32} height={16} rx={8} fill={TOKENS.gold} />
-          <text x={0} y={4} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#fff" fontFamily="Inter, sans-serif">SIZ</text>
+          <text x={0} y={4} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#fff" fontFamily="Inter, sans-serif">{tr("SIZ")}</text>
         </g>
       )}
       {card.ghost && (
-        <text x={CARD_W / 2 - 14} y={CARD_H / 2 - 9} textAnchor="end" fontSize={9.5} fill={subColor} fontFamily="Inter, sans-serif" pointerEvents="none">havola ↗</text>
+        <text x={CARD_W / 2 - 14} y={CARD_H / 2 - 9} textAnchor="end" fontSize={9.5} fill={subColor} fontFamily="Inter, sans-serif" pointerEvents="none">{tr("havola ↗")}</text>
       )}
     </g>
   );

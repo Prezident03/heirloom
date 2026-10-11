@@ -4,6 +4,7 @@ import React, { memo, useLayoutEffect, useRef, useEffect, useState } from "react
 import { ImagePlus, Play, Film } from "lucide-react";
 import { PAGE_W, PAGE_H, FONT_BY_ID, backgroundCss, frameLayout, filterCss } from "./constants";
 import { StickerArt, stickerDef } from "./stickers";
+import { t as tr } from "@/lib/i18n";
 
 // ============================================================
 // Rasm joylashuvi (crop) hisoblash
@@ -185,7 +186,7 @@ const PhotoContent = memo(function PhotoContent({ el, mode, isDropTarget, videoF
           <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: Math.min(iw, ih) * 0.04, color: "rgba(30,38,33,0.45)", textAlign: "center", padding: 8 }}>
             <ImagePlus size={Math.max(16, Math.min(iw, ih) * 0.16)} strokeWidth={1.4} />
             {showPlaceholder && Math.min(iw, ih) > 140 && (
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: Math.max(14, Math.min(iw, ih) * 0.06), fontWeight: 500 }}>Rasmni shu yerga tashlang</span>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: Math.max(14, Math.min(iw, ih) * 0.06), fontWeight: 500 }}>{tr("Rasmni shu yerga tashlang")}</span>
             )}
           </div>
         )}
@@ -289,7 +290,7 @@ const TextContent = memo(function TextContent({ el, mode, editing, onTextCommit,
   }
   return (
     <div ref={ref} style={style}>
-      {el.text || (mode === "edit" ? <span style={{ opacity: 0.35 }}>Matn yozing</span> : "")}
+      {el.text || (mode === "edit" ? <span style={{ opacity: 0.35 }}>{tr("Matn yozing")}</span> : "")}
     </div>
   );
 });

@@ -6,12 +6,14 @@ import AuthForm from "@/components/AuthForm";
 import { loginAction } from "@/lib/actions";
 import { getSession } from "@/lib/session";
 import { getFamiliesForUser } from "@/lib/family";
+import { getT } from "@/lib/i18n/server";
 
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ invite?: string }>;
 }) {
+  const t = await getT();
   const { invite } = await searchParams;
   let session = null;
   try {
@@ -32,7 +34,7 @@ export default async function LoginPage({
   return (
     <AuthForm
       action={loginAction}
-      title="Xush kelibsiz"
+      title={t("Xush kelibsiz")}
       subtitle={invite ? "Sizni oilaga qo'shilishga taklif qilishdi. Davom etish uchun kiring." : "Oilaviy xotiralaringizga qaytish uchun kiring."}
       submitLabel="Kirish"
       hiddenFields={invite ? [{ name: "inviteCode", value: invite }] : []}
@@ -42,9 +44,9 @@ export default async function LoginPage({
       ]}
       footer={
         <>
-          Akkountingiz yo'qmi?{" "}
+          {t("Akkountingiz yo'qmi?")}{" "}
           <Link className="fm-auth-link" href={invite ? `/register?invite=${invite}` : "/register"}>
-            Ro'yxatdan o'tish
+            {t("Ro'yxatdan o'tish")}
           </Link>
         </>
       }

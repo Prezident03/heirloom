@@ -7,6 +7,7 @@ import { cursorForHandle } from "./geometry";
 import { photoInnerBox, imageBox, clampCrop } from "./ElementView";
 import { filterCss } from "./constants";
 import { C } from "./ui";
+import { t } from "@/lib/i18n";
 
 const GUIDE = "#D6336C";
 
@@ -39,7 +40,7 @@ function Handles({ w, h, rotation, handles, showRotate }) {
         );
       })}
       {showRotate && (
-        <div data-handle="rot" className="he-rot" style={{ left: w / 2, top: h + 30 }} title="Aylantirish (Shift — 15°)">
+        <div data-handle="rot" className="he-rot" style={{ left: w / 2, top: h + 30 }} title={t("Aylantirish (Shift — 15°)")}>
           <RotateCw size={14} />
         </div>
       )}

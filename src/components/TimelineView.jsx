@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { personLabel } from "@/lib/relationshipLabels";
+import { t } from "@/lib/i18n";
 
 /* ---------------- Timeline (Vaqt chizig'i) ---------------- */
 
@@ -24,13 +25,13 @@ function EmptyTimeline({ canEdit, onAddEvent }) {
       <div style={{ width: 56, height: 56, borderRadius: 14, background: `linear-gradient(135deg, ${TOKENS.gold}, ${TOKENS.goldSoft})`, margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <History size={24} color="#fff" />
       </div>
-      <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, margin: "0 0 8px" }}>Hali voqealar yo'q</h2>
+      <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 22, fontWeight: 500, margin: "0 0 8px" }}>{t("Hali voqealar yo'q")}</h2>
       <p style={{ fontSize: 13, color: TOKENS.ink60, lineHeight: 1.6, margin: "0 0 22px" }}>
-        Oilangiz tarixidagi muhim kunlarni — to'ylar, ko'chishlar, tug'ilgan kunlar, yutuqlarni — shu yerga qo'shib, vaqt chizig'ini yarating.
+        {t("Oilangiz tarixidagi muhim kunlarni — to'ylar, ko'chishlar, tug'ilgan kunlar, yutuqlarni — shu yerga qo'shib, vaqt chizig'ini yarating.")}
       </p>
       {canEdit && (
         <button onClick={onAddEvent} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "11px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          <Plus size={15} /> Birinchi voqeani qo'shish
+          <Plus size={15} /> {t("Birinchi voqeani qo'shish")}
         </button>
       )}
     </div>
@@ -63,7 +64,7 @@ function TimelineEventCard({ event, personName, onSelect }) {
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: TOKENS.gold, letterSpacing: "0.05em" }}>
-            {event.event_date || "Sana ko'rsatilmagan"}
+            {event.event_date || t("Sana ko'rsatilmagan")}
           </div>
           <div style={{ fontFamily: "Fraunces, serif", fontSize: 16.5, fontWeight: 500, margin: "2px 0 4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {event.title}
@@ -107,7 +108,7 @@ function TimelineEventPhotoButton({ familySlug, eventId, uploadTimelineEventPhot
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={pending}
-        title="Rasm yuklash"
+        title={t("Rasm yuklash")}
         style={{
           position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: "50%",
           background: TOKENS.ink, border: `2px solid ${TOKENS.card}`, color: TOKENS.parchment,
@@ -127,19 +128,19 @@ function DeleteTimelineEventConfirm({ familySlug, eventId, deleteTimelineEventAc
   return (
     <div style={{ marginTop: 10, padding: 12, background: "rgba(168,69,58,0.08)", borderRadius: 8 }}>
       <div style={{ fontSize: 12, color: TOKENS.danger, marginBottom: 10 }}>
-        Rostdan ham bu voqeani o'chirasizmi? Bu amalni ortga qaytarib bo'lmaydi.
+        {t("Rostdan ham bu voqeani o'chirasizmi? Bu amalni ortga qaytarib bo'lmaydi.")}
       </div>
       {state?.error && (
-        <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 8 }}>{state.error}</div>
+        <div style={{ fontSize: 11.5, color: TOKENS.danger, marginBottom: 8 }}>{t(state.error)}</div>
       )}
       <form action={formAction} style={{ display: "flex", gap: 8 }}>
         <input type="hidden" name="familySlug" value={familySlug} />
         <input type="hidden" name="eventId" value={eventId} />
         <button type="submit" disabled={pending} style={{ flex: 1, background: TOKENS.danger, color: "#fff", border: "none", borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-          {pending ? "O'chirilmoqda..." : "Ha, o'chirish"}
+          {pending ? t("O'chirilmoqda...") : t("Ha, o'chirish")}
         </button>
         <button type="button" onClick={onCancel} disabled={pending} style={{ flex: 1, background: "transparent", color: TOKENS.ink60, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "8px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-          Bekor qilish
+          {t("Bekor qilish")}
         </button>
       </form>
     </div>
@@ -196,7 +197,7 @@ function TimelineEventDetailPanel({
       )}
 
       <div style={{ fontSize: 11.5, fontWeight: 700, color: TOKENS.gold, letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 5 }}>
-        <Calendar size={12} /> {event.event_date || "Sana ko'rsatilmagan"}
+        <Calendar size={12} /> {event.event_date || t("Sana ko'rsatilmagan")}
       </div>
       <div style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: "4px 0 10px" }}>{event.title}</div>
 
@@ -212,20 +213,20 @@ function TimelineEventDetailPanel({
       )}
 
       <div style={{ fontSize: 12.5, color: TOKENS.ink60, lineHeight: 1.6, margin: "10px 0 4px" }}>
-        {event.description || "Bu voqea haqida hali tavsif qo'shilmagan."}
+        {event.description || t("Bu voqea haqida hali tavsif qo'shilmagan.")}
       </div>
 
       {canEdit && (
         <>
           <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
             <button onClick={onEdit} style={{ flex: 1, background: "transparent", color: TOKENS.ink, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              Tahrirlash
+              {t("Tahrirlash")}
             </button>
           </div>
 
           {!confirmDelete ? (
             <button onClick={() => setConfirmDelete(true)} style={{ marginTop: 10, width: "100%", background: "transparent", color: TOKENS.danger, border: `1px solid ${TOKENS.danger}`, borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              O'chirish
+              {t("O'chirish")}
             </button>
           ) : (
             <DeleteTimelineEventConfirm
@@ -248,26 +249,26 @@ export function AddTimelineEventModal({ familySlug, people, createTimelineEventA
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,38,33,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} className="fm-panel-enter" style={{ width: "100%", maxWidth: 440, background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Yangi voqea</h2>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>{t("Yangi voqea")}</h2>
           <button onClick={onClose} type="button" style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
         </div>
         <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <input type="hidden" name="familySlug" value={familySlug} />
-          <input name="title" placeholder="Voqea nomi (masalan: To'y kuni)" required style={inputStyle} autoFocus />
+          <input name="title" placeholder={t("Voqea nomi (masalan: To'y kuni)")} required style={inputStyle} autoFocus />
           <div style={{ display: "flex", gap: 10 }}>
-            <input name="eventDate" placeholder="Sana (masalan: 1998 yoki Iyun 2005)" style={inputStyle} />
-            <input name="location" placeholder="Joy (ixtiyoriy)" style={inputStyle} />
+            <input name="eventDate" placeholder={t("Sana (masalan: 1998 yoki Iyun 2005)")} style={inputStyle} />
+            <input name="location" placeholder={t("Joy (ixtiyoriy)")} style={inputStyle} />
           </div>
           {people.length > 0 && (
             <select name="personId" defaultValue="" style={inputStyle}>
-              <option value="">Bog'liq odam (ixtiyoriy)</option>
+              <option value="">{t("Bog'liq odam (ixtiyoriy)")}</option>
               {people.map((p) => <option key={p.id} value={p.id}>{personLabel(p)}</option>)}
             </select>
           )}
-          <textarea name="description" placeholder="Voqea haqida qisqacha (ixtiyoriy)" rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
-          {state?.error && <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>{state.error}</div>}
+          <textarea name="description" placeholder={t("Voqea haqida qisqacha (ixtiyoriy)")} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+          {state?.error && <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>{t(state.error)}</div>}
           <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-            {pending ? "Qo'shilmoqda..." : "Voqea qo'shish"}
+            {pending ? t("Qo'shilmoqda...") : t("Voqea qo'shish")}
           </button>
         </form>
       </div>
@@ -282,27 +283,27 @@ function EditTimelineEventModal({ familySlug, event, people, updateTimelineEvent
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(30,38,33,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} className="fm-panel-enter" style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflow: "auto", background: TOKENS.card, borderRadius: 16, padding: "26px 26px 24px", border: `1px solid ${TOKENS.parchmentDeep}`, boxShadow: "0 30px 70px rgba(30,38,33,0.25)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>Voqeani tahrirlash</h2>
+          <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 20, fontWeight: 500, margin: 0 }}>{t("Voqeani tahrirlash")}</h2>
           <button onClick={onClose} type="button" style={{ background: "none", border: "none", cursor: "pointer", color: TOKENS.ink40 }}><X size={18} /></button>
         </div>
         <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <input type="hidden" name="familySlug" value={familySlug} />
           <input type="hidden" name="eventId" value={event.id} />
-          <input name="title" placeholder="Voqea nomi" defaultValue={event.title} required style={inputStyle} />
+          <input name="title" placeholder={t("Voqea nomi")} defaultValue={event.title} required style={inputStyle} />
           <div style={{ display: "flex", gap: 10 }}>
-            <input name="eventDate" placeholder="Sana" defaultValue={event.event_date || ""} style={inputStyle} />
-            <input name="location" placeholder="Joy (ixtiyoriy)" defaultValue={event.location || ""} style={inputStyle} />
+            <input name="eventDate" placeholder={t("Sana")} defaultValue={event.event_date || ""} style={inputStyle} />
+            <input name="location" placeholder={t("Joy (ixtiyoriy)")} defaultValue={event.location || ""} style={inputStyle} />
           </div>
           {people.length > 0 && (
             <select name="personId" defaultValue={event.person_id || ""} style={inputStyle}>
-              <option value="">Bog'liq odam (ixtiyoriy)</option>
+              <option value="">{t("Bog'liq odam (ixtiyoriy)")}</option>
               {people.map((p) => <option key={p.id} value={p.id}>{personLabel(p)}</option>)}
             </select>
           )}
-          <textarea name="description" placeholder="Voqea haqida qisqacha" defaultValue={event.description || ""} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
-          {state?.error && <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>{state.error}</div>}
+          <textarea name="description" placeholder={t("Voqea haqida qisqacha")} defaultValue={event.description || ""} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Inter, sans-serif" }} />
+          {state?.error && <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>{t(state.error)}</div>}
           <button type="submit" disabled={pending} style={{ marginTop: 6, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "12px", fontSize: 13.5, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-            {pending ? "Saqlanmoqda..." : "Saqlash"}
+            {pending ? t("Saqlanmoqda...") : t("Saqlash")}
           </button>
         </form>
       </div>
@@ -371,13 +372,13 @@ export function TimelineView({
       <div style={{ flex: 1, padding: "28px clamp(16px, 5vw, 48px) 60px", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 28, gap: 16, flexWrap: "wrap" }}>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Oila tarixi</div>
-            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>Vaqt chizig'i</h1>
-            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>{timelineEvents.length} ta voqea</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>{t("Oila tarixi")}</div>
+            <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>{t("Vaqt chizig'i")}</h1>
+            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>{timelineEvents.length} {t("ta voqea")}</div>
           </div>
           {canEdit && (
             <button onClick={() => setShowAddModal(true)} style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "0 18px", height: 40, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-              <Plus size={14} /> Voqea qo'shish
+              <Plus size={14} /> {t("Voqea qo'shish")}
             </button>
           )}
         </div>
@@ -386,7 +387,7 @@ export function TimelineView({
           <div style={{ position: "absolute", left: 9, top: 6, bottom: 20, width: 2, background: TOKENS.parchmentDeep }} />
           {groupedEvents.map((group) => (
             <React.Fragment key={group.year ?? "unknown"}>
-              <TimelineYearMarker label={group.year || "Sana noaniq"} />
+              <TimelineYearMarker label={group.year || t("Sana noaniq")} />
               {group.items.map((ev) => (
                 <TimelineEventCard key={ev.id} event={ev} personName={personNameFor(ev.person_id)} onSelect={() => setSelectedId(ev.id)} />
               ))}

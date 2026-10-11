@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TOKENS } from "@/lib/uiTokens";
+import { t } from "@/lib/i18n";
 
 const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
@@ -205,7 +206,7 @@ export function PlacesMap({ places = [], selectedId, onSelectPlace, pickMode = f
     return (
       <div style={mapShellStyle}>
         <div style={emptyOverlayStyle}>
-          <div style={{ fontSize: 13, color: TOKENS.ink60 }}>Xarita yuklanmadi — internet aloqasini tekshiring.</div>
+          <div style={{ fontSize: 13, color: TOKENS.ink60 }}>{t("Xarita yuklanmadi — internet aloqasini tekshiring.")}</div>
         </div>
       </div>
     );
@@ -216,19 +217,19 @@ export function PlacesMap({ places = [], selectedId, onSelectPlace, pickMode = f
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       {!ready && (
         <div style={emptyOverlayStyle}>
-          <div style={{ fontSize: 13, color: TOKENS.ink60 }}>Xarita yuklanmoqda...</div>
+          <div style={{ fontSize: 13, color: TOKENS.ink60 }}>{t("Xarita yuklanmoqda...")}</div>
         </div>
       )}
       {ready && withCoords.length === 0 && !pickMode && (
         <div style={{ ...emptyOverlayStyle, pointerEvents: "none" }}>
           <div style={{ fontSize: 13, color: TOKENS.ink60, background: TOKENS.card, padding: "10px 16px", borderRadius: 8, boxShadow: "0 2px 8px rgba(30,38,33,0.12)" }}>
-            Hali koordinatali joy yo'q
+            {t("Hali koordinatali joy yo'q")}
           </div>
         </div>
       )}
       {pickMode && (
         <div style={{ position: "absolute", top: 10, left: 10, background: TOKENS.card, padding: "6px 12px", borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: TOKENS.teal, boxShadow: "0 2px 8px rgba(30,38,33,0.12)", zIndex: 500 }}>
-          📍 Joylashuvni belgilash uchun xaritani bosing
+          {t("📍 Joylashuvni belgilash uchun xaritani bosing")}
         </div>
       )}
     </div>

@@ -8,6 +8,7 @@ import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 import {
   TreePine, BookImage, History, Camera, BookOpen, Users, MapPinned, ShieldCheck,
 } from "lucide-react";
+import { getT } from "@/lib/i18n/server";
 
 const FEATURES = [
   { icon: TreePine, title: "Oila daraxti", desc: "Avlodlarni bog'lang, qarindoshlik aloqalarini ko'ring va oilangiz tarixini bir joyda saqlang." },
@@ -21,6 +22,7 @@ const FEATURES = [
 ];
 
 export default async function Home() {
+  const t = await getT();
   let session = null;
   try {
     session = await getSession();
@@ -81,15 +83,15 @@ export default async function Home() {
         </div>
 
         <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 42, fontWeight: 500, lineHeight: 1.15, margin: "0 0 16px", maxWidth: 620 }}>
-          Your family. Your memories. Your story.
+          {t("Your family. Your memories. Your story.")}
         </h1>
         <p style={{ fontSize: 16, color: TOKENS.ink60, lineHeight: 1.6, margin: "0 0 34px", maxWidth: 560 }}>
-          Heirloom — oilaviy xotiralarni, avlodlar ketma-ketligini va hayotdagi muhim lahzalarni saqlash uchun mo'ljallangan raqamli platforma. Xususiy, xavfsiz va abadiy.
+          {t("Heirloom — oilaviy xotiralarni, avlodlar ketma-ketligini va hayotdagi muhim lahzalarni saqlash uchun mo'ljallangan raqamli platforma. Xususiy, xavfsiz va abadiy.")}
         </p>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-          <Link href="/register" className="fm-cta-primary">Bepul boshlash</Link>
-          <Link href="/login" className="fm-cta-secondary">Kirish</Link>
+          <Link href="/register" className="fm-cta-primary">{t("Bepul boshlash")}</Link>
+          <Link href="/login" className="fm-cta-secondary">{t("Kirish")}</Link>
         </div>
       </div>
 
@@ -102,8 +104,8 @@ export default async function Home() {
                 <f.icon size={18} color={TOKENS.teal} />
               </div>
               <div>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: TOKENS.ink, marginBottom: 4 }}>{f.title}</div>
-                <div style={{ fontSize: 12.5, color: TOKENS.ink60, lineHeight: 1.55 }}>{f.desc}</div>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: TOKENS.ink, marginBottom: 4 }}>{t(f.title)}</div>
+                <div style={{ fontSize: 12.5, color: TOKENS.ink60, lineHeight: 1.55 }}>{t(f.desc)}</div>
               </div>
             </div>
           ))}

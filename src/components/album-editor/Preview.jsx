@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X, Maximize2, Minimize2, ZoomIn, ZoomOut } from "lucide-react";
 import { PAGE_W, PAGE_H } from "./constants";
 import { PageView } from "./ElementView";
+import { t } from "@/lib/i18n";
 
 /**
  * Ko'rish rejimi: albom haqiqiy ko'rinishda, hech qanday tahrir UI'siz.
@@ -207,10 +208,10 @@ export function Preview({ pages, startIndex = 0, title, subtitle, onClose, foote
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
         {actions}
-        <button type="button" className="he-preview-nav" style={{ width: 40, height: 40 }} onClick={toggleFullscreen} title={isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}>
+        <button type="button" className="he-preview-nav" style={{ width: 40, height: 40 }} onClick={toggleFullscreen} title={isFullscreen ? t("To'liq ekrandan chiqish") : t("To'liq ekran")}>
           {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
         </button>
-        {onClose && <button type="button" className="he-preview-nav" style={{ width: 40, height: 40 }} onClick={onClose} title="Yopish (Esc)"><X size={20} /></button>}
+        {onClose && <button type="button" className="he-preview-nav" style={{ width: 40, height: 40 }} onClick={onClose} title={t("Yopish (Esc)")}><X size={20} /></button>}
       </div>
     </div>
   );
@@ -223,7 +224,7 @@ export function Preview({ pages, startIndex = 0, title, subtitle, onClose, foote
   });
 
   return (
-    <div ref={rootRef} className="he-preview" role="dialog" aria-label="Albomni ko'rish" onPointerMove={poke} onPointerDown={poke}>
+    <div ref={rootRef} className="he-preview" role="dialog" aria-label={t("Albomni ko'rish")} onPointerMove={poke} onPointerDown={poke}>
       {header}
       <div
         ref={areaRef}
@@ -234,7 +235,7 @@ export function Preview({ pages, startIndex = 0, title, subtitle, onClose, foote
         onPointerCancel={onUp}
       >
         {pages.length > 1 && (
-          <button type="button" className="he-preview-nav" style={arrowStyle("left")} onClick={() => go(-1)} disabled={index === 0} title="Oldingi">
+          <button type="button" className="he-preview-nav" style={arrowStyle("left")} onClick={() => go(-1)} disabled={index === 0} title={t("Oldingi")}>
             <ChevronLeft size={small ? 22 : 26} />
           </button>
         )}
@@ -255,12 +256,12 @@ export function Preview({ pages, startIndex = 0, title, subtitle, onClose, foote
         <div
           style={{ position: "absolute", right: overlay ? 8 : 16, bottom: overlay ? 46 : 12, zIndex: 2, display: "flex", alignItems: "center", gap: 4, background: "rgba(20,25,26,0.6)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", borderRadius: 22, padding: 4, opacity: show ? 1 : 0, transition: "opacity .25s", pointerEvents: show ? "auto" : "none" }}
         >
-          <button type="button" className="he-preview-nav" style={{ width: 34, height: 34, background: "transparent" }} onClick={() => zoomBy(1 / 1.5)} disabled={view.z <= 1} title="Kichraytirish (−)"><ZoomOut size={17} /></button>
-          <button type="button" onClick={() => setView({ z: 1, x: 0, y: 0 })} title="Asl o'lcham (0)" style={{ minWidth: 48, height: 34, border: "none", background: "transparent", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>{Math.round(view.z * 100)}%</button>
-          <button type="button" className="he-preview-nav" style={{ width: 34, height: 34, background: "transparent" }} onClick={() => zoomBy(1.5)} disabled={view.z >= MAX_Z} title="Kattalashtirish (+)"><ZoomIn size={17} /></button>
+          <button type="button" className="he-preview-nav" style={{ width: 34, height: 34, background: "transparent" }} onClick={() => zoomBy(1 / 1.5)} disabled={view.z <= 1} title={t("Kichraytirish (−)")}><ZoomOut size={17} /></button>
+          <button type="button" onClick={() => setView({ z: 1, x: 0, y: 0 })} title={t("Asl o'lcham (0)")} style={{ minWidth: 48, height: 34, border: "none", background: "transparent", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif" }}>{Math.round(view.z * 100)}%</button>
+          <button type="button" className="he-preview-nav" style={{ width: 34, height: 34, background: "transparent" }} onClick={() => zoomBy(1.5)} disabled={view.z >= MAX_Z} title={t("Kattalashtirish (+)")}><ZoomIn size={17} /></button>
         </div>
         {pages.length > 1 && (
-          <button type="button" className="he-preview-nav" style={arrowStyle("right")} onClick={() => go(1)} disabled={index >= pages.length - 1} title="Keyingi">
+          <button type="button" className="he-preview-nav" style={arrowStyle("right")} onClick={() => go(1)} disabled={index >= pages.length - 1} title={t("Keyingi")}>
             <ChevronRight size={small ? 22 : 26} />
           </button>
         )}
@@ -276,7 +277,7 @@ export function Preview({ pages, startIndex = 0, title, subtitle, onClose, foote
             key={p.id}
             type="button"
             onClick={() => goTo(i)}
-            aria-label={`Sahifa ${i + 1}`}
+            aria-label={t("Sahifa {0}", { 0: i + 1 })}
             style={{ width: i === index ? 22 : 8, height: 8, borderRadius: 4, border: "none", background: i === index ? "#D9BC85" : "rgba(255,255,255,0.3)", cursor: "pointer", transition: "width .2s", padding: 0 }}
           />
         ))}

@@ -5,6 +5,7 @@ import { relationLabelBetween, personLabel, personYears } from "@/lib/relationsh
 import { buildFamilyGenerations } from "./shared";
 import { TreeVisualization } from "./TreeVisualization";
 import { PersonDetailPanel, EmptyFamilyTree, AddPersonModal, LinkPersonModal, EditPersonModal } from "./PersonComponents";
+import { t } from "@/lib/i18n";
 
 export function FamilyTreeView({
   familyName,
@@ -90,13 +91,13 @@ export function FamilyTreeView({
       <div style={{ flex: "1 1 420px", minWidth: 0, padding: "24px 20px 24px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Avlodlar</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>{t("Avlodlar")}</div>
             <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>{familyName}</h1>
-            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>{genCount} avlod · {memberCount} a'zo</div>
+            <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginTop: 6 }}>{genCount} {t("avlod ·")} {memberCount} {t("a'zo")}</div>
           </div>
           {canEdit && (
             <button onClick={() => setShowAddModal(true)} style={{ display: "flex", alignItems: "center", gap: 7, background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-              <Plus size={14} /> Odam qo'shish
+              <Plus size={14} /> {t("Odam qo'shish")}
             </button>
           )}
         </div>
@@ -105,7 +106,7 @@ export function FamilyTreeView({
           <div style={{ display: "flex", alignItems: "center", gap: 2, background: TOKENS.card, border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 8, padding: 3 }}>
             <button
               onClick={() => treeRef.current?.zoomOut()}
-              title="Kichraytirish"
+              title={t("Kichraytirish")}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink60 }}
             >
               <Minus size={13} />
@@ -115,7 +116,7 @@ export function FamilyTreeView({
             </div>
             <button
               onClick={() => treeRef.current?.zoomIn()}
-              title="Kattalashtirish"
+              title={t("Kattalashtirish")}
               style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink60 }}
             >
               <Plus size={13} />
@@ -123,10 +124,10 @@ export function FamilyTreeView({
             <div style={{ width: 1, alignSelf: "stretch", background: TOKENS.parchmentDeep, margin: "0 2px" }} />
             <button
               onClick={() => treeRef.current?.center()}
-              title="Butun daraxtni ekranga moslash"
+              title={t("Butun daraxtni ekranga moslash")}
               style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 9px", height: 26, background: "transparent", border: "none", borderRadius: 6, cursor: "pointer", color: TOKENS.ink60, fontSize: 11.5, fontWeight: 600 }}
             >
-              <Crosshair size={13} /> Moslash
+              <Crosshair size={13} /> {t("Moslash")}
             </button>
           </div>
           <div style={{ position: "relative", flex: "0 1 220px", minWidth: 160 }}>
@@ -137,7 +138,7 @@ export function FamilyTreeView({
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 150)}
-                placeholder="Odamni qidirish..."
+                placeholder={t("Odamni qidirish...")}
                 style={{ border: "none", outline: "none", background: "transparent", fontSize: 12.5, width: "100%", color: TOKENS.ink, fontFamily: "Inter, sans-serif" }}
               />
             </div>

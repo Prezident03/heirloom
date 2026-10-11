@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { TOKENS, FONT_IMPORT } from "@/lib/uiTokens";
 import { createFamilyAction, addPersonAction, createAlbumAction } from "@/lib/actions";
+import { t } from "@/lib/i18n";
 
 const STEP_COUNT = 4;
 
@@ -129,20 +130,20 @@ function StepFamilyName({
   return (
     <div className="fm-step-enter" style={{ textAlign: "center" }}>
       <div style={{ fontSize: 12, letterSpacing: "0.12em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 10 }}>
-        Xush kelibsiz, {userName}
+        {t("Xush kelibsiz,")} {userName}
       </div>
       <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 26, fontWeight: 500, margin: "0 0 10px" }}>
-        Oilangiz hikoyasini quring
+        {t("Oilangiz hikoyasini quring")}
       </h1>
       <p style={{ fontSize: 13.5, color: TOKENS.ink60, margin: "0 0 26px", lineHeight: 1.6 }}>
-        Bu — sizning shaxsiy, xususiy oilaviy arxivingiz. Tayyor namuna yo&apos;q — hammasini o&apos;zingiz qurasiz. Boshlash uchun oilangizga bir nom bering.
+        {t("Bu — sizning shaxsiy, xususiy oilaviy arxivingiz. Tayyor namuna yo'q — hammasini o'zingiz qurasiz. Boshlash uchun oilangizga bir nom bering.")}
       </p>
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <input
           className="fm-input"
           type="text"
           name="familyName"
-          placeholder="masalan, Zokirov oilasi"
+          placeholder={t("masalan, Zokirov oilasi")}
           required
           autoFocus
           value={name}
@@ -150,11 +151,11 @@ function StepFamilyName({
         />
         {state?.error && (
           <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-            {state.error}
+            {t(state.error)}
           </div>
         )}
         <button type="submit" className="fm-submit" disabled={pending}>
-          {pending ? "Yaratilmoqda..." : "Davom etish"}
+          {pending ? t("Yaratilmoqda...") : t("Davom etish")}
         </button>
       </form>
     </div>
@@ -181,17 +182,17 @@ function StepAddMember({
   return (
     <div className="fm-step-enter">
       <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 8px", textAlign: "center" }}>
-        Birinchi oila a&apos;zosini qo&apos;shing
+        {t("Birinchi oila a'zosini qo'shing")}
       </h2>
       <p style={{ fontSize: 13, color: TOKENS.ink60, margin: "0 0 22px", textAlign: "center", lineHeight: 1.6 }}>
-        Masalan, turmush o&apos;rtog&apos;ingiz yoki farzandingiz. Buni istalgan vaqtda Oila daraxtidan ham qilishingiz mumkin.
+        {t("Masalan, turmush o'rtog'ingiz yoki farzandingiz. Buni istalgan vaqtda Oila daraxtidan ham qilishingiz mumkin.")}
       </p>
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <input type="hidden" name="familySlug" value={familySlug} />
         <input type="hidden" name="skipRedirect" value="1" />
         <div style={{ display: "flex", gap: 10 }}>
-          <input className="fm-input" name="firstName" placeholder="Ism" required />
-          <input className="fm-input" name="lastName" placeholder="Familiya" />
+          <input className="fm-input" name="firstName" placeholder={t("Ism")} required />
+          <input className="fm-input" name="lastName" placeholder={t("Familiya")} />
         </div>
         <select
           className="fm-input"
@@ -200,22 +201,22 @@ function StepAddMember({
           onChange={(e) => setRelation(e.target.value)}
           style={{ fontFamily: "Inter, sans-serif" }}
         >
-          <option value="none">Bog&apos;lanish (ixtiyoriy)</option>
-          <option value="spouse_of">Turmush o&apos;rtog&apos;im</option>
-          <option value="child_of">Farzandim</option>
+          <option value="none">{t("Bog'lanish (ixtiyoriy)")}</option>
+          <option value="spouse_of">{t("Turmush o'rtog'im")}</option>
+          <option value="child_of">{t("Farzandim")}</option>
         </select>
         {relation !== "none" && <input type="hidden" name="relatedPersonId" value={mePersonId} />}
         {state?.error && (
           <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-            {state.error}
+            {t(state.error)}
           </div>
         )}
         <button type="submit" className="fm-submit" disabled={pending}>
-          {pending ? "Qo'shilmoqda..." : "Qo'shish va davom etish"}
+          {pending ? t("Qo'shilmoqda...") : t("Qo'shish va davom etish")}
         </button>
       </form>
       <button type="button" className="fm-skip" onClick={onNext}>
-        Hozircha o&apos;tkazib yuborish
+        {t("Hozircha o'tkazib yuborish")}
       </button>
     </div>
   );
@@ -232,30 +233,30 @@ function StepCreateAlbum({ familySlug, onNext }: { familySlug: string; onNext: (
   return (
     <div className="fm-step-enter">
       <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 21, fontWeight: 500, margin: "0 0 8px", textAlign: "center" }}>
-        Birinchi albomingizni yarating
+        {t("Birinchi albomingizni yarating")}
       </h2>
       <p style={{ fontSize: 13, color: TOKENS.ink60, margin: "0 0 22px", textAlign: "center", lineHeight: 1.6 }}>
-        Sayohat, oilaviy kun, yoki shunchaki oddiy bir lahza. Rasmlarni keyinroq ham qo&apos;shishingiz mumkin.
+        {t("Sayohat, oilaviy kun, yoki shunchaki oddiy bir lahza. Rasmlarni keyinroq ham qo'shishingiz mumkin.")}
       </p>
       <form action={formAction} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <input type="hidden" name="familySlug" value={familySlug} />
         <input type="hidden" name="skipRedirect" value="1" />
-        <input className="fm-input" name="title" placeholder="Albom nomi (masalan: 2026 — Parij)" required autoFocus />
+        <input className="fm-input" name="title" placeholder={t("Albom nomi (masalan: 2026 — Parij)")} required autoFocus />
         <div style={{ display: "flex", gap: 10 }}>
-          <input className="fm-input" name="dateLabel" placeholder="Sana (ixtiyoriy)" />
-          <input className="fm-input" name="location" placeholder="Joy (ixtiyoriy)" />
+          <input className="fm-input" name="dateLabel" placeholder={t("Sana (ixtiyoriy)")} />
+          <input className="fm-input" name="location" placeholder={t("Joy (ixtiyoriy)")} />
         </div>
         {state?.error && (
           <div style={{ fontSize: 12.5, color: TOKENS.danger, background: "rgba(168,69,58,0.08)", padding: "9px 12px", borderRadius: 6 }}>
-            {state.error}
+            {t(state.error)}
           </div>
         )}
         <button type="submit" className="fm-submit" disabled={pending}>
-          {pending ? "Yaratilmoqda..." : "Yaratish va davom etish"}
+          {pending ? t("Yaratilmoqda...") : t("Yaratish va davom etish")}
         </button>
       </form>
       <button type="button" className="fm-skip" onClick={onNext}>
-        Hozircha o&apos;tkazib yuborish
+        {t("Hozircha o'tkazib yuborish")}
       </button>
     </div>
   );
@@ -266,13 +267,13 @@ function StepDone({ familyName, familySlug }: { familyName: string; familySlug: 
     <div className="fm-step-enter" style={{ textAlign: "center" }}>
       <div style={{ fontSize: 36, marginBottom: 12 }}>❤️</div>
       <h2 style={{ fontFamily: "Fraunces, serif", fontSize: 23, fontWeight: 500, margin: "0 0 10px" }}>
-        {familyName || "Oilangiz"} hikoyasi boshlandi
+        {familyName || t("Oilangiz")} {t("hikoyasi boshlandi")}
       </h2>
       <p style={{ fontSize: 13.5, color: TOKENS.ink60, margin: "0 0 26px", lineHeight: 1.6 }}>
-        Bundan buyog&apos;i — sizning qo&apos;lingizda. Har bir yangi rasm, har bir yangi ism bu hikoyani davom ettiradi.
+        {t("Bundan buyog'i — sizning qo'lingizda. Har bir yangi rasm, har bir yangi ism bu hikoyani davom ettiradi.")}
       </p>
       <a href={`/${familySlug}/dashboard`} className="fm-submit">
-        Family Space&apos;ga o&apos;tish
+        {t("Family Space'ga o'tish")}
       </a>
     </div>
   );

@@ -4,6 +4,7 @@
 // ============================================================
 import { PAGE_W, PAGE_H, FRAME_IDS, DEFAULT_FILTER, isDefaultFilter, setPageFormat, formatRatio, PAGE_FORMATS, LEGACY_FORMAT } from "./constants";
 import { stickerDef } from "./stickers";
+import { t } from "@/lib/i18n";
 
 export function uid() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -297,8 +298,8 @@ export function unionBounds(elements) {
 }
 
 export function elementLabel(el) {
-  if (el.type === "photo") return el.src ? "Rasm" : "Rasm joyi";
+  if (el.type === "photo") return el.src ? t("Rasm") : t("Rasm joyi");
   if (el.type === "video") return "Video";
-  if (el.type === "text") return (el.text || "Matn").split("\n")[0].slice(0, 28) || "Matn";
-  return stickerDef(el.stickerId).name;
+  if (el.type === "text") return (el.text || t("Matn")).split("\n")[0].slice(0, 28) || t("Matn");
+  return t(stickerDef(el.stickerId).name);
 }

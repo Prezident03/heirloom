@@ -11,6 +11,7 @@ import { STICKER_GROUPS, StickerArt } from "./stickers";
 import { ScaledPage, PhotoFramePreview } from "./ElementView";
 import { Swatches, C } from "./ui";
 import { SAMPLE_IMG } from "./Toolbar";
+import { t as tr } from "@/lib/i18n";
 
 export const RAIL = [
   { id: "templates", icon: LayoutTemplate, label: "Shablonlar" },
@@ -52,17 +53,17 @@ export function isEditorDrag(e) {
 
 export function Rail({ panel, setPanel }) {
   return (
-    <nav className="he-rail" aria-label="Asboblar">
+    <nav className="he-rail" aria-label={tr("Asboblar")}>
       {RAIL.map((item) => (
         <button
           key={item.id}
           type="button"
           className={`he-rail-btn${panel === item.id ? " active" : ""}`}
           onClick={() => setPanel(panel === item.id ? null : item.id)}
-          title={item.label}
+          title={tr(item.label)}
         >
           <item.icon size={20} strokeWidth={1.8} />
-          <span>{item.label}</span>
+          <span>{tr(item.label)}</span>
         </button>
       ))}
     </nav>
@@ -75,12 +76,12 @@ export function Drawer({ panel, setPanel, api, library, folders, uploads, page, 
   return (
     <aside className="he-drawer" onPointerDown={(e) => e.stopPropagation()}>
       <div className="he-drawer-head">
-        <div className="he-drawer-title">{item?.label}</div>
-        <button type="button" className="he-btn icon" onClick={() => setPanel(null)} title="Yopish"><X size={18} /></button>
+        <div className="he-drawer-title">{tr(item?.label)}</div>
+        <button type="button" className="he-btn icon" onClick={() => setPanel(null)} title={tr("Yopish")}><X size={18} /></button>
       </div>
       {replaceTarget && (panel === "photos" || panel === "videos" || panel === "upload") && (
         <div style={{ margin: "0 16px 8px", padding: "8px 10px", borderRadius: 10, background: "rgba(184,134,59,0.12)", color: C.ink, fontSize: 12.5, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ flex: 1 }}>Almashtirish uchun rasmni tanlang</span>
+          <span style={{ flex: 1 }}>{tr("Almashtirish uchun rasmni tanlang")}</span>
           <button type="button" className="he-btn icon" style={{ width: 24, height: 24 }} onClick={() => api.clearReplace()}><X size={14} /></button>
         </div>
       )}
@@ -118,11 +119,11 @@ function TemplatesPanel({ api }) {
     <>
       <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, margin: "0 -16px", padding: "0 16px 10px", scrollbarWidth: "none" }}>
         {["Barchasi", ...TEMPLATE_CATEGORIES].map((c) => (
-          <button key={c} type="button" className={`he-chip${cat === c ? " active" : ""}`} onClick={() => setCat(c)}>{c}</button>
+          <button key={c} type="button" className={`he-chip${cat === c ? " active" : ""}`} onClick={() => setCat(c)}>{tr(c)}</button>
         ))}
       </div>
       <div style={{ fontSize: 12, color: C.muted, marginBottom: 10, lineHeight: 1.45 }}>
-        Shablon joriy sahifaga qo&apos;llanadi. Sahifadagi rasmlaringiz yangi joylarga o&apos;tkaziladi — keyin hammasini erkin o&apos;zgartirishingiz mumkin.
+        {tr("Shablon joriy sahifaga qo'llanadi. Sahifadagi rasmlaringiz yangi joylarga o'tkaziladi — keyin hammasini erkin o'zgartirishingiz mumkin.")}
       </div>
       <div className="he-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {list.map((tpl) => (
@@ -144,15 +145,15 @@ function TemplateTile({ tpl, api }) {
         draggable
         onDragStart={(e) => setDrag(e, { kind: "template", id: tpl.id })}
         onClick={() => api.applyTemplate(tpl.id)}
-        title={`${tpl.name} — qo'llash`}
+        title={tr("{0} — qo'llash", { 0: tpl.name })}
       >
         <ScaledPage page={preview} width={140} style={{ margin: "0 auto" }} />
-        <span className="he-tile-label">{tpl.name}</span>
+        <span className="he-tile-label">{tr(tpl.name)}</span>
       </button>
       <button
         type="button"
         className="he-thumb-act"
-        title="Yangi sahifa sifatida qo'shish"
+        title={tr("Yangi sahifa sifatida qo'shish")}
         style={{ position: "absolute", right: 6, top: 6 }}
         onClick={() => api.addPage({ templateId: tpl.id })}
       >
@@ -165,7 +166,7 @@ function TemplateTile({ tpl, api }) {
 // ------------------------------------------------------------
 // Rasmlar / Videolar / Yuklash
 // ------------------------------------------------------------
-function UploadButton({ api, accept, label = "Kompyuterdan yuklash" }) {
+function UploadButton({ api, accept, label = tr("Kompyuterdan yuklash") }) {
   const ref = useRef(null);
   return (
     <>
@@ -191,7 +192,7 @@ function UploadList({ uploads }) {
       {uploads.map((u) => (
         <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: u.error ? C.danger : C.muted }}>
           {u.error ? <AlertTriangle size={14} /> : <Loader2 size={14} className="he-spin" />}
-          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.error || u.name}</span>
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tr(u.error) || u.name}</span>
           {!u.error && <span style={{ fontWeight: 600 }}>{Math.round(u.progress || 0)}%</span>}
         </div>
       ))}
@@ -204,7 +205,7 @@ function MediaGrid({ items, api, kind }) {
     return (
       <div style={{ textAlign: "center", padding: "30px 10px", color: C.muted, fontSize: 12.5 }}>
         <ImageOff size={26} style={{ opacity: 0.4, marginBottom: 8 }} />
-        <div>{kind === "video" ? "Hali video yuklanmagan" : "Hali rasm yo'q"}</div>
+        <div>{kind === "video" ? tr("Hali video yuklanmagan") : tr("Hali rasm yo'q")}</div>
       </div>
     );
   }
@@ -218,7 +219,7 @@ function MediaGrid({ items, api, kind }) {
           draggable
           onDragStart={(e) => setDrag(e, { kind: m.kind, url: m.url, aspect: m.width && m.height ? m.width / m.height : null })}
           onClick={() => api.insertMedia(m)}
-          title={kind === "video" ? "Video qo'shish" : "Qo'shish yoki ramkaga sudrab tashlang"}
+          title={kind === "video" ? tr("Video qo'shish") : tr("Qo'shish yoki ramkaga sudrab tashlang")}
           style={{ aspectRatio: "1", background: "#EEE8DC" }}
         >
           {m.kind === "video" ? (
@@ -227,7 +228,7 @@ function MediaGrid({ items, api, kind }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={m.url} alt="" loading="lazy" draggable={false} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           )}
-          {m.kind === "video" && <span style={{ position: "absolute", right: 4, bottom: 4, background: "rgba(0,0,0,0.6)", color: "#fff", borderRadius: 4, fontSize: 9.5, fontWeight: 700, padding: "1px 4px" }}>VIDEO</span>}
+          {m.kind === "video" && <span style={{ position: "absolute", right: 4, bottom: 4, background: "rgba(0,0,0,0.6)", color: "#fff", borderRadius: 4, fontSize: 9.5, fontWeight: 700, padding: "1px 4px" }}>{tr("VIDEO")}</span>}
         </button>
       ))}
     </div>
@@ -238,9 +239,9 @@ function MediaPanel({ api, library, uploads, kind }) {
   const items = library.filter((m) => m.kind === kind);
   return (
     <>
-      <UploadButton api={api} accept={kind === "video" ? "video/mp4,video/webm,video/quicktime" : "image/*"} label={kind === "video" ? "Video yuklash" : "Rasm yuklash"} />
+      <UploadButton api={api} accept={kind === "video" ? "video/mp4,video/webm,video/quicktime" : "image/*"} label={kind === "video" ? tr("Video yuklash") : tr("Rasm yuklash")} />
       <UploadList uploads={uploads} />
-      <div className="he-section-label">{kind === "video" ? "Videolar" : "Oila rasmlari"}</div>
+      <div className="he-section-label">{kind === "video" ? tr("Videolar") : tr("Oila rasmlari")}</div>
       <MediaGrid items={items} api={api} kind={kind} />
     </>
   );
@@ -254,11 +255,11 @@ function PhotosPanel({ api, folders, uploads }) {
     return (
       <>
         <button type="button" className="he-btn" style={{ margin: "0 0 8px -8px" }} onClick={() => setOpenId(null)}>
-          <ChevronLeft size={16} /> Papkalar
+          <ChevronLeft size={16} /> {tr("Papkalar")}
         </button>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>{folder.name}</div>
-          <div style={{ fontSize: 12, color: C.muted }}>{folder.items.length} ta rasm</div>
+          <div style={{ fontSize: 12, color: C.muted }}>{folder.items.length} {tr("ta rasm")}</div>
         </div>
         <MediaGrid items={folder.items} api={api} kind="photo" />
       </>
@@ -266,18 +267,18 @@ function PhotosPanel({ api, folders, uploads }) {
   }
   return (
     <>
-      <UploadButton api={api} accept="image/*,.heic,.heif" label="Rasm yuklash" />
+      <UploadButton api={api} accept="image/*,.heic,.heif" label={tr("Rasm yuklash")} />
       <UploadList uploads={uploads} />
-      <div className="he-section-label">Papkalar</div>
+      <div className="he-section-label">{tr("Papkalar")}</div>
       <div className="he-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {folders.map((f) => (
-          <button key={f.id} type="button" className="he-tile" onClick={() => setOpenId(f.id)} style={{ padding: 6, textAlign: "left", background: "#FBF8F0" }} title={f.hint || f.name}>
+          <button key={f.id} type="button" className="he-tile" onClick={() => setOpenId(f.id)} style={{ padding: 6, textAlign: "left", background: "#FBF8F0" }} title={tr(f.hint) || f.name}>
             <FolderCover items={f.items} />
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, padding: "0 2px" }}>
               <Folder size={14} color={C.gold} style={{ flexShrink: 0 }} />
               <span style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{f.name}</span>
             </div>
-            <div style={{ fontSize: 11, color: C.muted, padding: "2px 2px 2px 22px" }}>{f.items.length} ta rasm</div>
+            <div style={{ fontSize: 11, color: C.muted, padding: "2px 2px 2px 22px" }}>{f.items.length} {tr("ta rasm")}</div>
           </button>
         ))}
       </div>
@@ -304,12 +305,12 @@ function PremiumLock() {
       <div style={{ width: 56, height: 56, borderRadius: 16, margin: "0 auto 14px", background: "linear-gradient(135deg, #B8863B, #D9BC85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Crown size={26} color="#fff" />
       </div>
-      <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, marginBottom: 6 }}>Videolar — Premium</div>
+      <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, marginBottom: 6 }}>{tr("Videolar — Premium")}</div>
       <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
-        Videolar ko&apos;p joy egallaydi, shuning uchun ularni albomga qo&apos;shish faqat Premium obunachilar uchun ochiq. Rasmlar barcha uchun bepul.
+        {tr("Videolar ko'p joy egallaydi, shuning uchun ularni albomga qo'shish faqat Premium obunachilar uchun ochiq. Rasmlar barcha uchun bepul.")}
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 14, fontSize: 12, color: C.gold, fontWeight: 600 }}>
-        <Lock size={13} /> Tez orada: obuna bo&apos;lish
+        <Lock size={13} /> {tr("Tez orada: obuna bo'lish")}
       </div>
     </div>
   );
@@ -328,8 +329,8 @@ function UploadPanel({ api, library, uploads, isPremium }) {
         onDrop={(e) => { e.preventDefault(); setOver(false); const files = [...e.dataTransfer.files]; if (files.length) api.uploadFiles(files); }}
       >
         <Upload size={26} style={{ marginBottom: 8 }} />
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>Fayllarni shu yerga tashlang</div>
-        <div style={{ fontSize: 12 }}>yoki bosib tanlang · rasm (25MB gacha){isPremium ? ", video (200MB gacha)" : ""}</div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>{tr("Fayllarni shu yerga tashlang")}</div>
+        <div style={{ fontSize: 12 }}>{tr("yoki bosib tanlang · rasm (25MB gacha)")}{isPremium ? tr(", video (200MB gacha)") : ""}</div>
         <input
           ref={ref}
           type="file"
@@ -340,15 +341,15 @@ function UploadPanel({ api, library, uploads, isPremium }) {
         />
       </div>
       <div style={{ fontSize: 12, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
-        Maslahat: fayllarni to&apos;g&apos;ridan-to&apos;g&apos;ri sahifaga ham sudrab tashlashingiz yoki <span className="he-kbd">Ctrl</span>+<span className="he-kbd">V</span> bilan joylashtirishingiz mumkin.
+        {tr("Maslahat: fayllarni to'g'ridan-to'g'ri sahifaga ham sudrab tashlashingiz yoki")} <span className="he-kbd">{tr("Ctrl")}</span>+<span className="he-kbd">{tr("V")}</span> {tr("bilan joylashtirishingiz mumkin.")}
       </div>
       {!isPremium && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.gold, marginTop: 8 }}>
-          <Crown size={13} /> Video yuklash — Premium obunachilar uchun
+          <Crown size={13} /> {tr("Video yuklash — Premium obunachilar uchun")}
         </div>
       )}
       <UploadList uploads={uploads} />
-      <div className="he-section-label">So&apos;nggi yuklanganlar</div>
+      <div className="he-section-label">{tr("So'nggi yuklanganlar")}</div>
       <MediaGrid items={library.slice(0, 30)} api={api} kind="photo" />
     </>
   );
@@ -361,9 +362,9 @@ function TextPanel({ api }) {
   return (
     <>
       <button type="button" className="he-btn primary" style={{ width: "100%", height: 42, marginBottom: 14 }} onClick={() => api.addText("body")}>
-        <Plus size={16} /> Matn qo&apos;shish
+        <Plus size={16} /> {tr("Matn qo'shish")}
       </button>
-      <div className="he-section-label">Tayyor uslublar</div>
+      <div className="he-section-label">{tr("Tayyor uslublar")}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {TEXT_PRESETS.map((p) => {
           const f = FONT_BY_ID[p.font];
@@ -377,7 +378,7 @@ function TextPanel({ api }) {
               onClick={() => api.addText(p.id)}
               style={{ padding: "14px 14px", textAlign: "left", fontFamily: f.css, fontSize: Math.min(30, p.fontSize * 0.42), fontWeight: p.bold ? 700 : f.weight, fontStyle: p.italic ? "italic" : "normal", color: C.ink }}
             >
-              {p.label}
+              {tr(p.label)}
             </button>
           );
         })}
@@ -394,7 +395,7 @@ function StickerPanel({ api, groups }) {
     <>
       {STICKER_GROUPS.filter((g) => groups.includes(g.id)).map((g) => (
         <div key={g.id}>
-          <div className="he-section-label">{g.label}</div>
+          <div className="he-section-label">{tr(g.label)}</div>
           <div className="he-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
             {g.items.map((s) => (
               <button
@@ -404,7 +405,7 @@ function StickerPanel({ api, groups }) {
                 draggable
                 onDragStart={(e) => setDrag(e, { kind: "sticker", id: s.id })}
                 onClick={() => api.addSticker(s.id)}
-                title={s.name}
+                title={tr(s.name)}
                 style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", padding: 8, background: "#FBF8F0" }}
               >
                 <div style={{ width: s.aspect >= 1 ? "100%" : `${s.aspect * 100}%`, aspectRatio: String(s.aspect), maxHeight: "100%", pointerEvents: "none" }}>
@@ -426,7 +427,7 @@ function FramesPanel({ api }) {
   return (
     <>
       <div style={{ fontSize: 12, color: C.muted, marginBottom: 10, lineHeight: 1.45 }}>
-        Ramkani sahifaga qo&apos;shing, so&apos;ng unga rasmni sudrab tashlang. Mavjud rasm ustiga tashlasangiz — ramkasi almashadi.
+        {tr("Ramkani sahifaga qo'shing, so'ng unga rasmni sudrab tashlang. Mavjud rasm ustiga tashlasangiz — ramkasi almashadi.")}
       </div>
       <div className="he-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {FRAMES.filter((f) => f.id !== "none").map((f) => (
@@ -440,7 +441,7 @@ function FramesPanel({ api }) {
             style={{ padding: 8, background: "#FBF8F0" }}
           >
             <PhotoFramePreview frame={f.id} size={72} src={SAMPLE_IMG} />
-            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, color: C.ink }}>{f.name}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, color: C.ink }}>{tr(f.name)}</div>
           </button>
         ))}
       </div>
@@ -459,14 +460,14 @@ function BackgroundPanel({ api, page }) {
     <>
       {BACKGROUND_GROUPS.map((g) => (
         <div key={g.label}>
-          <div className="he-section-label">{g.label}</div>
+          <div className="he-section-label">{tr(g.label)}</div>
           <div className="he-grid" style={{ gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
             {g.items.map((b) => (
               <button
                 key={b.id}
                 type="button"
                 className="he-tile"
-                title={b.name}
+                title={tr(b.name)}
                 onClick={() => api.setBackground({ background: b.id, bgImage: null })}
                 style={{ aspectRatio: "4 / 3", ...backgroundCss(b.id), outline: current === b.id && !page.bgImage ? `2px solid ${C.gold}` : undefined, outlineOffset: 1 }}
               />
@@ -474,11 +475,11 @@ function BackgroundPanel({ api, page }) {
           </div>
         </div>
       ))}
-      <div className="he-section-label">Rang</div>
+      <div className="he-section-label">{tr("Rang")}</div>
       <Swatches colors={SOLID_COLORS} value={solid} onChange={(c) => api.setBackground({ background: `solid:${c}`, bgImage: null }, { coalesce: "bgcolor" })} />
-      <div className="he-section-label">Rasm fon sifatida</div>
+      <div className="he-section-label">{tr("Rasm fon sifatida")}</div>
       <button type="button" className="he-btn soft" style={{ width: "100%" }} onClick={() => ref.current?.click()}>
-        <Upload size={15} /> Fon rasmini yuklash
+        <Upload size={15} /> {tr("Fon rasmini yuklash")}
       </button>
       <input
         ref={ref}
@@ -489,12 +490,12 @@ function BackgroundPanel({ api, page }) {
       />
       {page.bgImage && (
         <button type="button" className="he-btn danger" style={{ width: "100%", marginTop: 6 }} onClick={() => api.setBackground({ bgImage: null })}>
-          <Trash2 size={15} /> Fon rasmini olib tashlash
+          <Trash2 size={15} /> {tr("Fon rasmini olib tashlash")}
         </button>
       )}
       <div style={{ borderTop: `1px solid ${C.line}`, marginTop: 16, paddingTop: 12 }}>
         <button type="button" className="he-btn soft" style={{ width: "100%" }} onClick={() => api.applyBackgroundToAll()}>
-          Barcha sahifalarga qo&apos;llash
+          {tr("Barcha sahifalarga qo'llash")}
         </button>
       </div>
     </>

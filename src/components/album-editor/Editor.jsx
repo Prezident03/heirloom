@@ -21,6 +21,7 @@ import { EDITOR_CSS, PopButton, C } from "./ui";
 import { uploadMediaFile, readDimensions, mediaKind, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES } from "./media";
 import { exportPageImage, exportAlbumPdf, slugify } from "./exporter";
 import { SharePopover } from "./SharePopover";
+import { t as tr, localeCode } from "@/lib/i18n";
 
 const DRAFT_PREFIX = "heirloom:album-draft:";
 const clock = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
@@ -360,7 +361,7 @@ export default function Editor({
     const el = {
       id: uid(), type: "text", x: Math.max(0, c.x - p.w / 2), y: c.y - (p.fontSize * 1.3) / 2, w: p.w, h: p.fontSize * 1.3, rotation: 0,
       groupId: null, locked: false, opacity: 1, createdAt: new Date().toISOString(),
-      text: p.text, font: p.font, fontSize: p.fontSize, color: dark ? "#F2EDE2" : "#1E2621",
+      text: tr(p.text), font: p.font, fontSize: p.fontSize, color: dark ? "#F2EDE2" : "#1E2621",
       align: presetId === "body" || presetId === "typewriter" ? "left" : "center",
       bold: !!p.bold, italic: !!p.italic, underline: false, uppercase: false, letterSpacing: 0, lineHeight: 1.3, autoHeight: true,
     };
@@ -381,7 +382,7 @@ export default function Editor({
     const existing = page.elements.filter((e) => (e.type === "photo" || e.type === "video") && e.src);
     commit((d) => mapPage(d, pageId, (p) => ({ ...p, background: tpl.background, bgImage: null, elements: buildTemplateElements(tpl, existing) })));
     setSel([]); setEditingId(null); setCropId(null); setEnteredGroup(null);
-    showToast(`"${tpl.name}" shabloni qo'llandi`, { label: "Bekor qilish", run: () => undo() });
+    showToast(tr("\"{0}\" shabloni qo'llandi", { 0: tpl.name }), { label: "Bekor qilish", run: () => undo() });
   };
 
   const addPage = ({ templateId, openTemplates } = {}) => {
@@ -413,7 +414,7 @@ export default function Editor({
     });
     setSel([]);
     setPageIdState(np.id);
-    showToast("Sahifa nusxalandi");
+    showToast(tr("Sahifa nusxalandi"));
   };
 
   const deletePage = (pid) => {
@@ -426,7 +427,7 @@ export default function Editor({
       setPageIdState(rest[Math.max(0, idx - 1)].id);
       setSel([]);
     }
-    showToast("Sahifa o'chirildi", { label: "Qaytarish", run: () => undo() });
+    showToast(tr("Sahifa o'chirildi"), { label: "Qaytarish", run: () => undo() });
   };
 
   const movePage = (fromId, toIndex) => {
@@ -443,7 +444,7 @@ export default function Editor({
   const setBackground = (patch, opts) => commit((d) => mapPage(d, pageId, (p) => ({ ...p, ...patch })), opts);
   const applyBackgroundToAll = () => {
     commit((d) => ({ ...d, pages: d.pages.map((p) => (p.background === page.background && p.bgImage === page.bgImage ? p : { ...p, background: page.background, bgImage: page.bgImage })) }));
-    showToast("Fon barcha sahifalarga qo'llandi");
+    showToast(tr("Fon barcha sahifalarga qo'llandi"));
   };
 
   const selectableIds = (ids) => ids.filter((id) => page.elements.some((e) => e.id === id));
@@ -659,7 +660,7 @@ export default function Editor({
       setTimeout(() => URL.revokeObjectURL(localUrl), 30000);
     }).catch((err) => {
       replaceSrcEverywhere(localUrl, null);
-      const msg = err?.message || "Yuklashda xato yuz berdi.";
+      const msg = tr(err?.message || "Yuklashda xato yuz berdi.");
       setUploads((u) => u.map((x) => (x.id === upId ? { ...x, error: msg } : x)));
       setTimeout(() => setUploads((u) => u.filter((x) => x.id !== upId)), 7000);
       showToast(msg);
@@ -669,15 +670,15 @@ export default function Editor({
   const uploadFiles = async (files, { at, targetId } = {}) => {
     if (!canEdit) return;
     const list = files.filter((f) => mediaKind(f));
-    if (!list.length) { showToast("Faqat rasm yoki video fayllarini qo'shish mumkin."); return; }
+    if (!list.length) { showToast(tr("Faqat rasm yoki video fayllarini qo'shish mumkin.")); return; }
     const newEls = [];
     let target = targetId ? findEl(targetId) : null;
     for (let i = 0; i < list.length; i++) {
       const file = list[i];
       const kind = mediaKind(file);
-      if (kind === "video" && !isPremium) { showToast("Video yuklash faqat Premium obunachilar uchun."); continue; }
-      if (kind === "photo" && file.size > MAX_IMAGE_BYTES) { showToast(`${file.name}: rasm 25MB dan katta.`); continue; }
-      if (kind === "video" && file.size > MAX_VIDEO_BYTES) { showToast(`${file.name}: video 200MB dan katta.`); continue; }
+      if (kind === "video" && !isPremium) { showToast(tr("Video yuklash faqat Premium obunachilar uchun.")); continue; }
+      if (kind === "photo" && file.size > MAX_IMAGE_BYTES) { showToast(tr("{0}: rasm 25MB dan katta.", { 0: file.name })); continue; }
+      if (kind === "video" && file.size > MAX_VIDEO_BYTES) { showToast(tr("{0}: video 200MB dan katta.", { 0: file.name })); continue; }
       const dims = await readDimensions(file);
       const aspect = dims.width && dims.height ? dims.width / dims.height : null;
       const local = dims.previewUrl;
@@ -695,8 +696,8 @@ export default function Editor({
   };
 
   const uploadBackground = async (file) => {
-    if (mediaKind(file) !== "photo") { showToast("Fon uchun rasm tanlang."); return; }
-    if (file.size > MAX_IMAGE_BYTES) { showToast("Rasm 25MB dan katta."); return; }
+    if (mediaKind(file) !== "photo") { showToast(tr("Fon uchun rasm tanlang.")); return; }
+    if (file.size > MAX_IMAGE_BYTES) { showToast(tr("Rasm 25MB dan katta.")); return; }
     const dims = await readDimensions(file);
     setBackground({ bgImage: dims.previewUrl });
     startUpload(file, "photo", dims, dims.previewUrl);
@@ -728,14 +729,14 @@ export default function Editor({
       if (!p.photo_url) return;
       inAlbums.add(p.photo_url);
       if (p.album_id === album.id) return;
-      if (!others.has(p.album_id)) others.set(p.album_id, { id: p.album_id, name: p.album_title || "Albom", items: [], seen: new Set() });
+      if (!others.has(p.album_id)) others.set(p.album_id, { id: p.album_id, name: p.album_title || tr("Albom"), items: [], seen: new Set() });
       const f = others.get(p.album_id);
       if (!f.seen.has(p.photo_url)) { f.seen.add(p.photo_url); f.items.push(item(p.photo_url)); }
     });
     const uploaded = library.filter((m) => m.kind === "photo" && !inAlbums.has(m.url));
     return [
-      { id: "current", name: "Shu albom", hint: "Bu albomdagi rasmlar", items: current },
-      { id: "uploads", name: "Yuklanganlar", hint: "Hali albomga qo'yilmagan", items: uploaded },
+      { id: "current", name: tr("Shu albom"), hint: tr("Bu albomdagi rasmlar"), items: current },
+      { id: "uploads", name: tr("Yuklanganlar"), hint: tr("Hali albomga qo'yilmagan"), items: uploaded },
       ...[...others.values()].map(({ seen, ...f }) => f), // eslint-disable-line no-unused-vars
     ];
   }, [library, doc, photos, album.id]);
@@ -851,7 +852,7 @@ export default function Editor({
     setPageIdState(clean.pages[0].id);
     setSel([]);
     setDraft(null);
-    showToast("Saqlanmagan o'zgarishlar tiklandi");
+    showToast(tr("Saqlanmagan o'zgarishlar tiklandi"));
   };
   const dismissDraft = () => { clearDraft(album.id); setDraft(null); };
 
@@ -868,7 +869,7 @@ export default function Editor({
       }
       if (!ok && docRef.current !== savedRef.current) {
         writeDraft(album.id, docRef.current);
-        if (!window.confirm("Ba'zi o'zgarishlar hali saqlanmadi. Ular shu brauzerda saqlab qo'yildi va keyingi safar tiklash mumkin. Chiqasizmi?")) return;
+        if (!window.confirm(tr("Ba'zi o'zgarishlar hali saqlanmadi. Ular shu brauzerda saqlab qo'yildi va keyingi safar tiklash mumkin. Chiqasizmi?"))) return;
       }
     }
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
@@ -890,12 +891,12 @@ export default function Editor({
       if (res?.error) { showToast(res.error); setTitle(savedTitleRef.current); }
       else savedTitleRef.current = t;
     } catch {
-      showToast("Nomni saqlab bo'lmadi.");
+      showToast(tr("Nomni saqlab bo'lmadi."));
     }
   };
 
   const handleDeleteAlbum = () => {
-    if (!window.confirm(`"${savedTitleRef.current}" albomini butunlay o'chirasizmi? Bu amalni qaytarib bo'lmaydi.`)) return;
+    if (!window.confirm(tr("\"{0}\" albomini butunlay o'chirasizmi? Bu amalni qaytarib bo'lmaydi.", { 0: savedTitleRef.current }))) return;
     clearTimeout(saveTimer.current);
     clearDraft(album.id);
     savedRef.current = docRef.current;
@@ -909,17 +910,17 @@ export default function Editor({
 
   const runExport = async (kind) => {
     if (cropId) exitCrop(true);
-    setExporting(kind === "pdf" ? "PDF tayyorlanmoqda…" : "Rasm tayyorlanmoqda…");
+    setExporting(kind === "pdf" ? tr("PDF tayyorlanmoqda…") : tr("Rasm tayyorlanmoqda…"));
     try {
       const name = slugify(title);
       if (kind === "pdf") {
-        await exportAlbumPdf(docRef.current.pages, { filename: name, onProgress: (i, n) => setExporting(`PDF tayyorlanmoqda… ${i + 1}/${n}`) });
+        await exportAlbumPdf(docRef.current.pages, { filename: name, onProgress: (i, n) => setExporting(`${tr("PDF tayyorlanmoqda…")} ${i + 1}/${n}`) });
       } else {
         await exportPageImage(page, { format: kind, filename: `${name}-${pageIndex + 1}` });
       }
     } catch (err) {
       console.warn("[AlbumEditor] eksport xatosi:", err);
-      showToast("Eksport qilib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.");
+      showToast(tr("Eksport qilib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring."));
     } finally {
       setExporting(null);
     }
@@ -1349,7 +1350,7 @@ export default function Editor({
     const inField = isField(e.target);
     const mod = e.metaKey || e.ctrlKey;
     const k = e.key;
-    if (mod && (k === "s" || k === "S")) { e.preventDefault(); if (canEdit) runSave().then((ok) => ok && showToast("Saqlandi")); return; }
+    if (mod && (k === "s" || k === "S")) { e.preventDefault(); if (canEdit) runSave().then((ok) => ok && showToast(tr("Saqlandi"))); return; }
     if (inField) return;
     if (e.code === "Space") { e.preventDefault(); if (!space) setSpace(true); return; }
     if (mod && (k === "=" || k === "+")) { e.preventDefault(); onZoom("in"); return; }
@@ -1450,7 +1451,7 @@ export default function Editor({
       setEditingId(null);
       commit((d) => convertDocFormat({ ...d, format: d.format || LEGACY_FORMAT }, id));
       setZoom("fit"); setPan({ x: 0, y: 0 });
-      showToast(`Sahifa formati: ${id}`, { label: "Bekor qilish", run: () => undo() });
+      showToast(tr("Sahifa formati: {0}", { 0: id }), { label: "Bekor qilish", run: () => undo() });
     },
   };
 
@@ -1462,11 +1463,11 @@ export default function Editor({
   const zoomPct = Math.round(s * 100);
 
   const saveLabel = {
-    saved: <><Check size={14} /> Saqlandi</>,
-    dirty: <><Loader2 size={14} className="he-spin" /> Saqlanmoqda…</>,
-    saving: <><Loader2 size={14} className="he-spin" /> Saqlanmoqda…</>,
-    error: <><AlertTriangle size={14} /> Saqlab bo&apos;lmadi</>,
-    offline: <><CloudOff size={14} /> Internet yo&apos;q — keyin saqlanadi</>,
+    saved: <><Check size={14} /> {tr("Saqlandi")}</>,
+    dirty: <><Loader2 size={14} className="he-spin" /> {tr("Saqlanmoqda…")}</>,
+    saving: <><Loader2 size={14} className="he-spin" /> {tr("Saqlanmoqda…")}</>,
+    error: <><AlertTriangle size={14} /> {tr("Saqlab bo'lmadi")}</>,
+    offline: <><CloudOff size={14} /> {tr("Internet yo'q — keyin saqlanadi")}</>,
   }[saveState];
 
   return (
@@ -1476,8 +1477,8 @@ export default function Editor({
 
       {/* ───────────── Yuqori panel ───────────── */}
       <header className="he-topbar">
-        <button type="button" className="he-btn" onClick={handleBack} title="Albomlarga qaytish">
-          <ArrowLeft size={17} /> <span className="he-hide-sm">Albomlar</span>
+        <button type="button" className="he-btn" onClick={handleBack} title={tr("Albomlarga qaytish")}>
+          <ArrowLeft size={17} /> <span className="he-hide-sm">{tr("Albomlar")}</span>
         </button>
         <div className="he-divider he-hide-sm" />
         <input
@@ -1487,46 +1488,46 @@ export default function Editor({
           onChange={(e) => setTitle(e.target.value)}
           onBlur={commitTitle}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { setTitle(savedTitleRef.current); e.currentTarget.blur(); } }}
-          aria-label="Albom nomi"
+          aria-label={tr("Albom nomi")}
           maxLength={200}
         />
         {canEdit && (
           <>
-            <button type="button" className="he-btn icon" title="Bekor qilish (Ctrl+Z)" onClick={undo} disabled={!canUndo}><Undo2 size={17} /></button>
-            <button type="button" className="he-btn icon" title="Qaytarish (Ctrl+Shift+Z)" onClick={redo} disabled={!canRedo}><Redo2 size={17} /></button>
+            <button type="button" className="he-btn icon" title={tr("Bekor qilish (Ctrl+Z)")} onClick={undo} disabled={!canUndo}><Undo2 size={17} /></button>
+            <button type="button" className="he-btn icon" title={tr("Qaytarish (Ctrl+Shift+Z)")} onClick={redo} disabled={!canRedo}><Redo2 size={17} /></button>
             <span className={`he-save${saveState === "error" || saveState === "offline" ? " error" : ""}`} role="status">
               {saveLabel}
-              {saveState === "error" && <button type="button" className="he-btn" style={{ height: 26, padding: "0 8px", fontSize: 12 }} onClick={() => runSave()}>Qayta urinish</button>}
+              {saveState === "error" && <button type="button" className="he-btn" style={{ height: 26, padding: "0 8px", fontSize: 12 }} onClick={() => runSave()}>{tr("Qayta urinish")}</button>}
             </span>
           </>
         )}
         <div style={{ flex: 1 }} />
         {exporting && <span className="he-save he-hide-sm"><Loader2 size={14} className="he-spin" /> {exporting}</span>}
         {canEdit && shareAlbumAction && <SharePopover album={album} familySlug={familySlug} shareAlbumAction={shareAlbumAction} />}
-        <button type="button" className="he-btn" onClick={() => { if (cropId) exitCrop(true); setPreview({ index: pageIndex }); }} title="Ko'rish rejimi">
-          <Eye size={16} /> <span className="he-hide-sm">Ko&apos;rish</span>
+        <button type="button" className="he-btn" onClick={() => { if (cropId) exitCrop(true); setPreview({ index: pageIndex }); }} title={tr("Ko'rish rejimi")}>
+          <Eye size={16} /> <span className="he-hide-sm">{tr("Ko'rish")}</span>
         </button>
-        <PopButton className="he-btn" icon={<Download size={16} />} label={<span className="he-hide-sm">Yuklab olish</span>} title="Eksport" width={240} align="end" disabled={!!exporting}>
+        <PopButton className="he-btn" icon={<Download size={16} />} label={<span className="he-hide-sm">{tr("Yuklab olish")}</span>} title={tr("Eksport")} width={240} align="end" disabled={!!exporting}>
           {(close) => (
             <>
-              <button type="button" className="he-menu-item" onClick={() => { close(); runExport("pdf"); }}><FileText size={15} /> Butun albom — PDF</button>
-              <button type="button" className="he-menu-item" onClick={() => { close(); runExport("png"); }}><FileImage size={15} /> Joriy sahifa — PNG</button>
-              <button type="button" className="he-menu-item" onClick={() => { close(); runExport("jpg"); }}><FileImage size={15} /> Joriy sahifa — JPG</button>
+              <button type="button" className="he-menu-item" onClick={() => { close(); runExport("pdf"); }}><FileText size={15} /> {tr("Butun albom — PDF")}</button>
+              <button type="button" className="he-menu-item" onClick={() => { close(); runExport("png"); }}><FileImage size={15} /> {tr("Joriy sahifa — PNG")}</button>
+              <button type="button" className="he-menu-item" onClick={() => { close(); runExport("jpg"); }}><FileImage size={15} /> {tr("Joriy sahifa — JPG")}</button>
             </>
           )}
         </PopButton>
-        <button type="button" className="he-btn icon he-hide-sm" onClick={toggleFullscreen} title={isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}>
+        <button type="button" className="he-btn icon he-hide-sm" onClick={toggleFullscreen} title={isFullscreen ? tr("To'liq ekrandan chiqish") : tr("To'liq ekran")}>
           {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
         </button>
-        <PopButton className="he-btn icon" icon={<Ellipsis size={17} />} title="Ko'proq" width={240} align="end">
+        <PopButton className="he-btn icon" icon={<Ellipsis size={17} />} title={tr("Ko'proq")} width={240} align="end">
           {(close) => (
             <>
-              <button type="button" className="he-menu-item" onClick={() => { close(); setShowShortcuts(true); }}><Keyboard size={15} /> Klaviatura yorliqlari</button>
-              <button type="button" className="he-menu-item" onClick={() => { close(); toggleFullscreen(); }}>{isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />} To&apos;liq ekran</button>
+              <button type="button" className="he-menu-item" onClick={() => { close(); setShowShortcuts(true); }}><Keyboard size={15} /> {tr("Klaviatura yorliqlari")}</button>
+              <button type="button" className="he-menu-item" onClick={() => { close(); toggleFullscreen(); }}>{isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />} {tr("To'liq ekran")}</button>
               {canEdit && deleteAlbumAction && (
                 <>
                   <div style={{ height: 1, background: C.line, margin: "4px 0" }} />
-                  <button type="button" className="he-menu-item danger" onClick={() => { close(); handleDeleteAlbum(); }}><Trash2 size={15} /> Albomni o&apos;chirish</button>
+                  <button type="button" className="he-menu-item danger" onClick={() => { close(); handleDeleteAlbum(); }}><Trash2 size={15} /> {tr("Albomni o'chirish")}</button>
                 </>
               )}
             </>
@@ -1591,20 +1592,20 @@ export default function Editor({
           {draft && (
             <div className="he-banner" onPointerDown={(e) => e.stopPropagation()}>
               <AlertTriangle size={16} color={C.gold} />
-              <span>Oldingi safar saqlanmay qolgan o&apos;zgarishlar topildi ({new Date(draft.t).toLocaleString()}).</span>
-              <button type="button" className="he-btn gold" style={{ height: 30 }} onClick={restoreDraft}>Tiklash</button>
-              <button type="button" className="he-btn" style={{ height: 30 }} onClick={dismissDraft}>Kerak emas</button>
+              <span>{tr("Oldingi safar saqlanmay qolgan o'zgarishlar topildi (")}{new Date(draft.t).toLocaleString(localeCode())}).</span>
+              <button type="button" className="he-btn gold" style={{ height: 30 }} onClick={restoreDraft}>{tr("Tiklash")}</button>
+              <button type="button" className="he-btn" style={{ height: 30 }} onClick={dismissDraft}>{tr("Kerak emas")}</button>
             </div>
           )}
           {!canEdit && (
             <div className="he-banner" style={{ borderColor: C.line }}>
-              <Eye size={15} /> Siz bu albomni faqat ko&apos;ra olasiz
+              <Eye size={15} /> {tr("Siz bu albomni faqat ko'ra olasiz")}
             </div>
           )}
           {toast && (
             <div className="he-toast" key={toast.id} onPointerDown={(e) => e.stopPropagation()}>
               <span>{toast.text}</span>
-              {toast.action && <button type="button" onClick={() => { toast.action.run(); setToast(null); }}>{toast.action.label}</button>}
+              {toast.action && <button type="button" onClick={() => { toast.action.run(); setToast(null); }}>{tr(toast.action.label)}</button>}
             </div>
           )}
         </div>
@@ -1642,12 +1643,12 @@ export default function Editor({
         <div style={{ position: "fixed", inset: 0, zIndex: 140, background: "rgba(20,25,21,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={() => setShowShortcuts(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: C.card, borderRadius: 16, padding: "20px 22px", width: "min(520px, 100%)", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 30px 70px rgba(0,0,0,0.3)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ fontFamily: "Fraunces, serif", fontSize: 20 }}>Klaviatura yorliqlari</div>
+              <div style={{ fontFamily: "Fraunces, serif", fontSize: 20 }}>{tr("Klaviatura yorliqlari")}</div>
               <button type="button" className="he-btn icon" onClick={() => setShowShortcuts(false)}><X size={18} /></button>
             </div>
             {SHORTCUTS.map(([a, b]) => (
               <div key={a} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: `1px solid ${C.line}`, fontSize: 13 }}>
-                <span>{a}</span><span style={{ color: C.muted, fontWeight: 600, textAlign: "right" }}>{b}</span>
+                <span>{tr(a)}</span><span style={{ color: C.muted, fontWeight: 600, textAlign: "right" }}>{tr(b)}</span>
               </div>
             ))}
           </div>

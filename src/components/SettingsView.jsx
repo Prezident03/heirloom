@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useActionState } from "react";
 import { AppearanceSettings } from "./ThemeLangControls";
 import { useRouter } from "next/navigation";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
+import { t } from "@/lib/i18n";
 
 const ROLE_LABELS = {
   owner: "Egasi",
@@ -21,7 +22,7 @@ function RoleBadge({ role }) {
         border: isOwner ? "none" : `1px solid ${TOKENS.parchmentDeep}`,
       }}
     >
-      {ROLE_LABELS[role] || role}
+      {t(ROLE_LABELS[role]) || role}
     </span>
   );
 }
@@ -33,11 +34,11 @@ function FamilyNameForm({ familySlug, familyName, updateFamilyNameAction }) {
       <input type="hidden" name="familySlug" value={familySlug} />
       <div style={{ flex: "1 1 220px", minWidth: 180 }}>
         <input name="name" defaultValue={familyName} required style={inputStyle} />
-        {state?.error && <div style={{ fontSize: 12, color: TOKENS.danger, marginTop: 6 }}>{state.error}</div>}
-        {state?.ok && <div style={{ fontSize: 12, color: TOKENS.teal, marginTop: 6 }}>Saqlandi. O'zgarish sahifani yangilaganda hamma joyda ko'rinadi.</div>}
+        {state?.error && <div style={{ fontSize: 12, color: TOKENS.danger, marginTop: 6 }}>{t(state.error)}</div>}
+        {state?.ok && <div style={{ fontSize: 12, color: TOKENS.teal, marginTop: 6 }}>{t("Saqlandi. O'zgarish sahifani yangilaganda hamma joyda ko'rinadi.")}</div>}
       </div>
       <button type="submit" disabled={pending} style={{ background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "11px 20px", fontSize: 13, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1, flexShrink: 0 }}>
-        {pending ? "Saqlanmoqda..." : "Saqlash"}
+        {pending ? t("Saqlanmoqda...") : t("Saqlash")}
       </button>
     </form>
   );
@@ -73,17 +74,17 @@ function InviteLinkRow({ invite, familySlug, revokeInviteAction }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: `1px solid ${TOKENS.parchmentDeep}`, flexWrap: "wrap" }}>
       <div style={{ minWidth: 0, flex: "1 1 220px" }}>
         <div style={{ fontSize: 12.5, fontFamily: "monospace", color: TOKENS.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</div>
-        <div style={{ fontSize: 11, color: TOKENS.ink40, marginTop: 2 }}>Rol: {ROLE_LABELS[invite.role] || invite.role}</div>
+        <div style={{ fontSize: 11, color: TOKENS.ink40, marginTop: 2 }}>{t("Rol:")} {t(ROLE_LABELS[invite.role]) || invite.role}</div>
       </div>
       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
         <button type="button" onClick={copy} style={{ background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: TOKENS.ink }}>
-          {copied ? "Nusxalandi ✓" : "Nusxalash"}
+          {copied ? t("Nusxalandi ✓") : t("Nusxalash")}
         </button>
         <form action={revokeFormAction}>
           <input type="hidden" name="familySlug" value={familySlug} />
           <input type="hidden" name="inviteId" value={invite.id} />
           <button type="submit" disabled={revokePending} style={{ background: "transparent", border: `1px solid ${TOKENS.danger}`, color: TOKENS.danger, borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 600, cursor: revokePending ? "default" : "pointer", opacity: revokePending ? 0.6 : 1 }}>
-            Bekor qilish
+            {t("Bekor qilish")}
           </button>
         </form>
       </div>
@@ -107,14 +108,14 @@ function CreateInviteForm({ familySlug, createInviteAction, onCreated }) {
     <form action={formAction} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
       <input type="hidden" name="familySlug" value={familySlug} />
       <select name="role" value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle, flex: "0 0 auto", width: "auto" }}>
-        <option value="member">A'zo</option>
-        <option value="editor">Muharrir</option>
-        <option value="viewer">Kuzatuvchi</option>
+        <option value="member">{t("A'zo")}</option>
+        <option value="editor">{t("Muharrir")}</option>
+        <option value="viewer">{t("Kuzatuvchi")}</option>
       </select>
       <button type="submit" disabled={pending} style={{ background: TOKENS.ink, color: TOKENS.parchment, border: "none", borderRadius: 8, padding: "11px 18px", fontSize: 13, fontWeight: 600, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}>
-        {pending ? "Yaratilmoqda..." : "Taklif havolasi yaratish"}
+        {pending ? t("Yaratilmoqda...") : t("Taklif havolasi yaratish")}
       </button>
-      {state?.error && <div style={{ width: "100%", fontSize: 12, color: TOKENS.danger }}>{state.error}</div>}
+      {state?.error && <div style={{ width: "100%", fontSize: 12, color: TOKENS.danger }}>{t(state.error)}</div>}
     </form>
   );
 }
@@ -136,7 +137,7 @@ function MemberRow({ member: m, familySlug, userEmail, isOwner, updateMemberRole
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 500, color: TOKENS.ink, display: "flex", alignItems: "center", gap: 6 }}>
             {m.name}
-            {isMe && <span style={{ fontSize: 11, color: TOKENS.ink40, fontWeight: 400 }}>(siz)</span>}
+            {isMe && <span style={{ fontSize: 11, color: TOKENS.ink40, fontWeight: 400 }}>{t("(siz)")}</span>}
           </div>
           <div style={{ fontSize: 12, color: TOKENS.ink60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.email}</div>
         </div>
@@ -160,18 +161,18 @@ function MemberRow({ member: m, familySlug, userEmail, isOwner, updateMemberRole
             </form>
             {!confirmRemove ? (
               <button type="button" onClick={() => setConfirmRemove(true)} style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.danger, background: "transparent", border: `1px solid ${TOKENS.danger}`, borderRadius: 7, padding: "6px 10px", cursor: "pointer" }}>
-                Chiqarish
+                {t("Chiqarish")}
               </button>
             ) : (
               <form action={removeFormAction} style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 <input type="hidden" name="familySlug" value={familySlug} />
                 <input type="hidden" name="userId" value={m.user_id} />
-                <span style={{ fontSize: 11, color: TOKENS.danger }}>Rostdan?</span>
+                <span style={{ fontSize: 11, color: TOKENS.danger }}>{t("Rostdan?")}</span>
                 <button type="submit" disabled={removePending} style={{ fontSize: 11.5, fontWeight: 600, color: "#fff", background: TOKENS.danger, border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
-                  Ha
+                  {t("Ha")}
                 </button>
                 <button type="button" onClick={() => setConfirmRemove(false)} style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, background: "transparent", border: `1px solid ${TOKENS.parchmentDeep}`, borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}>
-                  Yo'q
+                  {t("Yo'q")}
                 </button>
               </form>
             )}
@@ -180,8 +181,8 @@ function MemberRow({ member: m, familySlug, userEmail, isOwner, updateMemberRole
           <RoleBadge role={m.role} />
         )}
       </div>
-      {roleState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 4 }}>{roleState.error}</div>}
-      {removeState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 4 }}>{removeState.error}</div>}
+      {roleState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 4 }}>{t(roleState.error)}</div>}
+      {removeState?.error && <div style={{ fontSize: 11, color: TOKENS.danger, marginTop: 4 }}>{t(removeState.error)}</div>}
     </div>
   );
 }
@@ -191,29 +192,29 @@ export function SettingsView({ familyName, familySince, familySlug, members, inv
   return (
     <div className="fm-fade" style={{ padding: "28px clamp(16px, 5vw, 48px) 60px", maxWidth: 720, margin: "0 auto" }}>
       <div style={{ marginBottom: 26 }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Boshqaruv</div>
-        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>Sozlamalar</h1>
+        <div style={{ fontSize: 11, letterSpacing: "0.14em", color: TOKENS.gold, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>{t("Boshqaruv")}</div>
+        <h1 style={{ fontFamily: "Fraunces, serif", fontSize: 30, fontWeight: 500, margin: 0 }}>{t("Sozlamalar")}</h1>
       </div>
 
-      <SettingsCard title="Ko'rinish va til">
+      <SettingsCard title={t("Ko'rinish va til")}>
         <AppearanceSettings tokens={TOKENS} />
       </SettingsCard>
 
-      <SettingsCard title="Oila ma'lumotlari">
+      <SettingsCard title={t("Oila ma'lumotlari")}>
         {isOwner ? (
           <FamilyNameForm familySlug={familySlug} familyName={familyName} updateFamilyNameAction={updateFamilyNameAction} />
         ) : (
           <div style={{ fontSize: 14, color: TOKENS.ink }}>{familyName}</div>
         )}
         <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 12 }}>
-          {familySince ? `${familySince}-yildan buyon` : ""} · manzil: <span style={{ fontFamily: "monospace" }}>/{familySlug}</span>
+          {familySince ? t("{0}-yildan buyon", { 0: familySince }) : ""} {t("· manzil:")} <span style={{ fontFamily: "monospace" }}>/{familySlug}</span>
         </div>
         {!isOwner && (
-          <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 8 }}>Oila nomini faqat egasi o'zgartira oladi.</div>
+          <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 8 }}>{t("Oila nomini faqat egasi o'zgartira oladi.")}</div>
         )}
       </SettingsCard>
 
-      <SettingsCard title={`Oila a'zolari (${members.length})`}>
+      <SettingsCard title={t("Oila a'zolari ({0})", { 0: members.length })}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {members.map((m) => (
             <MemberRow
@@ -229,21 +230,21 @@ export function SettingsView({ familyName, familySince, familySlug, members, inv
         </div>
         {!isOwner && (
           <div style={{ fontSize: 12, color: TOKENS.ink40, marginTop: 14 }}>
-            A'zolarning rolini faqat oila egasi o'zgartira oladi.
+            {t("A'zolarning rolini faqat oila egasi o'zgartira oladi.")}
           </div>
         )}
       </SettingsCard>
 
       {canInvite && (
-        <SettingsCard title="Oilaga taklif qilish">
+        <SettingsCard title={t("Oilaga taklif qilish")}>
           <div style={{ fontSize: 12.5, color: TOKENS.ink60, marginBottom: 14, lineHeight: 1.6 }}>
-            Havola yarating va oila a'zosiga yuboring. Havola bir marta ishlatiladi — u orqali qo'shilgan odam tanlangan rol bilan kiradi.
+            {t("Havola yarating va oila a'zosiga yuboring. Havola bir marta ishlatiladi — u orqali qo'shilgan odam tanlangan rol bilan kiradi.")}
           </div>
           <CreateInviteForm familySlug={familySlug} createInviteAction={createInviteAction} onCreated={() => router.refresh()} />
 
           {invites.length > 0 && (
             <div style={{ marginTop: 18 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Faol havolalar</div>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: TOKENS.ink60, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("Faol havolalar")}</div>
               {invites.map((inv) => (
                 <InviteLinkRow key={inv.id} invite={inv} familySlug={familySlug} revokeInviteAction={revokeInviteAction} />
               ))}

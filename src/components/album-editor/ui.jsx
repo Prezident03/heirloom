@@ -2,6 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { t } from "@/lib/i18n";
 
 // Muharrir ranglari CSS o'zgaruvchilari orqali — tungi rejimda o'zi o'zgaradi
 // (qiymatlar: src/lib/uiTokens.ts, EDITOR_LIGHT / EDITOR_DARK).
@@ -229,7 +230,7 @@ export function Swatches({ colors, value, onChange, allowCustom = true }) {
         />
       ))}
       {allowCustom && (
-        <label className="he-swatch" title="Boshqa rang" style={{ background: "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)", position: "relative", overflow: "hidden" }}>
+        <label className="he-swatch" title={t("Boshqa rang")} style={{ background: "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)", position: "relative", overflow: "hidden" }}>
           <input
             type="color"
             value={/^#[0-9a-f]{6}$/i.test(value || "") ? value : "#b8863b"}

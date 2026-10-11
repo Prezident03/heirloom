@@ -7,6 +7,7 @@
 import { PAGE_W, PAGE_H } from "./constants";
 import { uid } from "./model";
 import { stickerDef } from "./stickers";
+import { t as tr } from "@/lib/i18n";
 
 export const TEMPLATE_CATEGORIES = [
   "Minimal", "Sayohat", "Oila", "Tug'ilgan kun", "To'y", "Bolalik",
@@ -370,11 +371,11 @@ export function buildTemplateElements(tpl, existingPhotos = []) {
     }
     if (d.type === "text") {
       const size = d.size || 32;
-      const lines = String(d.text).split("\n").length;
+      const lines = String(tr(d.text)).split("\n").length;
       return {
         id: uid(), type: "text", x, y, w, h: size * (d.lineHeight || 1.3) * lines, rotation: d.rot || 0,
         groupId: null, locked: false, opacity: 1, createdAt: now,
-        text: d.text, font: d.font || "sans", fontSize: size, color: d.color || "#1E2621",
+        text: tr(d.text), font: d.font || "sans", fontSize: size, color: d.color || "#1E2621",
         align: d.align || "left", bold: !!d.bold, italic: !!d.italic, underline: false, uppercase: false,
         letterSpacing: d.letterSpacing || 0, lineHeight: d.lineHeight || 1.3, autoHeight: true,
       };
