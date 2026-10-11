@@ -479,21 +479,24 @@ export async function uploadPersonPhotoAction(_prevState: ActionState, formData:
   if (!file.type.startsWith("image/")) {
     return { error: "Faqat rasm fayllari qabul qilinadi." };
   }
-  if (file.size > 5 * 1024 * 1024) {
-    return { error: "Rasm hajmi 5MB dan oshmasligi kerak." };
+  // Klient rasmni kesib, kichik JPEG (~800×800) qilib yuboradi — shuning uchun bu chegara yetarli.
+  if (file.size > 4 * 1024 * 1024) {
+    return { error: "Rasm hajmi juda katta." };
   }
 
   try {
-    const blob = await put(`people/${personId}-${Date.now()}`, file, {
+    const blob = await put(`people/${personId}-${Date.now()}.jpg`, file, {
       access: "public",
       addRandomSuffix: true,
+      contentType: file.type || "image/jpeg",
     });
     await updatePersonPhoto(personId, family.id, blob.url);
   } catch {
     return { error: "Rasm yuklashda xato yuz berdi. Vercel Blob sozlanganligini tekshiring." };
   }
 
-  redirect(`/${familySlug}/dashboard?view=tree`);
+  revalidatePath(`/${familySlug}/dashboard`);
+  return { ok: true };
 }
 
 async function requireEditableFamily(familySlug: string) {

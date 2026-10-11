@@ -1,47 +1,77 @@
-import React, { useState, useRef, useEffect, useMemo, useActionState } from "react";
+import React, { useState, useRef, useEffect, useMemo, useActionState, startTransition } from "react";
+import { useRouter } from "next/navigation";
 import { X, Calendar, MapPinned, ChevronLeft, TreePine, Plus, Camera, Search, Users, Heart, Baby } from "lucide-react";
 import { TOKENS, inputStyle } from "@/lib/uiTokens";
 import { personLabel, personYears, relationLabelBetween } from "@/lib/relationshipLabels";
+import { AvatarCropper, MAX_SOURCE_BYTES } from "./AvatarCropper";
 
 /* ---------------- Profile photo upload (small inline form + camera button) ---------------- */
 
 export function PhotoUploadButton({ familySlug, personId, uploadPersonPhotoAction, onError }) {
-  const [state, formAction, pending] = useActionState(uploadPersonPhotoAction, undefined);
+  const router = useRouter();
   const inputRef = useRef(null);
+  const [file, setFile] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (onError) onError(state?.error || null);
-  }, [state?.error]);
+  const pick = (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (f.size > MAX_SOURCE_BYTES) { onError?.("Rasm hajmi 60MB dan oshmasligi kerak."); return; }
+    onError?.(null);
+    setFile(f);
+  };
+
+  const save = async (cropped) => {
+    setSaving(true);
+    const fd = new FormData();
+    fd.set("familySlug", familySlug);
+    fd.set("personId", personId);
+    fd.set("photo", cropped);
+    try {
+      const res = await uploadPersonPhotoAction(undefined, fd);
+      if (res?.error) { onError?.(res.error); return; }
+      setFile(null);
+      startTransition(() => router.refresh());
+    } catch {
+      onError?.("Rasm yuklashda xato yuz berdi.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <form action={formAction}>
-      <input type="hidden" name="familySlug" value={familySlug} />
-      <input type="hidden" name="personId" value={personId} />
+    <>
       <input
         ref={inputRef}
         type="file"
-        name="photo"
-        accept="image/*"
+        accept="image/*,.heic,.heif,.avif,.webp"
         style={{ display: "none" }}
-        onChange={(e) => {
-          if (e.target.files?.length) e.target.form.requestSubmit();
-        }}
+        onChange={pick}
       />
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        disabled={pending}
-        title="Rasm yuklash"
+        disabled={saving}
+        title="Profil rasmini yuklash"
         style={{
           position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: "50%",
           background: TOKENS.ink, border: `2px solid ${TOKENS.card}`, color: TOKENS.parchment,
-          display: "flex", alignItems: "center", justifyContent: "center", cursor: pending ? "default" : "pointer",
-          opacity: pending ? 0.6 : 1,
+          display: "flex", alignItems: "center", justifyContent: "center", cursor: saving ? "default" : "pointer",
+          opacity: saving ? 0.6 : 1,
         }}
       >
         <Camera size={13} />
       </button>
-    </form>
+      {file && (
+        <AvatarCropper
+          file={file}
+          saving={saving}
+          onCancel={() => { if (!saving) setFile(null); }}
+          onConfirm={save}
+        />
+      )}
+    </>
   );
 }
 
