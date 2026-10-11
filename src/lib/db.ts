@@ -185,6 +185,9 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS extra TEXT`, "add extra");
     // TRUE bo'lsa, albom muqovasi qo'lda tanlangan — editor uni birinchi rasm bilan almashtirmaydi.
     await safe(() => sql`ALTER TABLE albums ADD COLUMN IF NOT EXISTS cover_custom BOOLEAN DEFAULT FALSE`, "add album cover_custom");
+    // Albomni havola orqali faqat ko'rish uchun ulashish (NULL — ulashilmagan).
+    await safe(() => sql`ALTER TABLE albums ADD COLUMN IF NOT EXISTS share_token TEXT`, "add album share_token");
+    await safe(() => sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_share_token ON albums(share_token) WHERE share_token IS NOT NULL`, "album share_token index");
     await safe(() => sql`
       CREATE TABLE IF NOT EXISTS family_media (
         id TEXT PRIMARY KEY,

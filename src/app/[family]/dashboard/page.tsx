@@ -31,6 +31,7 @@ import {
   registerMediaAction,
   setFamilyCoverAction,
   setAlbumCoverAction,
+  shareAlbumAction,
   createPlaceAction,
   updatePlaceAction,
   deletePlaceAction,
@@ -195,6 +196,7 @@ export default async function FamilyDashboardPage({
       registerMediaAction={registerMediaAction}
       setFamilyCoverAction={setFamilyCoverAction}
       setAlbumCoverAction={setAlbumCoverAction}
+      shareAlbumAction={shareAlbumAction}
       familyCoverUrl={(family!.cover_url ?? null) as any}
       createPlaceAction={createPlaceAction}
       updatePlaceAction={updatePlaceAction}

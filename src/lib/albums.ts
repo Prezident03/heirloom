@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import { sql, sqlTransaction, ensureSchema } from "./db";
 
 export type Album = {
@@ -12,6 +12,7 @@ export type Album = {
   created_by: string;
   created_at: string;
   cover_custom?: boolean | null;
+  share_token?: string | null;
 };
 
 export type AlbumPage = {
@@ -435,4 +436,53 @@ export async function saveAlbumState(albumId: string, familyId: string, input: S
     }
     return q;
   });
+}
+
+// ============================================================
+// Ulashish (faqat ko'rish uchun havola)
+// ============================================================
+
+/** Ulashish havolasini yoqadi (mavjud bo'lsa, o'shani qaytaradi) yoki o'chiradi. */
+export async function setAlbumSharing(albumId: string, familyId: string, enabled: boolean): Promise<string | null> {
+  await ensureSchema();
+  if (!enabled) {
+    await sql`UPDATE albums SET share_token = NULL WHERE id = ${albumId} AND family_id = ${familyId}`;
+    return null;
+  }
+  const rows = (await sql`SELECT share_token FROM albums WHERE id = ${albumId} AND family_id = ${familyId}`) as { share_token: string | null }[];
+  if (!rows[0]) throw new Error("Albom topilmadi.");
+  if (rows[0].share_token) return rows[0].share_token;
+  const token = randomBytes(18).toString("base64url");
+  await sql`UPDATE albums SET share_token = ${token} WHERE id = ${albumId} AND family_id = ${familyId}`;
+  return token;
+}
+
+export type SharedAlbum = {
+  id: string;
+  title: string;
+  description: string | null;
+  date_label: string | null;
+  location: string | null;
+  cover_url: string | null;
+  family_name: string;
+  pages: (AlbumPage & { elements: PageElement[] })[];
+};
+
+/** Havola orqali ochilgan albom — faqat ko'rish uchun kerakli ma'lumotlar. */
+export async function getSharedAlbum(token: string): Promise<SharedAlbum | null> {
+  await ensureSchema();
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
+  const rows = (await sql`
+    SELECT a.id, a.title, a.description, a.date_label, a.location, a.cover_url, f.name AS family_name
+    FROM albums a JOIN families f ON f.id = a.family_id
+    WHERE a.share_token = ${token}
+  `) as Omit<SharedAlbum, "pages">[];
+  const album = rows[0];
+  if (!album) return null;
+  const pages = await getPagesForAlbum(album.id);
+  const elements = await getElementsForPages(pages.map((p) => p.id));
+  return {
+    ...album,
+    pages: pages.map((p) => ({ ...p, elements: elements.filter((e) => e.page_id === p.id) })),
+  };
 }
