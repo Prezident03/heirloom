@@ -19,17 +19,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const album = await load(token);
   if (!album) return { title: "Albom topilmadi — Heirloom", robots: { index: false } };
-  const description = album.description || `${album.family_name} oilasining albomi`;
+  const description = `${album.family_name} oilasining albomi — tomosha qilish uchun bosing`;
+  // Kartochka rasmi (muqova + nom + "tomosha qiling") opengraph-image.tsx orqali avtomatik qo'shiladi.
   return {
     title: `${album.title} — Heirloom`,
     description,
     // Shaxsiy albom — qidiruv tizimlariga ko'rsatilmaydi.
     robots: { index: false, follow: false },
-    openGraph: {
-      title: album.title,
-      description,
-      images: album.cover_url ? [{ url: album.cover_url }] : undefined,
-    },
+    openGraph: { type: "website", title: album.title, description, siteName: "Heirloom" },
+    twitter: { card: "summary_large_image", title: album.title, description },
   };
 }
 
