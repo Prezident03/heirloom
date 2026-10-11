@@ -198,6 +198,7 @@ export default async function FamilyDashboardPage({
       setAlbumCoverAction={setAlbumCoverAction}
       shareAlbumAction={shareAlbumAction}
       familyCoverUrl={(family!.cover_url ?? null) as any}
+      isPremium={family!.plan === "premium"}
       createPlaceAction={createPlaceAction}
       updatePlaceAction={updatePlaceAction}
       deletePlaceAction={deletePlaceAction}

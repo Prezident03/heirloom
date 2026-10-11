@@ -40,7 +40,7 @@ export const EDITOR_CSS = `
 .he-stage.panning, .he-stage.panning * { cursor: grabbing !important; }
 .he-stage.space { cursor: grab; }
 .he-page-shadow { position: absolute; box-shadow: 0 1px 2px rgba(30,26,15,0.12), 0 12px 40px rgba(30,26,15,0.16); background: #fff; }
-.he-bottombar { height: 104px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: ${C.card}; border-top: 1px solid ${C.line}; z-index: 20; }
+.he-bottombar { height: 92px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: ${C.card}; border-top: 1px solid ${C.line}; z-index: 20; }
 .he-pages { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; overflow-x: auto; padding: 8px 2px; scrollbar-width: thin; }
 .he-thumb { position: relative; flex-shrink: 0; border-radius: 6px; cursor: pointer; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .12s, transform .12s; box-shadow: 0 1px 4px rgba(30,26,15,0.16); }
 .he-thumb:hover { transform: translateY(-1px); }
@@ -135,6 +135,21 @@ export const EDITOR_CSS = `
   @keyframes he-sheet-in { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
   .he-bottombar { height: 78px; padding: 0 8px; }
   .he-toast { bottom: 150px; }
+}
+/* Telefon yotqizilgan (gorizontal) holat: balandlik kam — hamma panel ixcham, canvas imkon qadar katta. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .he-topbar { height: 44px; padding: 0 6px; gap: 2px; }
+  .he-topbar .he-btn { height: 30px; }
+  .he-title-input { font-size: 14px; width: 150px; }
+  .he-hide-sm { display: none !important; }
+  .he-main { flex-direction: row; }
+  .he-rail { width: 54px; height: auto; flex-direction: column; border-top: none; border-right: 1px solid ${C.line}; padding: 4px; overflow-y: auto; }
+  .he-rail-btn { min-width: 0; padding: 6px 0; }
+  .he-rail-btn span { display: none; }
+  .he-drawer { position: absolute; left: 54px; top: 0; bottom: 0; right: auto; width: min(300px, 60vw); height: auto; border-radius: 0; border-top: none; animation: he-drawer-in .16s ease; }
+  .he-bottombar { height: 56px; padding: 0 8px; }
+  .he-thumb .he-thumb-actions { display: none !important; }
+  .he-toast { bottom: 70px; }
 }
 @media (prefers-reduced-motion: reduce) { .he-root *, .he-preview * { animation: none !important; transition: none !important; } }
 `;

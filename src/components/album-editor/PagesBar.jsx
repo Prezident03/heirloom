@@ -11,7 +11,7 @@ const PAGE_MIME = "application/x-heirloom-page";
 export function PagesBar({ pages, pageId, setPageId, api, canEdit, zoomPct, onZoom, compact }) {
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
-  const thumbW = compact ? 64 : 88;
+  const thumbW = compact ? 58 : 88;
 
   return (
     <div className="he-bottombar" onPointerDown={(e) => e.stopPropagation()}>

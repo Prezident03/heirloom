@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import {
   LayoutTemplate, Images, Video, Type, Shapes, Sticker, Frame, PaintBucket, Upload, X, Loader2, Plus, ImageOff, CopyPlus, Trash2, AlertTriangle,
+  Folder, ChevronLeft, Crown, Lock,
 } from "lucide-react";
 import { FONT_BY_ID, TEXT_PRESETS, FRAMES, BACKGROUND_GROUPS, SOLID_COLORS, backgroundCss } from "./constants";
 import { TEMPLATES, TEMPLATE_CATEGORIES, buildTemplateElements } from "./templates";
@@ -68,7 +69,7 @@ export function Rail({ panel, setPanel }) {
   );
 }
 
-export function Drawer({ panel, setPanel, api, library, uploads, page, replaceTarget }) {
+export function Drawer({ panel, setPanel, api, library, folders, uploads, page, replaceTarget, isPremium }) {
   if (!panel) return null;
   const item = RAIL.find((r) => r.id === panel);
   return (
@@ -85,14 +86,14 @@ export function Drawer({ panel, setPanel, api, library, uploads, page, replaceTa
       )}
       <div className="he-drawer-body">
         {panel === "templates" && <TemplatesPanel api={api} />}
-        {panel === "photos" && <MediaPanel api={api} library={library} uploads={uploads} kind="photo" />}
-        {panel === "videos" && <MediaPanel api={api} library={library} uploads={uploads} kind="video" />}
+        {panel === "photos" && <PhotosPanel api={api} folders={folders} uploads={uploads} />}
+        {panel === "videos" && (isPremium ? <MediaPanel api={api} library={library} uploads={uploads} kind="video" /> : <PremiumLock />)}
         {panel === "text" && <TextPanel api={api} />}
         {panel === "elements" && <StickerPanel api={api} groups={["tape", "paper", "shapes", "clips"]} />}
         {panel === "stickers" && <StickerPanel api={api} groups={["nature", "icons", "words"]} />}
         {panel === "frames" && <FramesPanel api={api} />}
         {panel === "background" && <BackgroundPanel api={api} page={page} />}
-        {panel === "upload" && <UploadPanel api={api} library={library} uploads={uploads} />}
+        {panel === "upload" && <UploadPanel api={api} library={library} uploads={uploads} isPremium={isPremium} />}
       </div>
     </aside>
   );
@@ -244,7 +245,76 @@ function MediaPanel({ api, library, uploads, kind }) {
   );
 }
 
-function UploadPanel({ api, library, uploads }) {
+/** Rasmlar papkalar ko'rinishida: papka bosilsa, ichidagi rasmlar ochiladi. */
+function PhotosPanel({ api, folders, uploads }) {
+  const [openId, setOpenId] = useState(null);
+  const folder = folders.find((f) => f.id === openId);
+  if (folder) {
+    return (
+      <>
+        <button type="button" className="he-btn" style={{ margin: "0 0 8px -8px" }} onClick={() => setOpenId(null)}>
+          <ChevronLeft size={16} /> Papkalar
+        </button>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>{folder.name}</div>
+          <div style={{ fontSize: 12, color: C.muted }}>{folder.items.length} ta rasm</div>
+        </div>
+        <MediaGrid items={folder.items} api={api} kind="photo" />
+      </>
+    );
+  }
+  return (
+    <>
+      <UploadButton api={api} accept="image/*,.heic,.heif" label="Rasm yuklash" />
+      <UploadList uploads={uploads} />
+      <div className="he-section-label">Papkalar</div>
+      <div className="he-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {folders.map((f) => (
+          <button key={f.id} type="button" className="he-tile" onClick={() => setOpenId(f.id)} style={{ padding: 6, textAlign: "left", background: "#FBF8F0" }} title={f.hint || f.name}>
+            <FolderCover items={f.items} />
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 7, padding: "0 2px" }}>
+              <Folder size={14} color={C.gold} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: C.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{f.name}</span>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, padding: "2px 2px 2px 22px" }}>{f.items.length} ta rasm</div>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function FolderCover({ items }) {
+  const shown = items.slice(0, 4);
+  return (
+    <div style={{ aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "#EEE8DC", display: "grid", gridTemplateColumns: shown.length > 1 ? "1fr 1fr" : "1fr", gridTemplateRows: shown.length > 2 ? "1fr 1fr" : "1fr", gap: 2 }}>
+      {shown.length === 0 ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: C.faint }}><ImageOff size={22} /></div>
+      ) : shown.map((m, i) => (
+        <div key={m.url} style={{ backgroundImage: `url("${m.url}")`, backgroundSize: "cover", backgroundPosition: "center", gridColumn: shown.length === 3 && i === 0 ? "span 2" : undefined }} />
+      ))}
+    </div>
+  );
+}
+
+function PremiumLock() {
+  return (
+    <div style={{ textAlign: "center", padding: "26px 8px" }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, margin: "0 auto 14px", background: "linear-gradient(135deg, #B8863B, #D9BC85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Crown size={26} color="#fff" />
+      </div>
+      <div style={{ fontFamily: "Fraunces, serif", fontSize: 18, marginBottom: 6 }}>Videolar — Premium</div>
+      <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.55 }}>
+        Videolar ko&apos;p joy egallaydi, shuning uchun ularni albomga qo&apos;shish faqat Premium obunachilar uchun ochiq. Rasmlar barcha uchun bepul.
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 14, fontSize: 12, color: C.gold, fontWeight: 600 }}>
+        <Lock size={13} /> Tez orada: obuna bo&apos;lish
+      </div>
+    </div>
+  );
+}
+
+function UploadPanel({ api, library, uploads, isPremium }) {
   const [over, setOver] = useState(false);
   const ref = useRef(null);
   return (
@@ -258,11 +328,11 @@ function UploadPanel({ api, library, uploads }) {
       >
         <Upload size={26} style={{ marginBottom: 8 }} />
         <div style={{ fontWeight: 600, marginBottom: 4 }}>Fayllarni shu yerga tashlang</div>
-        <div style={{ fontSize: 12 }}>yoki bosib tanlang · rasm (25MB gacha), video (200MB gacha)</div>
+        <div style={{ fontSize: 12 }}>yoki bosib tanlang · rasm (25MB gacha){isPremium ? ", video (200MB gacha)" : ""}</div>
         <input
           ref={ref}
           type="file"
-          accept="image/*,video/mp4,video/webm,video/quicktime"
+          accept={isPremium ? "image/*,.heic,.heif,video/mp4,video/webm,video/quicktime" : "image/*,.heic,.heif"}
           multiple
           style={{ display: "none" }}
           onChange={(e) => { const files = [...(e.target.files || [])]; e.target.value = ""; if (files.length) api.uploadFiles(files); }}
@@ -271,6 +341,11 @@ function UploadPanel({ api, library, uploads }) {
       <div style={{ fontSize: 12, color: C.muted, marginTop: 10, lineHeight: 1.5 }}>
         Maslahat: fayllarni to&apos;g&apos;ridan-to&apos;g&apos;ri sahifaga ham sudrab tashlashingiz yoki <span className="he-kbd">Ctrl</span>+<span className="he-kbd">V</span> bilan joylashtirishingiz mumkin.
       </div>
+      {!isPremium && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.gold, marginTop: 8 }}>
+          <Crown size={13} /> Video yuklash — Premium obunachilar uchun
+        </div>
+      )}
       <UploadList uploads={uploads} />
       <div className="he-section-label">So&apos;nggi yuklanganlar</div>
       <MediaGrid items={library.slice(0, 30)} api={api} kind="photo" />

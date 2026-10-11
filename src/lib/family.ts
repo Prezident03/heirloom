@@ -8,7 +8,13 @@ export type Family = {
   owner_id: string;
   created_at: string;
   cover_url?: string | null;
+  plan?: string | null;
 };
+
+/** Premium obuna (video yuklash va h.k.). Hozircha bazada qo'lda yoqiladi: UPDATE families SET plan = 'premium'. */
+export function isPremiumFamily(family: Pick<Family, "plan"> | null | undefined): boolean {
+  return family?.plan === "premium";
+}
 
 export type Membership = {
   family_id: string;

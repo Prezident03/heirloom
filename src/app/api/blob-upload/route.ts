@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { getFamilyBySlug, getMembership } from "@/lib/family";
+import { getFamilyBySlug, getMembership, isPremiumFamily } from "@/lib/family";
 
 /**
  * Vercel'ning serverless funksiyalari uchun 4.5MB'lik qattiq (o'zgartirib
@@ -38,14 +38,13 @@ export async function POST(request: Request): Promise<NextResponse> {
           throw new Error("Sizda bu amal uchun ruxsat yo'q.");
         }
 
+        // Video faqat Premium oilalar uchun — xotira tez to'lib qolmasligi uchun.
+        const premium = isPremiumFamily(family);
+        const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif", "image/avif"];
         return {
-          allowedContentTypes: [
-            "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif",
-            "video/mp4", "video/webm", "video/quicktime",
-          ],
+          allowedContentTypes: premium ? [...imageTypes, "video/mp4", "video/webm", "video/quicktime"] : imageTypes,
           // Haqiqiy fayl bizning funksiyamizdan o'tmagani uchun bemalol katta bo'lishi mumkin.
-          // Rasmlar uchun 25MB chegarasi klient tomonda alohida tekshiriladi.
-          maximumSizeInBytes: 200 * 1024 * 1024,
+          maximumSizeInBytes: premium ? 200 * 1024 * 1024 : 25 * 1024 * 1024,
           addRandomSuffix: true,
         };
       },

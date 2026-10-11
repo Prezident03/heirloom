@@ -115,6 +115,8 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS profile_photo_url TEXT`, "add profile_photo_url");
     // Bosh sahifadagi banner uchun qo'lda tanlangan oila muqovasi (NULL — avtomatik).
     await safe(() => sql`ALTER TABLE families ADD COLUMN IF NOT EXISTS cover_url TEXT`, "add family cover_url");
+    // Obuna rejasi: 'free' | 'premium'. Video yuklash faqat premium oilalar uchun.
+    await safe(() => sql`ALTER TABLE families ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free'`, "add family plan");
 
     await safe(() => sql`
       CREATE TABLE IF NOT EXISTS albums (
