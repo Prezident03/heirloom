@@ -113,6 +113,8 @@ export async function ensureSchema(): Promise<void> {
     `, "create relationships");
 
     await safe(() => sql`ALTER TABLE people ADD COLUMN IF NOT EXISTS profile_photo_url TEXT`, "add profile_photo_url");
+    // Bosh sahifadagi banner uchun qo'lda tanlangan oila muqovasi (NULL — avtomatik).
+    await safe(() => sql`ALTER TABLE families ADD COLUMN IF NOT EXISTS cover_url TEXT`, "add family cover_url");
 
     await safe(() => sql`
       CREATE TABLE IF NOT EXISTS albums (
@@ -181,6 +183,8 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE page_elements ADD CONSTRAINT page_elements_type_check CHECK (type IN ('photo','text','sticker','video'))`, "add element type check");
     // Editorning qo'shimcha xususiyatlari (lock, opacity, crop, matn uslubi va h.k.) JSON ko'rinishida.
     await safe(() => sql`ALTER TABLE page_elements ADD COLUMN IF NOT EXISTS extra TEXT`, "add extra");
+    // TRUE bo'lsa, albom muqovasi qo'lda tanlangan — editor uni birinchi rasm bilan almashtirmaydi.
+    await safe(() => sql`ALTER TABLE albums ADD COLUMN IF NOT EXISTS cover_custom BOOLEAN DEFAULT FALSE`, "add album cover_custom");
     await safe(() => sql`
       CREATE TABLE IF NOT EXISTS family_media (
         id TEXT PRIMARY KEY,

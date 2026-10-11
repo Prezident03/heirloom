@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { BookImage, Camera, Search, TreePine, UserPlus } from "lucide-react";
 import { TOKENS } from "@/lib/uiTokens";
-import { VIEWS, SectionLabel, CreateMenu, StatItem, EmptyState, AlbumCard, buildFamilyGenerations } from "./shared";
+import { VIEWS, SectionLabel, CreateMenu, StatItem, EmptyState, AlbumCard, buildFamilyGenerations, collectPhotoUrls } from "./shared";
+import { CoverMenu } from "./CoverPicker";
 
 /**
  * Family Space'ning "shaxsiyati" — daraxt statistikasi asosida, hech qanday
@@ -9,7 +10,7 @@ import { VIEWS, SectionLabel, CreateMenu, StatItem, EmptyState, AlbumCard, build
  * muqovasi, keyin xotira, keyin voqea rasmi) ishlatiladi; hech narsa topilmasa
  * eski gradient fonga qaytadi.
  */
-function FamilyHeroBanner({ familyName, familySince, genCount, memberCount, albumCount, photoCount, heroPhotoUrl, onNavigate }) {
+function FamilyHeroBanner({ familyName, familySince, genCount, memberCount, albumCount, photoCount, heroPhotoUrl, onNavigate, coverMenu }) {
   return (
     <div
       onClick={() => onNavigate(VIEWS.TREE)}
@@ -19,12 +20,14 @@ function FamilyHeroBanner({ familyName, familySince, genCount, memberCount, albu
         borderRadius: 18,
         overflow: "hidden",
         minHeight: 224,
+        aspectRatio: "4 / 1",
         marginBottom: 40,
         display: "flex",
         alignItems: "flex-end",
         background: heroPhotoUrl ? `url(${heroPhotoUrl}) center/cover` : `linear-gradient(120deg, ${TOKENS.ink} 0%, ${TOKENS.teal} 130%)`,
       }}
     >
+      {coverMenu}
       {heroPhotoUrl && (
         <div
           style={{
@@ -211,7 +214,7 @@ function TodayMemoryWidget({ item, isOnThisDay, onNavigate, onAddMemory }) {
   );
 }
 
-export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAlbum, onUploadPhotos, onAddEvent, onAddMemory, onAddStory, onAddPlace, userName, familyName, familySince, people, relationships, albums, timelineEvents, memories, stats }) {
+export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAlbum, onUploadPhotos, onAddEvent, onAddMemory, onAddStory, onAddPlace, userName, familyName, familySince, people, relationships, albums, timelineEvents, memories, stats, familySlug, canEdit, photos = [], media = [], familyCoverUrl, setFamilyCoverAction, setAlbumCoverAction }) {
   const [query, setQuery] = useState("");
   const [greeting] = useState(() => {
     const h = new Date().getHours();
@@ -239,6 +242,7 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
   // xotira rasmi → voqea rasmi. Hech narsa topilmasa komponent o'zi
   // gradient fonga tushadi.
   const heroPhotoUrl = useMemo(() => {
+    if (familyCoverUrl) return familyCoverUrl;
     const albumWithCover = albums.find((a) => a.cover_url);
     if (albumWithCover) return albumWithCover.cover_url;
     const memoryWithPhoto = (memories || []).find((m) => m.photo_url);
@@ -246,7 +250,10 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
     const eventWithPhoto = (timelineEvents || []).find((ev) => ev.photo_url);
     if (eventWithPhoto) return eventWithPhoto.photo_url;
     return null;
-  }, [albums, memories, timelineEvents]);
+  }, [familyCoverUrl, albums, memories, timelineEvents]);
+
+  const coverSources = { albums, photos, media };
+  const albumCoverControl = canEdit && setAlbumCoverAction ? { familySlug, action: setAlbumCoverAction, sources: coverSources } : null;
 
   // On This Day — bugungi sana (oy + kun) bo'yicha xotira va voqealarni filter
   const onThisDayItems = useMemo(() => {
@@ -326,6 +333,18 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
             photoCount={photoCount}
             heroPhotoUrl={heroPhotoUrl}
             onNavigate={onNavigate}
+            coverMenu={canEdit && setFamilyCoverAction ? (
+              <CoverMenu
+                kind="family"
+                familySlug={familySlug}
+                action={setFamilyCoverAction}
+                library={collectPhotoUrls({ ...coverSources, first: [
+                  ...(memories || []).map((m) => m.photo_url),
+                  ...(timelineEvents || []).map((ev) => ev.photo_url),
+                  ...albums.map((a) => a.cover_url),
+                ] })}
+              />
+            ) : null}
           />
 
           <section style={{ marginBottom: 40 }}>
@@ -341,7 +360,7 @@ export function DashboardView({ onNavigate, onOpenAlbum, onAddPerson, onCreateAl
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 18 }}>
                 {albums.slice(0, 4).map((a) => (
-                  <AlbumCard key={a.id} album={a} onClick={() => onOpenAlbum(a)} compact />
+                  <AlbumCard key={a.id} album={a} onClick={() => onOpenAlbum(a)} compact coverControl={albumCoverControl} />
                 ))}
               </div>
             )}

@@ -11,6 +11,7 @@ export type Album = {
   cover_url: string | null;
   created_by: string;
   created_at: string;
+  cover_custom?: boolean | null;
 };
 
 export type AlbumPage = {
@@ -125,6 +126,25 @@ export async function updateAlbumTitle(albumId: string, familyId: string, title:
 export async function setAlbumCover(albumId: string, coverUrl: string | null): Promise<void> {
   await ensureSchema();
   await sql`UPDATE albums SET cover_url = ${coverUrl} WHERE id = ${albumId}`;
+}
+
+/** Foydalanuvchi qo'lda tanlagan muqova — keyingi saqlashlarda avtomatik almashtirilmaydi. */
+export async function setCustomAlbumCover(albumId: string, familyId: string, coverUrl: string): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE albums SET cover_url = ${coverUrl}, cover_custom = TRUE WHERE id = ${albumId} AND family_id = ${familyId}`;
+}
+
+/** Muqovani avtomatik holatga qaytaradi: albomdagi birinchi rasm. */
+export async function resetAlbumCover(albumId: string, familyId: string): Promise<void> {
+  await ensureSchema();
+  const rows = (await sql`
+    SELECT pe.photo_url FROM page_elements pe
+    JOIN album_pages ap ON ap.id = pe.page_id
+    WHERE ap.album_id = ${albumId} AND pe.type = 'photo' AND pe.photo_url IS NOT NULL
+    ORDER BY ap.page_order ASC, pe.z_index ASC
+    LIMIT 1
+  `) as { photo_url: string }[];
+  await sql`UPDATE albums SET cover_url = ${rows[0]?.photo_url ?? null}, cover_custom = FALSE WHERE id = ${albumId} AND family_id = ${familyId}`;
 }
 
 // ============================================================
@@ -411,7 +431,7 @@ export async function saveAlbumState(albumId: string, familyId: string, input: S
       });
     });
     if (coverUrl !== undefined) {
-      q.push(tx`UPDATE albums SET cover_url = ${coverUrl} WHERE id = ${albumId} AND family_id = ${familyId}`);
+      q.push(tx`UPDATE albums SET cover_url = ${coverUrl} WHERE id = ${albumId} AND family_id = ${familyId} AND COALESCE(cover_custom, FALSE) = FALSE`);
     }
     return q;
   });
