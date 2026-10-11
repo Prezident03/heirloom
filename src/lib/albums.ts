@@ -13,7 +13,10 @@ export type Album = {
   created_at: string;
   cover_custom?: boolean | null;
   share_token?: string | null;
+  page_format?: string | null;
 };
+
+export const PAGE_FORMAT_IDS = ["16:9", "3:2", "4:3", "1:1"];
 
 export type AlbumPage = {
   id: string;
@@ -76,8 +79,8 @@ export async function createAlbum(
   const title = input.title.trim();
 
   await sql`
-    INSERT INTO albums (id, family_id, title, description, date_label, location, created_by, created_at)
-    VALUES (${id}, ${familyId}, ${title}, ${input.description?.trim() || null}, ${input.dateLabel?.trim() || null}, ${input.location?.trim() || null}, ${createdBy}, ${createdAt})
+    INSERT INTO albums (id, family_id, title, description, date_label, location, created_by, created_at, page_format)
+    VALUES (${id}, ${familyId}, ${title}, ${input.description?.trim() || null}, ${input.dateLabel?.trim() || null}, ${input.location?.trim() || null}, ${createdBy}, ${createdAt}, '16:9')
   `;
 
   await createAlbumPage(id);
@@ -240,6 +243,7 @@ export type SaveAlbumInput = {
   /** Faqat o'zgargan sahifalar — ularning elementlari to'liq almashtiriladi. */
   pages: SavePageInput[];
   coverUrl?: string | null;
+  pageFormat?: string;
 };
 
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -431,6 +435,9 @@ export async function saveAlbumState(albumId: string, familyId: string, input: S
         `);
       });
     });
+    if (input.pageFormat && PAGE_FORMAT_IDS.includes(input.pageFormat)) {
+      q.push(tx`UPDATE albums SET page_format = ${input.pageFormat} WHERE id = ${albumId} AND family_id = ${familyId}`);
+    }
     if (coverUrl !== undefined) {
       q.push(tx`UPDATE albums SET cover_url = ${coverUrl} WHERE id = ${albumId} AND family_id = ${familyId} AND COALESCE(cover_custom, FALSE) = FALSE`);
     }
@@ -464,6 +471,7 @@ export type SharedAlbum = {
   date_label: string | null;
   location: string | null;
   cover_url: string | null;
+  page_format: string | null;
   family_name: string;
   pages: (AlbumPage & { elements: PageElement[] })[];
 };
@@ -473,7 +481,7 @@ export async function getSharedAlbum(token: string): Promise<SharedAlbum | null>
   await ensureSchema();
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
   const rows = (await sql`
-    SELECT a.id, a.title, a.description, a.date_label, a.location, a.cover_url, f.name AS family_name
+    SELECT a.id, a.title, a.description, a.date_label, a.location, a.cover_url, a.page_format, f.name AS family_name
     FROM albums a JOIN families f ON f.id = a.family_id
     WHERE a.share_token = ${token}
   `) as Omit<SharedAlbum, "pages">[];

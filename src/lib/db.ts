@@ -189,6 +189,8 @@ export async function ensureSchema(): Promise<void> {
     await safe(() => sql`ALTER TABLE albums ADD COLUMN IF NOT EXISTS cover_custom BOOLEAN DEFAULT FALSE`, "add album cover_custom");
     // Albomni havola orqali faqat ko'rish uchun ulashish (NULL — ulashilmagan).
     await safe(() => sql`ALTER TABLE albums ADD COLUMN IF NOT EXISTS share_token TEXT`, "add album share_token");
+    // Sahifa formati ('16:9', '3:2', '4:3', '1:1'). Eski albomlar 4:3 bo'lib qoladi.
+    await safe(() => sql`ALTER TABLE albums ADD COLUMN IF NOT EXISTS page_format TEXT DEFAULT '4:3'`, "add album page_format");
     await safe(() => sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_albums_share_token ON albums(share_token) WHERE share_token IS NOT NULL`, "album share_token index");
     await safe(() => sql`
       CREATE TABLE IF NOT EXISTS family_media (

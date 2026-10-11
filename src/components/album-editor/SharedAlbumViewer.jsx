@@ -3,12 +3,13 @@
 import React, { useMemo } from "react";
 import { albumToDoc } from "./model";
 import { EDITOR_CSS } from "./ui";
-import { EDITOR_FONT_IMPORT } from "./constants";
+import { EDITOR_FONT_IMPORT, setPageFormat, LEGACY_FORMAT } from "./constants";
 import { Preview } from "./Preview";
 
 /** Havola orqali ulashilgan albom: faqat varaqlab ko'rish, hech qanday tahrir yo'q. */
 export default function SharedAlbumViewer({ album }) {
   const doc = useMemo(() => albumToDoc(album), [album]);
+  setPageFormat(doc.format || LEGACY_FORMAT);
   const subtitle = [album.family_name && `${album.family_name} oilasi`, album.date_label, album.location].filter(Boolean).join(" · ");
   return (
     <>

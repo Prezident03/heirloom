@@ -2,7 +2,7 @@
 // Album Editor — ma'lumotlar modeli
 // Bazadagi qatorlar (foizlarda) <-> editor modeli (mantiqiy birliklarda)
 // ============================================================
-import { PAGE_W, PAGE_H, FRAME_IDS, DEFAULT_FILTER, isDefaultFilter } from "./constants";
+import { PAGE_W, PAGE_H, FRAME_IDS, DEFAULT_FILTER, isDefaultFilter, setPageFormat, formatRatio, PAGE_FORMATS, LEGACY_FORMAT } from "./constants";
 import { stickerDef } from "./stickers";
 
 export function uid() {
@@ -176,9 +176,45 @@ export function pageToRow(page) {
   };
 }
 
+export function albumFormat(album) {
+  const f = album?.page_format;
+  return PAGE_FORMATS.some((x) => x.id === f) ? f : LEGACY_FORMAT;
+}
+
 export function albumToDoc(album) {
+  const format = albumFormat(album);
+  setPageFormat(format); // foizlardan mantiqiy birliklarga o'tkazish shu formatga bog'liq
   const pages = (album.pages || []).map(pageFromRow);
-  return { pages: pages.length ? pages : [blankPage()] };
+  return { format, pages: pages.length ? pages : [blankPage()] };
+}
+
+/**
+ * Hujjatni boshqa sahifa formatiga o'tkazadi. Elementlar cho'zilmaydi:
+ * yangi sahifa pastroq bo'lsa, butun kontent proporsional kichraytiriladi,
+ * so'ng vertikal markazga joylanadi.
+ */
+export function convertDocFormat(doc, toFormat) {
+  const from = doc.format || LEGACY_FORMAT;
+  if (from === toFormat) return doc;
+  const H1 = PAGE_W / formatRatio(from), H2 = PAGE_W / formatRatio(toFormat);
+  const k = Math.min(1, H2 / H1);
+  const cx = PAGE_W / 2;
+  const dy = (H2 - H1 * k) / 2;
+  return {
+    ...doc,
+    format: toFormat,
+    pages: doc.pages.map((p) => ({
+      ...p,
+      elements: p.elements.map((el) => ({
+        ...el,
+        x: cx + (el.x - cx) * k,
+        y: el.y * k + dy,
+        w: el.w * k,
+        h: el.h * k,
+        ...(el.type === "text" ? { fontSize: el.fontSize * k } : null),
+      })),
+    })),
+  };
 }
 
 export function blankPage(background = "paper") {
